@@ -8,6 +8,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+if (process.env.NODE_ENV==="production") {
+    cronJob.start();
+}
+
 // Basic health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'School ERP API is running' });
