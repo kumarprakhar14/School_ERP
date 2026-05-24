@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  STUDENT
+  ACCOUNTS
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum FeeStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// -----------------------------------------------------------------------------
+// CORE ENTITIES
+// -----------------------------------------------------------------------------
+
+model School {
+  id              String       @id @default(uuid())
+  name            String
+  status          SchoolStatus @default(ACTIVE)
+  validUntil      DateTime
+  isArchived      Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  settings        SchoolSettings?
+  users           User[]
+  classes         Class[]
+  notices         Notice[]
+  assignments     Assignment[]
+}
+
+model SchoolSettings {
+  id              String   @id @default(uuid())
+  schoolId        String   @unique
+  school          School   @relation(fields: [schoolId], references: [id])
+  logoUrl         String?
+  themeColor      String   @default("#3b82f6") // Tailwind blue-500
+  description     String?
+  contactInfo     String?
+  updatedAt       DateTime @updatedAt
+}
+
+model User {
+  id              String   @id @default(uuid())
+  schoolId        String?  // Nullable for SUPER_ADMIN
+  school          School?  @relation(fields: [schoolId], references: [id])
+  erpId           String
+  passwordHash    String
+  role            UserRole
+  name            String
+  profilePicUrl   String?
+  contactDetails  String?
+  isActive        Boolean  @default(true)
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  studentProfile  StudentProfile?
+  teacherProfile  TeacherProfile?
+
+  authoredNotices Notice[]
+  feeRecords      FeeRecord[]
+  attendances     Attendance[]
+  submissions     AssignmentSubmission[]
+
+  @@unique([schoolId, erpId]) // Unique per school
+}
+
+// -----------------------------------------------------------------------------
+// PROFILES
+// -----------------------------------------------------------------------------
+
+model StudentProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  sectionId       String?
+  section         Section? @relation(fields: [sectionId], references: [id])
+  admissionDate   DateTime?
+}
+
+model TeacherProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  designation     String?
+  
+  assignedSections Section[] @relation("TeacherSections")
+}
+
+// -----------------------------------------------------------------------------
+// ACADEMIC STRUCTURE
+// -----------------------------------------------------------------------------
+
+model Class {
+  id              String   @id @default(uuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  name            String   // e.g., "10", "12"
+  isArchived      Boolean  @default(false)
+  
+  sections        Section[]
+  
+  @@unique([schoolId, name])
+}
+
+model Section {
+  id              String   @id @default(uuid())
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id])
+  name            String   // e.g., "A", "B"
+  isArchived      Boolean  @default(false)
+
+  students        StudentProfile[]
+  teachers        TeacherProfile[] @relation("TeacherSections")
+  assignments     Assignment[]
+  attendances     Attendance[]
+
+  @@unique([classId, name])
+}
+
+// -----------------------------------------------------------------------------
+// MODULES
+// -----------------------------------------------------------------------------
+
+model Attendance {
+  id              String           @id @default(uuid())
+  sectionId       String
+  section         Section          @relation(fields: [sectionId], references: [id])
+  studentId       String
+  student         User             @relation(fields: [studentId], references: [id])
+  date            DateTime         // Stored as Date only
+  status          AttendanceStatus
+  
+  createdBy       String?          // Teacher ID
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@unique([sectionId, studentId, date])
+}
+
+model Assignment {
+  id              String   @id @default(uuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  sectionId       String
+  section         Section  @relation(fields: [sectionId], references: [id])
+  title           String
+  description     String
+  fileUrl         String?
+  dueDate         DateTime
+  isArchived      Boolean  @default(false)
+  
+  createdBy       String?  // Teacher ID
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  submissions     AssignmentSubmission[]
+}
+
+model AssignmentSubmission {
+  id              String   @id @default(uuid())
+  assignmentId    String
+  assignment      Assignment @relation(fields: [assignmentId], references: [id])
+  studentId       String
+  student         User     @relation(fields: [studentId], references: [id])
+  fileUrl         String
+  submittedAt     DateTime @default(now())
+
+  @@unique([assignmentId, studentId])
+}
+
+model Notice {
+  id              String   @id @default(uuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  title           String
+  content         String
+  attachmentUrl   String?
+  targetRoles     UserRole[] // Array of roles this notice is meant for
+  isArchived      Boolean  @default(false)
+  createdBy       String?  // Author User ID
+  author          User?    @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FeeRecord {
+  id              String    @id @default(uuid())
+  schoolId        String
+  studentId       String
+  student         User      @relation(fields: [studentId], references: [id])
+  month           Int       // 1-12
+  year            Int
+  amount          Float
+  status          FeeStatus @default(PENDING)
+  remarks         String?
+  paidAt          DateTime?
+  
+  createdBy       String?   // Accounts Staff ID
+  updatedBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([studentId, month, year])
+}
