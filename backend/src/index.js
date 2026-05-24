@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cronJob = require('./utils/cron.js')
 
 const app = express();
 
