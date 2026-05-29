@@ -35,6 +35,16 @@ enum SchoolStatus {
   INACTIVE
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 // -----------------------------------------------------------------------------
 // CORE ENTITIES
 // -----------------------------------------------------------------------------
@@ -53,6 +63,8 @@ model School {
   classes         Class[]
   notices         Notice[]
   assignments     Assignment[]
+  subjects        Subject[]
+  periods         Period[]
 }
 
 model SchoolSettings {
@@ -85,7 +97,8 @@ model User {
   teacherProfile  TeacherProfile?
 
   authoredNotices Notice[]
-  feeRecords      FeeRecord[]
+  feeRecords      FeeRecord[] @relation("FeeStudent")
+  createdFees     FeeRecord[] @relation("FeeCreator")
   attendances     Attendance[]
   submissions     AssignmentSubmission[]
 
@@ -112,6 +125,7 @@ model TeacherProfile {
   designation     String?
   
   assignedSections Section[] @relation("TeacherSections")
+  timeTableEntries TimeTableEntry[]
 }
 
 // -----------------------------------------------------------------------------
@@ -141,6 +155,7 @@ model Section {
   teachers        TeacherProfile[] @relation("TeacherSections")
   assignments     Assignment[]
   attendances     Attendance[]
+  timeTableEntries TimeTableEntry[]
 
   @@unique([classId, name])
 }
@@ -148,6 +163,48 @@ model Section {
 // -----------------------------------------------------------------------------
 // MODULES
 // -----------------------------------------------------------------------------
+
+model Subject {
+  id              String   @id @default(uuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  name            String
+  code            String?
+  isArchived      Boolean  @default(false)
+
+  timeTableEntries TimeTableEntry[]
+  
+  @@unique([schoolId, name])
+}
+
+model Period {
+  id              String   @id @default(uuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id])
+  name            String   // e.g., "Period 1", "Lunch Break"
+  startTime       String   // e.g., "08:00"
+  endTime         String   // e.g., "08:45"
+  
+  timeTableEntries TimeTableEntry[]
+
+  @@unique([schoolId, name])
+}
+
+model TimeTableEntry {
+  id              String   @id @default(uuid())
+  sectionId       String
+  section         Section  @relation(fields: [sectionId], references: [id])
+  subjectId       String
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+  teacherId       String
+  teacher         TeacherProfile @relation(fields: [teacherId], references: [id])
+  periodId        String
+  period          Period   @relation(fields: [periodId], references: [id])
+  dayOfWeek       DayOfWeek
+
+  @@unique([sectionId, periodId, dayOfWeek])
+  @@unique([teacherId, periodId, dayOfWeek])
+}
 
 model Attendance {
   id              String           @id @default(uuid())
@@ -157,6 +214,9 @@ model Attendance {
   student         User             @relation(fields: [studentId], references: [id])
   date            DateTime         // Stored as Date only
   status          AttendanceStatus
+  isLocked        Boolean          @default(false)
+  isSaved         Boolean          @default(false)
+  lockedAt        DateTime?
   
   createdBy       String?          // Teacher ID
   createdAt       DateTime         @default(now())
@@ -215,18 +275,19 @@ model FeeRecord {
   id              String    @id @default(uuid())
   schoolId        String
   studentId       String
-  student         User      @relation(fields: [studentId], references: [id])
-  month           Int       // 1-12
+  student         User      @relation("FeeStudent", fields: [studentId], references: [id])
+  month           Int       // 1-12 (For legacy mapping, or billing month)
   year            Int
   amount          Float
   status          FeeStatus @default(PENDING)
+  paymentMode     String?   // 'CASH', 'ONLINE', 'CHEQUE'
+  referenceNo     String?   // Online transaction or cheque number
   remarks         String?
   paidAt          DateTime?
   
   createdBy       String?   // Accounts Staff ID
+  creator         User?     @relation("FeeCreator", fields: [createdBy], references: [id])
   updatedBy       String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
-  @@unique([studentId, month, year])
 }

@@ -11,12 +11,13 @@ const roleNavItems = {
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Users, label: 'Users', path: '/admin/users' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
-    { icon: FileText, label: 'Assignments', path: '/assignments' },
+    { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: Settings, label: 'School Settings', path: '/admin/settings' },
   ],
   TEACHER: [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Calendar, label: 'Attendance', path: '/attendance' },
+    { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: FileText, label: 'Assignments', path: '/assignments' },
   ],
@@ -27,6 +28,7 @@ const roleNavItems = {
   STUDENT: [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
+    { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: FileText, label: 'Assignments', path: '/assignments' },
     { icon: FileText, label: 'Fees', path: '/fees' },
   ]
@@ -41,10 +43,27 @@ export default function Sidebar() {
   return (
     <aside className="w-64 h-screen bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-all duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
       <div className="h-16 flex items-center px-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-transparent">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
-          E
-        </div>
-        <span className="ml-3 font-semibold text-gray-800 text-lg tracking-tight">Edu<span className="text-blue-600">Core</span></span>
+        {user?.role === 'SUPER_ADMIN' ? (
+          <>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
+              E
+            </div>
+            <span className="ml-3 font-semibold text-gray-800 text-lg tracking-tight">Edu<span className="text-blue-600">Core</span></span>
+          </>
+        ) : (
+          <>
+            {user?.schoolSettings?.logoUrl ? (
+              <img src={user.schoolSettings.logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-cover shadow-sm" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
+                {user?.schoolName ? user.schoolName.charAt(0) : 'E'}
+              </div>
+            )}
+            <span className="ml-3 font-semibold text-gray-800 text-sm tracking-tight truncate max-w-[140px]" title={user?.schoolName}>
+              {user?.schoolName || 'School ERP'}
+            </span>
+          </>
+        )}
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">

@@ -148,7 +148,7 @@ export default function Dashboard() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="relative z-10">
           <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {user?.name}!</h1>
-          <p className="text-blue-100 opacity-90 text-sm font-medium">Here is what's happening at your school today.</p>
+          <p className="text-blue-100 opacity-90 text-sm font-medium">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
         </div>
       </div>
 

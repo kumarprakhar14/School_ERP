@@ -3,7 +3,7 @@ import api from '../../lib/api';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 
 export default function Settings() {
-  const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '' });
+  const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -15,7 +15,9 @@ export default function Settings() {
     try {
       const res = await api.get('/schools/settings');
       if (res.data?.settings) {
-        setSettings(res.data.settings);
+        setSettings({ ...res.data.settings, schoolName: res.data.name });
+      } else if (res.data) {
+        setSettings({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: res.data.name });
       }
     } catch (error) {
       console.error('Failed to fetch settings', error);
@@ -57,6 +59,17 @@ export default function Settings() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent opacity-50 pointer-events-none"></div>
         <form onSubmit={handleSave} className="p-6 space-y-6 relative z-10">
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">School Name</label>
+            <input
+              type="text"
+              readOnly
+              value={settings.schoolName || ''}
+              className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-xl p-3 text-sm outline-none cursor-not-allowed shadow-sm"
+            />
+            <p className="text-xs text-amber-600 mt-2 font-medium">Please contact super admin to update your school's name.</p>
+          </div>
+
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Theme Color</label>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -69,6 +82,22 @@ export default function Settings() {
               </div>
               <span className="text-sm text-gray-500 font-mono bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{settings.themeColor || '#3b82f6'}</span>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">School Logo URL</label>
+            <input
+              type="url"
+              value={settings.logoUrl || ''}
+              onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
+              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow shadow-sm placeholder-gray-400"
+              placeholder="https://example.com/logo.png"
+            />
+            {settings.logoUrl && (
+              <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl inline-block">
+                <img src={settings.logoUrl} alt="Logo Preview" className="h-12 object-contain" />
+              </div>
+            )}
           </div>
 
           <div>

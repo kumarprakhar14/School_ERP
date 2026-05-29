@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getClasses, createClass, createSection } = require('../controllers/classController');
+const { getClasses, createClass, createSection, deleteSection, updateClass, updateSection } = require('../controllers/classController');
 const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
 const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
 
@@ -14,5 +14,8 @@ router.get('/', getClasses);
 router.use(roleMiddleware(['ADMIN']));
 router.post('/', createClass);
 router.post('/:classId/sections', createSection);
+router.put('/:classId', updateClass);
+router.put('/sections/:sectionId', updateSection);
+router.delete('/sections/:sectionId', deleteSection);
 
 module.exports = router;

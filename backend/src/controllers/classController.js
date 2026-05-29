@@ -53,4 +53,50 @@ const createSection = async (req, res) => {
   }
 };
 
-module.exports = { getClasses, createClass, createSection };
+// Delete a section
+const deleteSection = async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+    await prisma.section.delete({
+      where: { id: sectionId }
+    });
+    res.json({ message: 'Section deleted successfully' });
+  } catch (error) {
+    if (error.code === 'P2003') {
+      return res.status(400).json({ message: 'Cannot delete section because it contains students or is linked to other records.' });
+    }
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Update a class
+const updateClass = async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { name } = req.body;
+    const updatedClass = await prisma.class.update({
+      where: { id: classId },
+      data: { name }
+    });
+    res.json(updatedClass);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Update a section
+const updateSection = async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+    const { name } = req.body;
+    const updatedSection = await prisma.section.update({
+      where: { id: sectionId },
+      data: { name }
+    });
+    res.json(updatedSection);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+module.exports = { getClasses, createClass, createSection, deleteSection, updateClass, updateSection };

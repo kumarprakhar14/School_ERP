@@ -12,7 +12,8 @@ const createAssignment = async (req, res) => {
         dueDate: new Date(dueDate),
         fileUrl,
         sectionId,
-        teacherId: req.user.userId
+        schoolId: req.user.schoolId,
+        createdBy: req.user.userId
       }
     });
 
@@ -37,11 +38,10 @@ const getAssignments = async (req, res) => {
     const assignments = await prisma.assignment.findMany({
       where: whereClause,
       include: {
-        teacher: { select: { name: true } },
         section: { select: { name: true, class: { select: { name: true } } } },
         submissions: req.user.role === 'STUDENT' 
           ? { where: { studentId: req.user.userId } } 
-          : true
+          : { include: { student: { select: { name: true, erpId: true } } } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -65,7 +65,7 @@ const submitAssignment = async (req, res) => {
       return res.status(400).json({ message: 'A file or URL is required for submission.' });
     }
 
-    const submission = await prisma.submission.create({
+    const submission = await prisma.assignmentSubmission.create({
       data: {
         assignmentId,
         studentId: req.user.userId,

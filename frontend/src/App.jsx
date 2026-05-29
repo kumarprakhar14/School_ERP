@@ -14,6 +14,8 @@ import Academics from './pages/Academics';
 import Attendance from './pages/Attendance';
 import Assignments from './pages/Assignments';
 import Fees from './pages/Fees';
+import Profile from './pages/Profile';
+import TimeTable from './pages/TimeTable';
 
 function DashboardRouter() {
   const user = useAuthStore(state => state.user);
@@ -53,6 +55,8 @@ function App() {
             <Route path="attendance" element={<Attendance />} />
             <Route path="assignments" element={<Assignments />} />
             <Route path="fees" element={<Fees />} />
+            <Route path="timetable" element={<TimeTable />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Route>
       </Routes>

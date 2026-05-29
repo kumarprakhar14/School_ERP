@@ -139,7 +139,7 @@ export default function Assignments() {
                 )}
               </div>
 
-              {user?.role === 'STUDENT' && (
+              {user?.role === 'STUDENT' ? (
                 <div className="mt-4 pt-4 border-t border-gray-50">
                   {assign.submissions?.length > 0 ? (
                     <div className="flex items-center text-emerald-600 text-sm font-bold bg-emerald-50 px-3 py-1.5 rounded-lg w-fit">
@@ -152,6 +152,27 @@ export default function Assignments() {
                     >
                       Turn In Work
                     </button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 pt-4 border-t border-gray-50">
+                  <h4 className="text-sm font-bold text-gray-700 mb-3">Submissions ({assign.submissions?.length || 0})</h4>
+                  {assign.submissions?.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {assign.submissions.map(sub => (
+                        <div key={sub.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">{sub.student?.name}</p>
+                            <p className="text-xs text-gray-500 font-mono">{sub.student?.erpId}</p>
+                          </div>
+                          <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center">
+                            <FileText className="w-3 h-3 mr-1" /> View
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic">No submissions yet.</p>
                   )}
                 </div>
               )}

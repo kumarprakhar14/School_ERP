@@ -12,13 +12,22 @@ const markAttendance = async (req, res) => {
     const nextDate = new Date(existingDate);
     nextDate.setDate(nextDate.getDate() + 1);
 
+    const existingRecords = await prisma.attendance.findMany({
+      where: {
+        sectionId,
+        date: { gte: existingDate, lt: nextDate }
+      }
+    });
+
+    const isLockedOrSaved = existingRecords.some(r => r.isLocked || r.isSaved);
+    if (isLockedOrSaved) {
+      return res.status(400).json({ message: 'Cannot modify attendance as it is locked or saved.' });
+    }
+
     await prisma.attendance.deleteMany({
       where: {
         sectionId,
-        date: {
-          gte: existingDate,
-          lt: nextDate
-        }
+        date: { gte: existingDate, lt: nextDate }
       }
     });
 
@@ -27,7 +36,6 @@ const markAttendance = async (req, res) => {
       sectionId,
       date: existingDate,
       status: r.status,
-      remarks: r.remarks || '',
       createdBy: req.user.userId
     }));
 
@@ -73,4 +81,29 @@ const getAttendance = async (req, res) => {
   }
 };
 
-module.exports = { markAttendance, getAttendance };
+const updateAttendanceState = async (req, res, stateUpdate) => {
+  try {
+    const { sectionId, date } = req.body;
+    const targetDate = new Date(date);
+    targetDate.setHours(0,0,0,0);
+    const nextDate = new Date(targetDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    await prisma.attendance.updateMany({
+      where: {
+        sectionId,
+        date: { gte: targetDate, lt: nextDate }
+      },
+      data: stateUpdate
+    });
+    res.json({ message: 'Attendance state updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const lockAttendance = (req, res) => updateAttendanceState(req, res, { isLocked: true, lockedAt: new Date() });
+const unlockAttendance = (req, res) => updateAttendanceState(req, res, { isLocked: false, lockedAt: null });
+const saveAttendance = (req, res) => updateAttendanceState(req, res, { isSaved: true });
+
+module.exports = { markAttendance, getAttendance, lockAttendance, unlockAttendance, saveAttendance };

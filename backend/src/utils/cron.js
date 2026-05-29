@@ -1,7 +1,8 @@
 const cron = require("cron");
 const https = require("https");
+const prisma = require('./db'); // Assuming db is here
 
-const job = new cron.CronJob("*/14 * * * *", function () {
+const pingJob = new cron.CronJob("*/14 * * * *", function () {
     https
         .get(process.env.API_URL, (res) => {
             if (res.statusCode === 200) console.log("GET request sent successfully");
@@ -10,4 +11,29 @@ const job = new cron.CronJob("*/14 * * * *", function () {
         .on("error", (e) => console.error("Error while sending request", e));
 });
 
-module.exports = job;
+// Run daily at midnight to auto-save locked attendances older than 48 hours
+const attendanceAutoSaveJob = new cron.CronJob("0 0 * * *", async function () {
+    try {
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const result = await prisma.attendance.updateMany({
+            where: {
+                isLocked: true,
+                isSaved: false,
+                lockedAt: { lt: fortyEightHoursAgo }
+            },
+            data: { isSaved: true }
+        });
+        if (result.count > 0) {
+            console.log(`Auto-saved ${result.count} attendance records`);
+        }
+    } catch (e) {
+        console.error("Error in attendanceAutoSaveJob", e);
+    }
+});
+
+module.exports = {
+    start: () => {
+        pingJob.start();
+        attendanceAutoSaveJob.start();
+    }
+};

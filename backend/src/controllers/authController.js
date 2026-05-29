@@ -21,13 +21,13 @@ const login = async (req, res, next) => {
             erpId,
           },
         },
-        include: { school: { select: { settings: true } } }
+        include: { school: { select: { settings: true, name: true } } }
       });
     } else {
       // If schoolId is not provided, maybe it's SUPER_ADMIN or we just find first matching erpId
       user = await prisma.user.findFirst({
         where: { erpId },
-        include: { school: { select: { settings: true } } }
+        include: { school: { select: { settings: true, name: true } } }
       });
     }
 
@@ -54,6 +54,7 @@ const login = async (req, res, next) => {
         erpId: user.erpId,
         profilePicUrl: user.profilePicUrl,
         schoolSettings: user.school?.settings,
+        schoolName: user.school?.name,
       },
     });
   } catch (error) {
@@ -72,7 +73,7 @@ const getMe = async (req, res, next) => {
         schoolId: true,
         erpId: true,
         profilePicUrl: true,
-        school: { select: { settings: true } }
+        school: { select: { settings: true, name: true } }
       },
     });
 
@@ -83,6 +84,7 @@ const getMe = async (req, res, next) => {
     const formattedUser = {
       ...user,
       schoolSettings: user.school?.settings,
+      schoolName: user.school?.name,
       school: undefined
     };
 
