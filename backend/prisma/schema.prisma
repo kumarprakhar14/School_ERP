@@ -24,6 +24,12 @@ enum AttendanceStatus {
   LEAVE
 }
 
+enum BugStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
 enum FeeStatus {
   PENDING
   PAID
@@ -102,6 +108,7 @@ model User {
   createdFees     FeeRecord[] @relation("FeeCreator")
   attendances     Attendance[]
   submissions     AssignmentSubmission[]
+  reportedBugs    BugReport[]
 
   @@unique([schoolId, erpId]) // Unique per school
 }
@@ -301,6 +308,20 @@ model FeeRecord {
   createdBy       String?   // Accounts Staff ID
   creator         User?     @relation("FeeCreator", fields: [createdBy], references: [id])
   updatedBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model BugReport {
+  id              String    @id @default(uuid())
+  title           String
+  description     String    @db.Text
+  screenshots     String[]
+  status          BugStatus @default(OPEN)
+  
+  reportedById    String
+  reportedBy      User      @relation(fields: [reportedById], references: [id])
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }

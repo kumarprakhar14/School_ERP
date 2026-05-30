@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X } from 'lucide-react';
+import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X, Bug } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import ReportBugModal from '../modals/ReportBugModal';
 
 const roleNavItems = {
   SUPER_ADMIN: [
     { icon: Building2, label: 'Schools', path: '/super-admin/schools' },
+    { icon: Bug, label: 'Bug Reports', path: '/super-admin/bugs' },
   ],
   ADMIN: [
     { icon: Home, label: 'Dashboard', path: '/' },
@@ -38,6 +40,7 @@ const roleNavItems = {
 export default function Sidebar({ isOpen, setIsOpen }) {
   const location = useLocation();
   const user = useAuthStore(state => state.user);
+  const [isBugModalOpen, setIsBugModalOpen] = React.useState(false);
 
   const navItems = user ? (roleNavItems[user.role] || []) : [];
 
@@ -105,13 +108,23 @@ export default function Sidebar({ isOpen, setIsOpen }) {
       <div className="p-4 mt-auto">
         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-4 border border-blue-100/50 relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl group-hover:bg-blue-400/20 transition-all duration-500"></div>
-          <p className="text-xs font-semibold text-blue-800 mb-1">Need Help?</p>
-          <p className="text-xs text-blue-600/80 mb-3">Check our docs</p>
-          <button className="w-full py-1.5 bg-white text-blue-700 text-xs font-medium rounded-lg shadow-sm border border-blue-100 hover:shadow-md transition-all">
-            Documentation
+          <p className="text-xs font-semibold text-blue-800 mb-1 flex items-center">
+            <Bug className="w-3 h-3 mr-1" /> Found a bug?
+          </p>
+          <p className="text-[10px] text-blue-600/80 mb-3 leading-tight">Help us improve the app by reporting any issues.</p>
+          <button 
+            onClick={() => setIsBugModalOpen(true)}
+            className="w-full py-1.5 bg-white text-blue-700 text-xs font-medium rounded-lg shadow-sm border border-blue-100 hover:shadow-md transition-all hover:bg-blue-50"
+          >
+            Report an Issue
           </button>
         </div>
       </div>
+
+      <ReportBugModal 
+        isOpen={isBugModalOpen} 
+        onClose={() => setIsBugModalOpen(false)} 
+      />
     </aside>
   );
 }

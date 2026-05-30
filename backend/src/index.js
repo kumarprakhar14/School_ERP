@@ -32,6 +32,7 @@ app.use('/api/fees', require('./routes/fee.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/timetable', require('./routes/timeTable.routes'));
 app.use('/api/import', require('./routes/importRoutes'));
+app.use('/api/bugs', require('./routes/bugRoutes'));
 
 // 404 Handler
 app.use((req, res, next) => {

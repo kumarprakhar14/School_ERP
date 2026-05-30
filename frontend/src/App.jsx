@@ -7,6 +7,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import useAuthStore from './store/authStore';
 
 import SchoolsList from './pages/super-admin/SchoolsList';
+import BugReports from './pages/super-admin/BugReports';
 import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
 import BulkImport from './pages/admin/BulkImport';
@@ -59,6 +60,7 @@ function App() {
             {/* Phase 2: Super Admin & Admin routes */}
             <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
               <Route path="super-admin/schools" element={<SchoolsList />} />
+              <Route path="super-admin/bugs" element={<BugReports />} />
             </Route>
             
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { BookOpen, LogIn } from 'lucide-react';
+import { BookOpen, LogIn, AlertCircle, X } from 'lucide-react';
 
 export default function Login() {
   const [erpId, setErpId] = useState('');
   const [password, setPassword] = useState('');
   const [schoolId, setSchoolId] = useState('');
   const [error, setError] = useState('');
+  const [showGratitude, setShowGratitude] = useState(true);
   
   const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -43,6 +44,22 @@ export default function Login() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        {showGratitude && (
+          <div className="mb-6 bg-blue-50/80 border border-blue-200 rounded-2xl p-4 flex items-start text-blue-800 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm backdrop-blur-sm relative">
+            <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5 text-blue-600" />
+            <div className="text-sm leading-relaxed pr-6">
+              <span className="font-semibold block mb-1">Thank You for using EduCore!</span>
+              This application is currently in active development. If you encounter any bugs or issues, we highly encourage you to report them using the "Report an Issue" button in your dashboard navigation tab after logging in.
+            </div>
+            <button 
+              onClick={() => setShowGratitude(false)}
+              className="absolute top-4 right-4 text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="bg-white/80 backdrop-blur-xl py-8 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-3xl sm:px-10 border border-gray-100/50">
           <form className="space-y-6" onSubmit={handleLogin}>
             
