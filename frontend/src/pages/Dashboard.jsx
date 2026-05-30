@@ -68,7 +68,7 @@ export default function Dashboard() {
       return (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] mb-6">
           <h3 className="font-bold text-gray-900 mb-4 flex items-center">School Overview</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50 text-center hover:bg-blue-50 transition-colors">
               <div className="text-2xl font-black text-blue-600">{stats.studentCount || 0}</div>
               <div className="text-[11px] uppercase tracking-wider text-blue-800 font-bold mt-1">Students</div>
@@ -77,7 +77,7 @@ export default function Dashboard() {
               <div className="text-2xl font-black text-emerald-600">{stats.teacherCount || 0}</div>
               <div className="text-[11px] uppercase tracking-wider text-emerald-800 font-bold mt-1">Teachers</div>
             </div>
-            <div className="col-span-2 bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100/50 flex justify-between items-center hover:bg-indigo-50 transition-colors">
+            <div className="col-span-1 sm:col-span-2 bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100/50 flex justify-between items-center hover:bg-indigo-50 transition-colors">
               <span className="text-xs uppercase tracking-wider text-indigo-800 font-bold">Total Classes</span>
               <span className="text-xl font-black text-indigo-600">{stats.classCount || 0}</span>
             </div>
@@ -111,7 +111,7 @@ export default function Dashboard() {
   const renderQuickActions = () => {
     if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
       return (
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           <button onClick={() => navigate('/admin/users')} className="p-3.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-blue-200 hover:shadow-md transition-all flex flex-col items-center justify-center gap-2.5 group">
             <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform"><Users className="w-5 h-5" /></div>
             <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">Add User</span>
@@ -126,7 +126,7 @@ export default function Dashboard() {
 
     if (user?.role === 'TEACHER') {
       return (
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
           <button onClick={() => navigate('/attendance')} className="p-3.5 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-emerald-200 hover:shadow-md transition-all flex flex-col items-center justify-center gap-2.5 group">
             <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform"><Calendar className="w-5 h-5" /></div>
             <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide text-center leading-tight">Mark<br/>Attendance</span>
@@ -144,11 +144,11 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-600/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold mb-2">{getGreeting()}, {user?.name}!</h1>
-          <p className="text-blue-100 opacity-90 text-sm font-medium">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
+          <h1 className="text-2xl font-bold mb-2">{getGreeting()}, {user?.name}!</h1>
+          <p className="text-blue-100 opacity-90 text-xs sm:text-sm font-medium">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
         </div>
       </div>
 

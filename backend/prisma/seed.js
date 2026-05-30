@@ -1,14 +1,17 @@
-const prisma = require('../src/utils/db');
+const prisma = require('../src/utils/db.js');
 const bcrypt = require('bcryptjs');
 
 async function main() {
   console.log('Starting seed...');
 
-  await prisma.submission?.deleteMany().catch(()=>{});
+  await prisma.timeTableEntry?.deleteMany().catch(()=>{});
+  await prisma.assignmentSubmission?.deleteMany().catch(()=>{});
   await prisma.assignment?.deleteMany().catch(()=>{});
   await prisma.attendance?.deleteMany().catch(()=>{});
   await prisma.feeRecord?.deleteMany().catch(()=>{});
   await prisma.notice?.deleteMany().catch(()=>{});
+  await prisma.subject?.deleteMany().catch(()=>{});
+  await prisma.period?.deleteMany().catch(()=>{});
   await prisma.studentProfile?.deleteMany().catch(()=>{});
   await prisma.teacherProfile?.deleteMany().catch(()=>{});
   await prisma.user?.deleteMany().catch(()=>{});
@@ -35,36 +38,36 @@ async function main() {
   // ADMIN
   await prisma.user.create({ data: { schoolId: school.id, erpId: 'ADM001', passwordHash, role: 'ADMIN', name: 'School Admin' } });
 
-  // ACCOUNTS
-  for(let i=1; i<=5; i++) {
-    await prisma.user.create({ data: { schoolId: school.id, erpId: `ACC00${i}`, passwordHash, role: 'ACCOUNTS', name: `Accounts ${i}` } });
-  }
+  // // ACCOUNTS
+  // for(let i=1; i<=5; i++) {
+  //   await prisma.user.create({ data: { schoolId: school.id, erpId: `ACC00${i}`, passwordHash, role: 'ACCOUNTS', name: `Accounts ${i}` } });
+  // }
 
-  // ACADEMICS
-  const class10 = await prisma.class.create({ data: { schoolId: school.id, name: '10' } });
-  const sectionA = await prisma.section.create({ data: { classId: class10.id, name: 'A' } });
+  // // ACADEMICS
+  // const class10 = await prisma.class.create({ data: { schoolId: school.id, name: '10' } });
+  // const sectionA = await prisma.section.create({ data: { classId: class10.id, name: 'A' } });
 
-  // TEACHERS
-  for(let i=1; i<=5; i++) {
-    await prisma.user.create({
-      data: {
-        schoolId: school.id, erpId: `TCH00${i}`, passwordHash, role: 'TEACHER', name: `Teacher ${i}`,
-        teacherProfile: { create: { designation: 'Teacher', assignedSections: { connect: [{ id: sectionA.id }] } } },
-      },
-    });
-  }
+  // // TEACHERS
+  // for(let i=1; i<=5; i++) {
+  //   await prisma.user.create({
+  //     data: {
+  //       schoolId: school.id, erpId: `TCH00${i}`, passwordHash, role: 'TEACHER', name: `Teacher ${i}`,
+  //       teacherProfile: { create: { designation: 'Teacher', assignedSections: { connect: [{ id: sectionA.id }] } } },
+  //     },
+  //   });
+  // }
 
-  // STUDENTS
-  for(let i=1; i<=5; i++) {
-    await prisma.user.create({
-      data: {
-        schoolId: school.id, erpId: `STU00${i}`, passwordHash, role: 'STUDENT', name: `Student ${i}`,
-        studentProfile: { create: { sectionId: sectionA.id, admissionDate: new Date() } },
-      },
-    });
-  }
+  // // STUDENTS
+  // for(let i=1; i<=5; i++) {
+  //   await prisma.user.create({
+  //     data: {
+  //       schoolId: school.id, erpId: `STU00${i}`, passwordHash, role: 'STUDENT', name: `Student ${i}`,
+  //       studentProfile: { create: { sectionId: sectionA.id, admissionDate: new Date() } },
+  //     },
+  //   });
+  // }
 
-  console.log('Seed completed successfully! Generated 5-6 dummy users for each role.');
+  // console.log('Seed completed successfully! Generated 5-6 dummy users for each role.');
 }
 
 main()

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, ChevronDown, Settings as SettingsIcon } from 'lucide-react';
+import { Bell, Search, User, LogOut, ChevronDown, Settings as SettingsIcon, Menu } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
 
-export default function Navbar() {
+export default function Navbar({ toggleSidebar }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -31,9 +31,15 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-6 sticky top-0 z-20 shadow-sm">
-      <div className="flex-1 max-w-xl">
-        <div className="relative group">
+    <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
+      <div className="flex items-center flex-1 max-w-xl">
+        <button 
+          onClick={toggleSidebar}
+          className="mr-3 md:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="relative group flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
           </div>
@@ -81,7 +87,7 @@ export default function Navbar() {
                   <User className="h-4 w-4" />
                 )}
               </div>
-              <div className="flex flex-col text-left mr-1">
+              <div className="flex flex-col text-left mr-1 hidden sm:flex">
                 <span className="text-sm font-medium text-gray-700 leading-tight">{user?.name || 'Loading...'}</span>
                 <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">{user?.role || ''}</span>
               </div>

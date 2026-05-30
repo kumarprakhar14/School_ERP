@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2 } from 'lucide-react';
+import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
 const roleNavItems = {
@@ -34,15 +34,16 @@ const roleNavItems = {
   ]
 };
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, setIsOpen }) {
   const location = useLocation();
   const user = useAuthStore(state => state.user);
 
   const navItems = user ? (roleNavItems[user.role] || []) : [];
 
   return (
-    <aside className="w-64 h-screen bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-all duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-      <div className="h-16 flex items-center px-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-transparent">
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/95 md:bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-transform duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)] md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-transparent">
+        <div className="flex items-center">
         {user?.role === 'SUPER_ADMIN' ? (
           <>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
@@ -64,6 +65,13 @@ export default function Sidebar() {
             </span>
           </>
         )}
+        </div>
+        <button 
+          onClick={() => setIsOpen(false)} 
+          className="md:hidden p-2 -mr-2 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-lg focus:outline-none transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
@@ -75,6 +83,7 @@ export default function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
+              onClick={() => setIsOpen(false)}
               className={`flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden
                 ${isActive 
                   ? 'text-blue-700 bg-blue-50/80 font-medium' 

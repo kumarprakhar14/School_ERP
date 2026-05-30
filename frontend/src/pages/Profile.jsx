@@ -30,17 +30,17 @@ export default function Profile() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end pt-4 pb-8">
-            <div className="inline-flex items-center px-4 py-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-sm font-medium">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              Please contact the admin to update your profile details.
+          <div className="flex sm:justify-end pt-20 sm:pt-4 pb-4 sm:pb-8">
+            <div className="inline-flex items-center px-3 py-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-xs sm:text-sm font-medium">
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>Please contact the admin to update your profile details.</span>
             </div>
           </div>
 
           {/* User Info */}
-          <div className="mt-4">
-            <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-            <p className="text-lg text-gray-500 font-medium capitalize mt-1">{user.role.replace('_', ' ')}</p>
+          <div className="mt-2 sm:mt-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{user.name}</h1>
+            <p className="text-base sm:text-lg text-gray-500 font-medium capitalize mt-1">{user.role.replace('_', ' ')}</p>
           </div>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">

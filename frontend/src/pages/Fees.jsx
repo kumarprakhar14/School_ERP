@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
 import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText } from 'lucide-react';
@@ -83,7 +84,7 @@ export default function Fees() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div className="flex items-center">
           <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mr-4 shadow-sm border border-emerald-200/50">
             <DollarSign className="w-6 h-6" />
@@ -129,7 +130,7 @@ export default function Fees() {
           {activeTab === 'summary' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
-                <div className="relative w-72">
+                <div className="relative w-full sm:w-72">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
                     type="text" 
@@ -194,7 +195,7 @@ export default function Fees() {
           {activeTab === 'history' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
-                <div className="relative w-72">
+                <div className="relative w-full sm:w-72">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
                     type="text" 
@@ -266,16 +267,16 @@ export default function Fees() {
       )}
 
       {/* ADD TRANSACTION MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl z-10">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0 bg-gray-50/50">
               <h2 className="text-lg font-bold text-gray-900 flex items-center"><FileText className="w-5 h-5 mr-2 text-emerald-600" /> Add Transaction</h2>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleCreateFee} className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+            <form onSubmit={handleCreateFee} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
                   <select required value={formData.studentId} onChange={e => setFormData({...formData, studentId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
                     <option value="">Select Student...</option>
@@ -310,7 +311,7 @@ export default function Fees() {
               </div>
 
               {formData.status === 'PAID' && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
                     <select required value={formData.paymentMode} onChange={e => setFormData({...formData, paymentMode: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
@@ -339,7 +340,8 @@ export default function Fees() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

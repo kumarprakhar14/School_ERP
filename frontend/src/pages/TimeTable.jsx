@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
 import { Calendar, Plus, Clock, BookOpen, User, X } from 'lucide-react';
@@ -141,7 +142,7 @@ export default function TimeTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mr-4 shadow-sm border border-indigo-200/50">
             <Calendar className="w-5 h-5" />
@@ -153,7 +154,7 @@ export default function TimeTable() {
         </div>
         
         {user?.role === 'ADMIN' && (
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-3">
             <button onClick={() => setShowSubjectModal(true)} className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium text-sm">
               <Plus className="w-4 h-4 mr-2" /> Subject
             </button>
@@ -176,12 +177,12 @@ export default function TimeTable() {
       </div>
 
       {user?.role === 'ADMIN' && (
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex space-x-4">
-          <select value={selectedClassId} onChange={e => { setSelectedClassId(e.target.value); setSelectedSectionId(''); }} className="border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-48">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4">
+          <select value={selectedClassId} onChange={e => { setSelectedClassId(e.target.value); setSelectedSectionId(''); }} className="border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48">
             <option value="">Select Class...</option>
             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={selectedSectionId} onChange={e => setSelectedSectionId(e.target.value)} disabled={!selectedClassId} className="border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-48">
+          <select value={selectedSectionId} onChange={e => setSelectedSectionId(e.target.value)} disabled={!selectedClassId} className="border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-48">
             <option value="">Select Section...</option>
             {selectedClassId && classes.find(c => c.id === selectedClassId)?.sections?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -260,14 +261,14 @@ export default function TimeTable() {
       )}
 
       {/* ADD ENTRY MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Add TimeTable Entry</h2>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleAddSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleAddSubmit} className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
                 <select required value={formData.dayOfWeek} onChange={e => setFormData({...formData, dayOfWeek: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
@@ -298,18 +299,19 @@ export default function TimeTable() {
               <button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Add Entry</button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ADD SUBJECT MODAL */}
-      {showSubjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+      {showSubjectModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Add Subject</h2>
               <button onClick={() => setShowSubjectModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleCreateSubject} className="p-5 space-y-4">
+            <form onSubmit={handleCreateSubject} className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
                 <input required type="text" value={subjectData.name} onChange={e => setSubjectData({...subjectData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Mathematics" />
@@ -321,18 +323,19 @@ export default function TimeTable() {
               <button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Create Subject</button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ADD PERIOD MODAL */}
-      {showPeriodModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+      {showPeriodModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Add Period</h2>
               <button onClick={() => setShowPeriodModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleCreatePeriod} className="p-5 space-y-4">
+            <form onSubmit={handleCreatePeriod} className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Period Name</label>
                 <input required type="text" value={periodData.name} onChange={e => setPeriodData({...periodData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Period 1, Lunch Break" />
@@ -350,18 +353,19 @@ export default function TimeTable() {
               <button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Create Period</button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* EDIT PERIOD MODAL */}
-      {showEditPeriodModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+      {showEditPeriodModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Edit Period</h2>
               <button onClick={() => setShowEditPeriodModal(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleEditPeriod} className="p-5 space-y-4">
+            <form onSubmit={handleEditPeriod} className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Period Name</label>
                 <input required type="text" value={periodData.name} onChange={e => setPeriodData({...periodData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -379,7 +383,8 @@ export default function TimeTable() {
               <button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors">Save Changes</button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

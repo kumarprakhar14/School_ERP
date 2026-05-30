@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../lib/api';
 import { UserPlus, Users as UsersIcon, User, X } from 'lucide-react';
 
@@ -131,7 +132,7 @@ export default function UserManagement() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mr-4 shadow-sm border border-indigo-200/50">
             <UsersIcon className="w-5 h-5" />
@@ -150,7 +151,7 @@ export default function UserManagement() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex space-x-2 bg-gray-50/50">
+        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/50">
           {['', 'TEACHER', 'STUDENT', 'ACCOUNTS'].map((role) => (
             <button
               key={role}
@@ -235,21 +236,21 @@ export default function UserManagement() {
       </div>
 
       {/* ADD USER MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+      {showAddModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="John Doe" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">ERP ID</label>
                   <input required type="text" value={formData.erpId} onChange={e => setFormData({...formData, erpId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase" placeholder="STU002" />
@@ -294,7 +295,7 @@ export default function UserManagement() {
               )}
 
               {formData.role === 'STUDENT' && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                   <div>
                     <label className="block text-sm font-medium text-blue-800 mb-1">Class</label>
                     <select value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value, sectionId: ''})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
@@ -324,25 +325,26 @@ export default function UserManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* EDIT USER MODAL */}
-      {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+      {showEditModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
               <h2 className="text-lg font-bold text-gray-900">Edit User</h2>
               <button onClick={() => setShowEditModal(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleEditSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input required type="text" value={showEditModal.name} onChange={e => setShowEditModal({...showEditModal, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">ERP ID</label>
                   <input required type="text" value={showEditModal.erpId} onChange={e => setShowEditModal({...showEditModal, erpId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase" />
@@ -352,7 +354,7 @@ export default function UserManagement() {
                   <input type="password" value={showEditModal.password} onChange={e => setShowEditModal({...showEditModal, password: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="(Leave blank to keep)" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Contact Details</label>
                   <input type="text" value={showEditModal.contactDetails || ''} onChange={e => setShowEditModal({...showEditModal, contactDetails: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Phone or Address" />
@@ -389,7 +391,7 @@ export default function UserManagement() {
               )}
 
               {showEditModal.role === 'STUDENT' && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                   <div>
                     <label className="block text-sm font-medium text-blue-800 mb-1">Class</label>
                     <select value={showEditModal.classId || ''} onChange={e => setShowEditModal({...showEditModal, classId: e.target.value, sectionId: ''})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
@@ -419,7 +421,8 @@ export default function UserManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

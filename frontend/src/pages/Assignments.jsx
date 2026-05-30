@@ -90,7 +90,7 @@ export default function Assignments() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mr-4 shadow-sm border border-indigo-200/50">
             <BookOpen className="w-5 h-5" />
