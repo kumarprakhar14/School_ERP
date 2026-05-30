@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
 import { Bell, Send, User, Clock, CheckCircle, Plus, Users, BookOpen, Calendar, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -45,10 +46,11 @@ export default function Dashboard() {
       setTitle('');
       setContent('');
       setTargetRole('');
+      toast.success('Notice posted successfully');
       fetchDashboardData();
     } catch (error) {
       console.error(error);
-      alert('Failed to post notice');
+      toast.error('Failed to post notice');
     } finally {
       setPosting(false);
     }

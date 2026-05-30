@@ -12,13 +12,18 @@ const getClasses = async (req, res) => {
             teachers: { include: { user: { select: { id: true, name: true, erpId: true } } } },
             students: { include: { user: { select: { id: true, name: true, erpId: true } } } }
           }
+        },
+        students: {
+          where: { sectionId: null },
+          include: { user: { select: { id: true, name: true, erpId: true } } }
         }
       },
       orderBy: { name: 'asc' }
     });
     res.json(classes);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

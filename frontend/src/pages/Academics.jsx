@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { BookOpen, Plus, Users, ChevronRight, X, Trash2 } from 'lucide-react';
 
 export default function Academics() {
@@ -14,6 +16,8 @@ export default function Academics() {
   const [showSectionModal, setShowSectionModal] = useState(null); // stores classId
   const [showEditClassModal, setShowEditClassModal] = useState(null); // stores class
   const [showEditSectionModal, setShowEditSectionModal] = useState(null); // stores section
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [className, setClassName] = useState('');
   const [sectionName, setSectionName] = useState('');
 
@@ -56,9 +60,10 @@ export default function Academics() {
       setClassName('');
       setShowClassModal(false);
       fetchClasses();
+      toast.success('Class created successfully');
     } catch (error) {
       console.error(error);
-      alert('Failed to create class');
+      toast.error('Failed to create class');
     }
   };
 
@@ -69,9 +74,10 @@ export default function Academics() {
       setSectionName('');
       setShowSectionModal(null);
       fetchClasses();
+      toast.success('Section created successfully');
     } catch (error) {
       console.error(error);
-      alert('Failed to create section');
+      toast.error('Failed to create section');
     }
   };
 
@@ -82,9 +88,10 @@ export default function Academics() {
       setClassName('');
       setShowEditClassModal(null);
       fetchClasses();
+      toast.success('Class updated successfully');
     } catch (error) {
       console.error(error);
-      alert('Failed to update class');
+      toast.error('Failed to update class');
     }
   };
 
@@ -95,20 +102,30 @@ export default function Academics() {
       setSectionName('');
       setShowEditSectionModal(null);
       fetchClasses();
+      toast.success('Section updated successfully');
     } catch (error) {
       console.error(error);
-      alert('Failed to update section');
+      toast.error('Failed to update section');
     }
   };
 
-  const handleDeleteSection = async (sectionId) => {
-    if (!window.confirm('Are you sure you want to delete this section?')) return;
+  const handleDeleteClick = (sectionId) => {
+    setDeleteTarget(sectionId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.delete(`/classes/sections/${sectionId}`);
+      await api.delete(`/classes/sections/${deleteTarget}`);
+      toast.success('Section deleted successfully');
       fetchClasses();
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Failed to delete section');
+      toast.error(error.response?.data?.message || 'Failed to delete section');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -216,7 +233,7 @@ export default function Academics() {
                             <button onClick={() => { setSectionName(sec.name); setShowEditSectionModal(sec); }} className="p-1 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors" title="Edit Section">
                               <BookOpen className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleDeleteSection(sec.id)} className="p-1 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Delete Section">
+                            <button onClick={() => handleDeleteClick(sec.id)} className="p-1 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Delete Section">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -319,6 +336,19 @@ export default function Academics() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Section"
+        message="Are you sure you want to delete this section? This will remove all students and timetable associated with it. This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

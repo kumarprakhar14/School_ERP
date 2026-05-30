@@ -3,7 +3,7 @@ const prisma = require('../utils/db');
 // TEACHER/ADMIN: Mark attendance
 const markAttendance = async (req, res) => {
   try {
-    const { sectionId, date, records } = req.body; 
+    const { classId, sectionId, date, records } = req.body; 
     // records: [{ studentId, status, remarks }]
     const schoolId = req.user.schoolId;
 
@@ -12,11 +12,15 @@ const markAttendance = async (req, res) => {
     const nextDate = new Date(existingDate);
     nextDate.setDate(nextDate.getDate() + 1);
 
+    const whereClause = {
+      classId,
+      date: { gte: existingDate, lt: nextDate }
+    };
+    if (sectionId) whereClause.sectionId = sectionId;
+    else whereClause.sectionId = null; // Important: if it's class level, ensure we target null section
+
     const existingRecords = await prisma.attendance.findMany({
-      where: {
-        sectionId,
-        date: { gte: existingDate, lt: nextDate }
-      }
+      where: whereClause
     });
 
     const isLockedOrSaved = existingRecords.some(r => r.isLocked || r.isSaved);
@@ -25,15 +29,13 @@ const markAttendance = async (req, res) => {
     }
 
     await prisma.attendance.deleteMany({
-      where: {
-        sectionId,
-        date: { gte: existingDate, lt: nextDate }
-      }
+      where: whereClause
     });
 
     const newRecords = records.map(r => ({
       studentId: r.studentId,
-      sectionId,
+      classId,
+      sectionId: sectionId || null,
       date: existingDate,
       status: r.status,
       createdBy: req.user.userId
@@ -52,9 +54,18 @@ const markAttendance = async (req, res) => {
 // ANY ROLE: Get attendance
 const getAttendance = async (req, res) => {
   try {
-    const { sectionId, date, studentId } = req.query;
+    const { classId, sectionId, date, studentId } = req.query;
     const whereClause = {};
+    if (classId) whereClause.classId = classId;
     if (sectionId) whereClause.sectionId = sectionId;
+    else if (classId) whereClause.sectionId = null; // if querying by class and no section, we might want null, BUT actually for reporting we might want all sections. Let's just use what's provided. If sectionId is strictly empty string in frontend, it means no section. Let's assume if it's explicitly 'null' or empty string and classId is there, we filter by null. Wait, frontend will send sectionId as empty string.
+    
+    // Better logic: if classId is provided, and sectionId is provided, use both.
+    // If sectionId is empty string, we want where sectionId is null.
+    if (classId && sectionId === '') {
+      whereClause.sectionId = null;
+    }
+
     if (date) {
       const targetDate = new Date(date);
       targetDate.setHours(0,0,0,0);
@@ -77,28 +88,34 @@ const getAttendance = async (req, res) => {
     });
     res.json(records);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
 const updateAttendanceState = async (req, res, stateUpdate) => {
   try {
-    const { sectionId, date } = req.body;
+    const { classId, sectionId, date } = req.body;
     const targetDate = new Date(date);
     targetDate.setHours(0,0,0,0);
     const nextDate = new Date(targetDate);
     nextDate.setDate(nextDate.getDate() + 1);
 
+    const whereClause = {
+      classId,
+      date: { gte: targetDate, lt: nextDate }
+    };
+    if (sectionId) whereClause.sectionId = sectionId;
+    else whereClause.sectionId = null;
+
     await prisma.attendance.updateMany({
-      where: {
-        sectionId,
-        date: { gte: targetDate, lt: nextDate }
-      },
+      where: whereClause,
       data: stateUpdate
     });
     res.json({ message: 'Attendance state updated successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

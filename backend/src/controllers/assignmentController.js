@@ -2,7 +2,7 @@ const prisma = require('../utils/db');
 
 const createAssignment = async (req, res) => {
   try {
-    const { title, description, dueDate, sectionId } = req.body;
+    const { title, description, dueDate, classId, sectionId } = req.body;
     const fileUrl = req.file ? req.file.path : null;
 
     const assignment = await prisma.assignment.create({
@@ -11,7 +11,8 @@ const createAssignment = async (req, res) => {
         description,
         dueDate: new Date(dueDate),
         fileUrl,
-        sectionId,
+        classId,
+        sectionId: sectionId || null,
         schoolId: req.user.schoolId,
         createdBy: req.user.userId
       }
@@ -25,20 +26,25 @@ const createAssignment = async (req, res) => {
 
 const getAssignments = async (req, res) => {
   try {
-    const { sectionId } = req.query;
+    const { classId, sectionId } = req.query;
     
-    const whereClause = {};
+    const whereClause = { schoolId: req.user.schoolId };
+    if (classId) whereClause.classId = classId;
     if (sectionId) whereClause.sectionId = sectionId;
 
     if (req.user.role === 'STUDENT') {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
-      if (profile) whereClause.sectionId = profile.sectionId;
+      if (profile) {
+        whereClause.classId = profile.classId;
+        if (profile.sectionId) whereClause.sectionId = profile.sectionId;
+      }
     }
 
     const assignments = await prisma.assignment.findMany({
       where: whereClause,
       include: {
-        section: { select: { name: true, class: { select: { name: true } } } },
+        class: { select: { name: true } },
+        section: { select: { name: true } },
         submissions: req.user.role === 'STUDENT' 
           ? { where: { studentId: req.user.userId } } 
           : { include: { student: { select: { name: true, erpId: true } } } }
@@ -48,7 +54,8 @@ const getAssignments = async (req, res) => {
 
     res.json(assignments);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

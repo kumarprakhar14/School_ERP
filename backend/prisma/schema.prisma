@@ -51,6 +51,7 @@ enum DayOfWeek {
 
 model School {
   id              String       @id @default(uuid())
+  code            String       @unique
   name            String
   status          SchoolStatus @default(ACTIVE)
   validUntil      DateTime
@@ -113,6 +114,8 @@ model StudentProfile {
   id              String   @id @default(uuid())
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id])
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id])
   sectionId       String?
   section         Section? @relation(fields: [sectionId], references: [id])
   admissionDate   DateTime?
@@ -140,6 +143,10 @@ model Class {
   isArchived      Boolean  @default(false)
   
   sections        Section[]
+  students        StudentProfile[]
+  timeTableEntries TimeTableEntry[]
+  attendances     Attendance[]
+  assignments     Assignment[]
   
   @@unique([schoolId, name])
 }
@@ -192,8 +199,10 @@ model Period {
 
 model TimeTableEntry {
   id              String   @id @default(uuid())
-  sectionId       String
-  section         Section  @relation(fields: [sectionId], references: [id])
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id])
+  sectionId       String?
+  section         Section? @relation(fields: [sectionId], references: [id])
   subjectId       String
   subject         Subject  @relation(fields: [subjectId], references: [id])
   teacherId       String
@@ -202,14 +211,16 @@ model TimeTableEntry {
   period          Period   @relation(fields: [periodId], references: [id])
   dayOfWeek       DayOfWeek
 
-  @@unique([sectionId, periodId, dayOfWeek])
+  @@unique([classId, sectionId, periodId, dayOfWeek])
   @@unique([teacherId, periodId, dayOfWeek])
 }
 
 model Attendance {
   id              String           @id @default(uuid())
-  sectionId       String
-  section         Section          @relation(fields: [sectionId], references: [id])
+  classId         String
+  class           Class            @relation(fields: [classId], references: [id])
+  sectionId       String?
+  section         Section?         @relation(fields: [sectionId], references: [id])
   studentId       String
   student         User             @relation(fields: [studentId], references: [id])
   date            DateTime         // Stored as Date only
@@ -222,15 +233,17 @@ model Attendance {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   
-  @@unique([sectionId, studentId, date])
+  @@unique([classId, sectionId, studentId, date])
 }
 
 model Assignment {
   id              String   @id @default(uuid())
   schoolId        String
   school          School   @relation(fields: [schoolId], references: [id])
-  sectionId       String
-  section         Section  @relation(fields: [sectionId], references: [id])
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id])
+  sectionId       String?
+  section         Section? @relation(fields: [sectionId], references: [id])
   title           String
   description     String
   fileUrl         String?

@@ -3,11 +3,40 @@ const bcrypt = require('bcryptjs');
 
 const createUser = async (req, res) => {
   try {
-    const { erpId, password, role, name, profileData } = req.body;
+    const { password, role, name, profileData } = req.body;
     const schoolId = req.user.schoolId;
 
-    if (!['TEACHER', 'STUDENT', 'ACCOUNTS'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid role for admin creation' });
+    if (!['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role for user creation' });
+    }
+
+    // Generate ERP ID
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) {
+      return res.status(404).json({ message: 'School not found' });
+    }
+
+    // Find the user with the highest ERP ID that starts with the school code
+    const maxUser = await prisma.user.findFirst({
+      where: {
+        schoolId,
+        erpId: { startsWith: school.code }
+      },
+      orderBy: { erpId: 'desc' }
+    });
+
+    let erpId;
+    if (maxUser && maxUser.erpId) {
+      const maxIdNum = parseInt(maxUser.erpId, 10);
+      if (!isNaN(maxIdNum)) {
+        erpId = (maxIdNum + 1).toString();
+      } else {
+        // Fallback if parsing fails for some reason
+        erpId = `${school.code}001`;
+      }
+    } else {
+      // First user (though usually admin is created first)
+      erpId = `${school.code}001`;
     }
 
     const passwordHash = await bcrypt.hash(password || 'password123', 10);
@@ -26,6 +55,7 @@ const createUser = async (req, res) => {
         ...(role === 'STUDENT' && profileData && {
           studentProfile: {
             create: {
+              classId: profileData.classId,
               sectionId: profileData.sectionId,
               admissionDate: profileData.admissionDate ? new Date(profileData.admissionDate) : new Date()
             }
@@ -78,7 +108,8 @@ const getUsers = async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
@@ -125,6 +156,7 @@ const updateUser = async (req, res) => {
         await prisma.studentProfile.update({
           where: { userId },
           data: {
+            classId: profileData.classId || undefined,
             sectionId: profileData.sectionId || null
           }
         });

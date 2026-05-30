@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -31,7 +32,22 @@ function DashboardRouter() {
 
 function App() {
   return (
-    <Router>
+    <>
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          classNames: {
+            toast: 'border shadow-lg rounded-xl flex gap-2 items-center w-full',
+            title: 'font-medium text-sm',
+            description: 'text-sm opacity-90',
+            error: 'bg-red-50 border-red-200 text-red-800',
+            success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+            warning: 'bg-amber-50 border-amber-200 text-amber-800',
+            info: 'bg-blue-50 border-blue-200 text-blue-800',
+          }
+        }}
+      />
+      <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
         
@@ -60,7 +76,8 @@ function App() {
           </Route>
         </Route>
       </Routes>
-    </Router>
+      </Router>
+    </>
   );
 }
 

@@ -53,19 +53,6 @@ export default function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">School ID (Optional for Super Admin)</label>
-              <div className="mt-1">
-                <input
-                  type="text"
-                  value={schoolId}
-                  onChange={(e) => setSchoolId(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2.5 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                  placeholder="e.g. SCH-001"
-                />
-              </div>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-gray-700">ERP ID</label>
               <div className="mt-1">
                 <input

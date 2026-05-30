@@ -52,7 +52,8 @@ const getNotices = async (req, res) => {
 
     res.json(notices);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

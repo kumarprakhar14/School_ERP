@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
+import { toast } from 'sonner';
 import { BookOpen, Plus, FileText, Calendar } from 'lucide-react';
 
 export default function Assignments() {
@@ -13,7 +14,7 @@ export default function Assignments() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(null);
   
-  const [formData, setFormData] = useState({ title: '', description: '', dueDate: '', sectionId: '', file: null });
+  const [formData, setFormData] = useState({ title: '', description: '', dueDate: '', classId: '', sectionId: '', file: null });
   const [submitFile, setSubmitFile] = useState(null);
   const [submitUrl, setSubmitUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -53,13 +54,14 @@ export default function Assignments() {
     data.append('title', formData.title);
     data.append('description', formData.description);
     data.append('dueDate', formData.dueDate);
-    data.append('sectionId', formData.sectionId);
+    data.append('classId', formData.classId);
+    if (formData.sectionId) data.append('sectionId', formData.sectionId);
     if (formData.file) data.append('file', formData.file);
 
     try {
       await api.post('/assignments', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       setShowAddModal(false);
-      setFormData({ title: '', description: '', dueDate: '', sectionId: '', file: null });
+      setFormData({ title: '', description: '', dueDate: '', classId: '', sectionId: '', file: null });
       fetchAssignments();
     } catch (error) {
       alert('Failed to post assignment');
@@ -81,8 +83,9 @@ export default function Assignments() {
       setSubmitFile(null);
       setSubmitUrl('');
       fetchAssignments();
+      toast.success('Assignment submitted successfully');
     } catch (error) {
-      alert('Failed to submit');
+      toast.error('Failed to submit assignment');
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +132,7 @@ export default function Assignments() {
               
               <div className="flex justify-between items-center pt-4 border-t border-gray-50">
                 <div className="text-xs text-gray-500 font-medium">
-                  By {assign.teacher?.name} • Class {assign.section?.class?.name} ({assign.section?.name})
+                  By {assign.teacher?.name} • Class {assign.class?.name} {assign.section ? `(${assign.section.name})` : ''}
                 </div>
                 
                 {assign.fileUrl && (
@@ -198,9 +201,14 @@ export default function Assignments() {
               <textarea required rows="3" placeholder="Instructions" value={formData.description} onChange={e=>setFormData({...formData, description: e.target.value})} className="w-full p-2.5 border rounded-xl"></textarea>
               <input required type="date" value={formData.dueDate} onChange={e=>setFormData({...formData, dueDate: e.target.value})} className="w-full p-2.5 border rounded-xl" />
               
-              <select required value={formData.sectionId} onChange={e=>setFormData({...formData, sectionId: e.target.value})} className="w-full p-2.5 border rounded-xl bg-white">
-                <option value="">Select Section</option>
-                {classes.map(c => c.sections?.map(s => <option key={s.id} value={s.id}>{c.name} - {s.name}</option>))}
+              <select required value={formData.classId} onChange={e=>setFormData({...formData, classId: e.target.value, sectionId: ''})} className="w-full p-2.5 border rounded-xl bg-white">
+                <option value="">Select Class</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+
+              <select value={formData.sectionId} onChange={e=>setFormData({...formData, sectionId: e.target.value})} disabled={!formData.classId} className="w-full p-2.5 border rounded-xl bg-white disabled:opacity-50">
+                <option value="">Select Section (Optional)</option>
+                {formData.classId && classes.find(c => c.id === formData.classId)?.sections?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
 
               <input type="file" onChange={e=>setFormData({...formData, file: e.target.files[0]})} className="w-full p-2 border rounded-xl text-sm" />

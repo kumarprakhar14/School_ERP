@@ -1,4 +1,5 @@
 const prisma = require('../utils/db');
+const bcrypt = require('bcryptjs');
 
 // SUPER ADMIN: Get all schools
 const getSchools = async (req, res) => {
@@ -14,17 +15,21 @@ const getSchools = async (req, res) => {
     });
     res.json(schools);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
 // SUPER ADMIN: Create school
 const createSchool = async (req, res) => {
   try {
-    const { name, validUntil, themeColor, description } = req.body;
+    const { name, code, validUntil, themeColor, description, adminName, adminEmail, adminPassword } = req.body;
+    
+    // Create school
     const school = await prisma.school.create({
       data: {
         name,
+        code,
         validUntil: new Date(validUntil),
         settings: {
           create: {
@@ -37,6 +42,23 @@ const createSchool = async (req, res) => {
         settings: true
       }
     });
+
+    // Create admin user if details provided
+    if (adminName && adminPassword) {
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      const erpId = `${code}001`; // First admin gets {code}001
+      
+      await prisma.user.create({
+        data: {
+          name: adminName,
+          erpId, 
+          passwordHash,
+          role: 'ADMIN',
+          schoolId: school.id
+        }
+      });
+    }
+
     res.status(201).json(school);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -47,13 +69,22 @@ const createSchool = async (req, res) => {
 const updateSchool = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, validUntil } = req.body;
+    const { name, validUntil, themeColor, description } = req.body;
     
     const school = await prisma.school.update({
       where: { id },
       data: {
         name,
         validUntil: validUntil ? new Date(validUntil) : undefined,
+        settings: {
+          upsert: {
+            create: { themeColor: themeColor || '#3b82f6', description: description || '' },
+            update: { themeColor, description }
+          }
+        }
+      },
+      include: {
+        settings: true
       }
     });
     res.json(school);
@@ -71,7 +102,8 @@ const getSchoolSettings = async (req, res) => {
     });
     res.json(school);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

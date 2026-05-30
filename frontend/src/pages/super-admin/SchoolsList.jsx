@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../lib/api';
+import { toast } from 'sonner';
 import { Plus, Building2, Calendar, Users, MoreVertical, X } from 'lucide-react';
 
 export default function SchoolsList() {
@@ -15,9 +16,12 @@ export default function SchoolsList() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
     validUntil: '',
     themeColor: '#3b82f6',
-    description: ''
+    description: '',
+    adminName: '',
+    adminPassword: ''
   });
 
   useEffect(() => {
@@ -41,11 +45,11 @@ export default function SchoolsList() {
     try {
       await api.post('/schools', formData);
       setShowAddModal(false);
-      setFormData({ name: '', validUntil: '', themeColor: '#3b82f6', description: '' });
+      setFormData({ name: '', code: '', validUntil: '', themeColor: '#3b82f6', description: '', adminName: '', adminPassword: '' });
       fetchSchools();
     } catch (error) {
       console.error('Failed to create school', error);
-      alert(error.response?.data?.message || 'Failed to create school');
+      toast.error(error.response?.data?.message || 'Failed to create school');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,7 +78,7 @@ export default function SchoolsList() {
       fetchSchools();
     } catch (error) {
       console.error('Failed to update school', error);
-      alert(error.response?.data?.message || 'Failed to update school');
+      toast.error(error.response?.data?.message || 'Failed to update school');
     } finally {
       setIsSubmitting(false);
     }
@@ -130,7 +134,7 @@ export default function SchoolsList() {
                   </div>
                 </div>
                 
-                <h3 className="font-bold text-lg text-gray-900 mb-1">{school.name}</h3>
+                <h3 className="font-bold text-lg text-gray-900 mb-1">{school.name} <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded ml-2">Code: {school.code}</span></h3>
                 <p className="text-sm text-gray-500 mb-4 line-clamp-1">{school.settings?.description || 'No description provided.'}</p>
                 
                 <div className="flex items-center text-sm text-gray-500 mb-5 bg-gray-50/80 p-2.5 rounded-lg">
@@ -173,6 +177,10 @@ export default function SchoolsList() {
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="e.g. Springfield High" />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">School Code (Numeric)</label>
+                <input required type="number" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="e.g. 660" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
                 <input required type="date" min={new Date().toISOString().split('T')[0]} value={formData.validUntil} onChange={e => setFormData({...formData, validUntil: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
               </div>
@@ -187,6 +195,24 @@ export default function SchoolsList() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
                 <textarea rows={2} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Short description..." />
               </div>
+              
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-4">Initial Admin User</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Admin Name</label>
+                    <input type="text" value={formData.adminName} onChange={e => setFormData({...formData, adminName: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="e.g. John Doe" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="••••••••" />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    The admin's login ID (ERP ID) will be automatically generated based on the school code (e.g. {formData.code || 'XXX'}001).
+                  </p>
+                </div>
+              </div>
+
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-70 flex items-center">

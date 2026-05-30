@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
+import { toast } from 'sonner';
 import { Calendar, CheckCircle2, XCircle, Search } from 'lucide-react';
 
 export default function Attendance() {
@@ -66,40 +67,61 @@ export default function Attendance() {
   };
 
   const handleFetchStudents = async () => {
-    if (!selectedSectionId) return;
+    if (!selectedClassId) return;
+    
+    // Require section selection ONLY if the class actually has sections
+    const cls = classes.find(c => c.id === selectedClassId);
+    if (!cls) return;
+    
+    if (cls.sections && cls.sections.length > 0 && !selectedSectionId) {
+      toast.error('Please select a section for this class.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Fetch students for this section (we can do this by getting the specific class -> section details)
-      const cls = classes.find(c => c.id === selectedClassId);
-      const sec = cls?.sections.find(s => s.id === selectedSectionId);
-      if (sec) {
-        setStudents(sec.students || []);
-        
-        // Also fetch existing attendance for this date
-        const attRes = await api.get(`/attendance?sectionId=${selectedSectionId}&date=${date}`);
-        const existingMap = {};
-        let locked = false;
-        let saved = false;
-
-        attRes.data.forEach(r => {
-          existingMap[r.studentId] = r.status;
-          if (r.isLocked) locked = true;
-          if (r.isSaved) saved = true;
-        });
-        
-        setIsLocked(locked);
-        setIsSaved(saved);
-        setHasUnsavedChanges(false);
-
-        // Pre-fill records: if existing, use it; else default to PRESENT
-        const initialRecords = {};
-        sec.students.forEach(s => {
-          initialRecords[s.userId] = existingMap[s.userId] || 'PRESENT';
-        });
-        setAttendanceRecords(initialRecords);
+      let targetStudents = [];
+      if (selectedSectionId) {
+        const sec = cls.sections.find(s => s.id === selectedSectionId);
+        targetStudents = sec?.students || [];
+      } else {
+        // Class has no sections, use class students directly
+        targetStudents = cls.students || [];
       }
+
+      setStudents(targetStudents);
+      
+      // Fetch existing attendance for this date
+      const queryParams = new URLSearchParams({
+        classId: selectedClassId,
+        date: date
+      });
+      if (selectedSectionId) queryParams.append('sectionId', selectedSectionId);
+      
+      const attRes = await api.get(`/attendance?${queryParams.toString()}`);
+      const existingMap = {};
+      let locked = false;
+      let saved = false;
+
+      attRes.data.forEach(r => {
+        existingMap[r.studentId] = r.status;
+        if (r.isLocked) locked = true;
+        if (r.isSaved) saved = true;
+      });
+      
+      setIsLocked(locked);
+      setIsSaved(saved);
+      setHasUnsavedChanges(false);
+
+      // Pre-fill records
+      const initialRecords = {};
+      targetStudents.forEach(s => {
+        initialRecords[s.userId] = existingMap[s.userId] || 'PRESENT';
+      });
+      setAttendanceRecords(initialRecords);
     } catch (error) {
       console.error(error);
+      toast.error('Failed to fetch students or attendance');
     } finally {
       setLoading(false);
     }
@@ -113,16 +135,19 @@ export default function Attendance() {
         status: attendanceRecords[studentId]
       }));
       
-      await api.post('/attendance', {
-        sectionId: selectedSectionId,
+      const payload = {
+        classId: selectedClassId,
         date,
-        records
-      });
-      setHasUnsavedChanges(true); // Still needs locking
-      alert('Attendance saved temporarily! Remember to lock it.');
+        attendances: Object.values(records),
+        isLocked: false
+      };
+      if (selectedSectionId) payload.sectionId = selectedSectionId;
+
+      await api.post('/attendance/batch', payload);
+      toast.success('Attendance saved temporarily! Remember to lock it.');
+      handleFetchStudents();
     } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.message || 'Failed to save attendance');
+      toast.error(error.response?.data?.message || 'Failed to save attendance');
     } finally {
       setSaving(false);
     }
@@ -130,11 +155,13 @@ export default function Attendance() {
 
   const handleStateUpdate = async (endpoint, successMsg) => {
     try {
-      await api.put(`/attendance/${endpoint}`, { sectionId: selectedSectionId, date });
-      alert(successMsg);
+      const payload = { classId: selectedClassId, date };
+      if (selectedSectionId) payload.sectionId = selectedSectionId;
+      await api.put(`/attendance/${endpoint}`, payload);
+      toast.success(successMsg);
       handleFetchStudents(); // refresh
     } catch (error) {
-      alert(error.response?.data?.message || `Failed to ${endpoint} attendance`);
+      toast.error(error.response?.data?.message || `Failed to ${endpoint} attendance`);
     }
   };
 
@@ -261,7 +288,7 @@ export default function Attendance() {
 
         <button 
           onClick={handleFetchStudents}
-          disabled={!selectedSectionId || loading}
+          disabled={!selectedClassId || loading || (classes.find(c => c.id === selectedClassId)?.sections?.length > 0 && !selectedSectionId)}
           className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center"
         >
           {loading ? 'Loading...' : <><Search className="w-4 h-4 mr-2"/> Fetch List</>}

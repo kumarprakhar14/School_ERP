@@ -46,7 +46,8 @@ const getDashboardStats = async (req, res) => {
 
     res.json({});
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

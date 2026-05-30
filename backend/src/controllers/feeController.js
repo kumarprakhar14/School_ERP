@@ -49,7 +49,8 @@ const getFees = async (req, res) => {
 
     res.json(fees);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
@@ -138,7 +139,8 @@ const getFeeSummary = async (req, res) => {
 
     res.json(summary);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 

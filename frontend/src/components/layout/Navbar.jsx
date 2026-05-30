@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Search, User, LogOut, ChevronDown, Settings as SettingsIcon, Menu } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 export default function Navbar({ toggleSidebar }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const notifRef = useRef();
   const profileRef = useRef();
@@ -118,7 +120,7 @@ export default function Navbar({ toggleSidebar }) {
                 <button
                   onClick={() => {
                     setShowProfileMenu(false);
-                    handleLogout();
+                    setShowLogoutConfirm(true);
                   }}
                   className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
@@ -130,6 +132,16 @@ export default function Navbar({ toggleSidebar }) {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your account?"
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        onConfirm={handleLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </header>
   );
 }

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText } from 'lucide-react';
 
 export default function Fees() {
@@ -17,6 +19,9 @@ export default function Fees() {
 
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPayConfirm, setShowPayConfirm] = useState(false);
+  const [payTarget, setPayTarget] = useState(null);
+  
   const [formData, setFormData] = useState({
     studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), remarks: '',
     status: 'PENDING', paymentMode: '', referenceNo: ''
@@ -49,13 +54,22 @@ export default function Fees() {
     }
   };
 
-  const handlePay = async (feeId) => {
-    if (!window.confirm('Mark this transaction as Paid?')) return;
+  const handlePayClick = (feeId) => {
+    setPayTarget(feeId);
+    setShowPayConfirm(true);
+  };
+
+  const handlePayConfirm = async () => {
+    if (!payTarget) return;
     try {
-      await api.put(`/fees/${feeId}/pay`, { paymentMode: 'CASH' });
+      await api.put(`/fees/${payTarget}/pay`, { paymentMode: 'CASH' });
+      toast.success('Transaction marked as Paid');
       fetchData(); // Cascade update
     } catch (error) {
-      alert('Failed to process payment');
+      toast.error('Failed to process payment');
+    } finally {
+      setShowPayConfirm(false);
+      setPayTarget(null);
     }
   };
 
@@ -67,7 +81,7 @@ export default function Fees() {
       setFormData({ studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), remarks: '', status: 'PENDING', paymentMode: '', referenceNo: '' });
       fetchData(); // Cascade update
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create fee record');
+      toast.error(error.response?.data?.message || 'Failed to create fee record');
     }
   };
 
@@ -247,7 +261,7 @@ export default function Fees() {
                           )}
                           <td className="p-4 text-right">
                             {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && fee.status !== 'PAID' && (
-                              <button onClick={() => handlePay(fee.id)} className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-xl hover:bg-emerald-700 shadow-sm">
+                              <button onClick={() => handlePayClick(fee.id)} className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-xl hover:bg-emerald-700 shadow-sm">
                                 Mark Paid
                               </button>
                             )}
@@ -343,6 +357,21 @@ export default function Fees() {
         </div>,
         document.body
       )}
+
+      {/* Pay Confirm Modal */}
+      <ConfirmDialog
+        isOpen={showPayConfirm}
+        title="Mark as Paid"
+        message="Are you sure you want to mark this transaction as Paid? This action will set the payment mode to Cash."
+        confirmText="Mark Paid"
+        cancelText="Cancel"
+        isDestructive={false}
+        onConfirm={handlePayConfirm}
+        onCancel={() => {
+          setShowPayConfirm(false);
+          setPayTarget(null);
+        }}
+      />
     </div>
   );
 }

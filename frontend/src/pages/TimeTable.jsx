@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Calendar, Plus, Clock, BookOpen, User, X } from 'lucide-react';
 
 export default function TimeTable() {
@@ -22,9 +24,11 @@ export default function TimeTable() {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showEditPeriodModal, setShowEditPeriodModal] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   
   const [formData, setFormData] = useState({
-    sectionId: '', subjectId: '', teacherId: '', periodId: '', dayOfWeek: 'MONDAY'
+    classId: '', sectionId: '', subjectId: '', teacherId: '', periodId: '', dayOfWeek: 'MONDAY'
   });
   const [subjectData, setSubjectData] = useState({ name: '', code: '' });
   const [periodData, setPeriodData] = useState({ name: '', startTime: '', endTime: '' });
@@ -38,12 +42,12 @@ export default function TimeTable() {
   useEffect(() => {
     if (user?.role === 'STUDENT' || user?.role === 'TEACHER') {
       fetchTimetable();
-    } else if (selectedSectionId) {
-      fetchTimetable(selectedSectionId);
+    } else if (selectedClassId) {
+      fetchTimetable(selectedClassId, selectedSectionId);
     } else {
       setTimetable([]);
     }
-  }, [selectedSectionId, user?.role]);
+  }, [selectedClassId, selectedSectionId, user?.role]);
 
   const fetchInitialData = async () => {
     try {
@@ -69,9 +73,12 @@ export default function TimeTable() {
     }
   };
 
-  const fetchTimetable = async (sectionId = '') => {
+  const fetchTimetable = async (classId = '', sectionId = '') => {
     try {
-      const res = await api.get(`/timetable${sectionId ? `?sectionId=${sectionId}` : ''}`);
+      const queryParams = new URLSearchParams();
+      if (classId) queryParams.append('classId', classId);
+      if (sectionId) queryParams.append('sectionId', sectionId);
+      const res = await api.get(`/timetable?${queryParams.toString()}`);
       setTimetable(res.data);
     } catch (error) {
       console.error('Failed to fetch timetable', error);
@@ -83,10 +90,10 @@ export default function TimeTable() {
     try {
       await api.post('/timetable', formData);
       setShowAddModal(false);
-      fetchTimetable(selectedSectionId);
+      fetchTimetable(selectedClassId, selectedSectionId);
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Failed to add timetable entry');
+      toast.error(error.response?.data?.message || 'Failed to add timetable entry');
     }
   };
 
@@ -98,7 +105,7 @@ export default function TimeTable() {
       setSubjectData({ name: '', code: '' });
       fetchInitialData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create subject');
+      toast.error(error.response?.data?.message || 'Failed to create subject');
     }
   };
 
@@ -110,7 +117,7 @@ export default function TimeTable() {
       setPeriodData({ name: '', startTime: '', endTime: '' });
       fetchInitialData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create period');
+      toast.error(error.response?.data?.message || 'Failed to create period');
     }
   };
 
@@ -122,17 +129,27 @@ export default function TimeTable() {
       setPeriodData({ name: '', startTime: '', endTime: '' });
       fetchInitialData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to update period');
+      toast.error(error.response?.data?.message || 'Failed to update period');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this entry?')) return;
+  const handleDeleteClick = (id) => {
+    setItemToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
     try {
-      await api.delete(`/timetable/${id}`);
-      fetchTimetable(selectedSectionId);
+      await api.delete(`/timetable/${itemToDelete}`);
+      toast.success('Entry deleted successfully');
+      fetchTimetable(selectedClassId, selectedSectionId);
     } catch (error) {
       console.error(error);
+      toast.error('Failed to delete entry');
+    } finally {
+      setShowDeleteConfirm(false);
+      setItemToDelete(null);
     }
   };
 
@@ -161,10 +178,10 @@ export default function TimeTable() {
             <button onClick={() => setShowPeriodModal(true)} className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium text-sm">
               <Plus className="w-4 h-4 mr-2" /> Period
             </button>
-            {selectedSectionId && (
+            {selectedClassId && (
               <button 
                 onClick={() => {
-                  setFormData({ ...formData, sectionId: selectedSectionId });
+                  setFormData({ ...formData, classId: selectedClassId, sectionId: selectedSectionId });
                   setShowAddModal(true);
                 }}
                 className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-medium text-sm"
@@ -192,9 +209,9 @@ export default function TimeTable() {
       {loading ? (
         <div className="flex justify-center p-12"><span className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span></div>
       ) : (
-        (!selectedSectionId && user?.role === 'ADMIN') ? (
+        (!selectedClassId && user?.role === 'ADMIN') ? (
           <div className="p-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100 border-dashed">
-            Please select a class and section to view or manage the timetable.
+            Please select a class to view or manage the timetable.
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 overflow-x-auto">
@@ -233,10 +250,10 @@ export default function TimeTable() {
                                 <div className="text-xs text-gray-600 flex items-center mb-1"><User className="w-3 h-3 mr-1" />{entry.teacher.user.name}</div>
                               )}
                               {user?.role !== 'STUDENT' && (
-                                <div className="text-xs text-gray-600 flex items-center"><BookOpen className="w-3 h-3 mr-1" />{entry.section.class.name} - {entry.section.name}</div>
+                                <div className="text-xs text-gray-600 flex items-center"><BookOpen className="w-3 h-3 mr-1" />{entry.class?.name}{entry.section ? ` - ${entry.section.name}` : ''}</div>
                               )}
                               {user?.role === 'ADMIN' && (
-                                <button onClick={() => handleDelete(entry.id)} className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all">
+                                <button onClick={() => handleDeleteClick(entry.id)} className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all">
                                   <X className="w-3.5 h-3.5" />
                                 </button>
                               )}
@@ -386,6 +403,19 @@ export default function TimeTable() {
         </div>,
         document.body
       )}
+      {/* Delete Confirm Modal */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Entry"
+        message="Are you sure you want to delete this timetable entry?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setItemToDelete(null);
+        }}
+      />
     </div>
   );
 }

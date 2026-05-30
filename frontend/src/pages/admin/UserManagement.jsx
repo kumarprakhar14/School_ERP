@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../lib/api';
 import { UserPlus, Users as UsersIcon, User, X } from 'lucide-react';
+import { toast } from 'sonner';
+import useAuthStore from '../../store/authStore';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function UserManagement() {
+  const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,11 +16,17 @@ export default function UserManagement() {
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(null); // stores user
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', erpId: '', password: '', role: 'STUDENT',
+    name: '', password: '', role: 'STUDENT',
     designation: '', sectionId: '', classId: '', teacherSectionIds: []
   });
+
+  const resetForm = () => {
+    setFormData({ name: '', password: '', role: 'STUDENT', designation: '', sectionId: '', classId: '', teacherSectionIds: [] });
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -50,22 +60,23 @@ export default function UserManagement() {
     try {
       const payload = {
         name: formData.name,
-        erpId: formData.erpId,
         password: formData.password || undefined,
         role: formData.role,
-        profileData: {
+        profileData: formData.role === 'ADMIN' ? undefined : {
           designation: formData.designation,
+          classId: formData.classId || undefined,
           sectionId: formData.sectionId || undefined,
           assignedSectionIds: formData.teacherSectionIds.length > 0 ? formData.teacherSectionIds : undefined
         }
       };
-      await api.post('/users', payload);
+      const response = await api.post('/users', payload);
+      toast.success(`User created! ERP ID is ${response.data.user.erpId}`);
       setShowAddModal(false);
-      setFormData({ name: '', erpId: '', password: '', role: 'STUDENT', designation: '', sectionId: '', classId: '', teacherSectionIds: [] });
+      resetForm();
       fetchUsers();
     } catch (error) {
       console.error('Failed to create user', error);
-      alert(error.response?.data?.message || 'Failed to create user');
+      toast.error(error.response?.data?.message || 'Failed to create user');
     } finally {
       setIsSubmitting(false);
     }
@@ -83,6 +94,7 @@ export default function UserManagement() {
       
       const profileData = {
         designation: showEditModal.designation,
+        classId: showEditModal.classId || undefined,
         sectionId: showEditModal.sectionId || undefined,
         assignedSectionIds: showEditModal.teacherSectionIds?.length > 0 ? showEditModal.teacherSectionIds : undefined
       };
@@ -99,24 +111,34 @@ export default function UserManagement() {
       await api.put(`/users/${showEditModal.id}`, formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      toast.success('User updated successfully');
       setShowEditModal(null);
       fetchUsers();
     } catch (error) {
       console.error('Failed to update user', error);
-      alert(error.response?.data?.message || 'Failed to update user');
+      toast.error(error.response?.data?.message || 'Failed to update user');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const handleDeleteClick = (userId) => {
+    setDeleteTarget(userId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await api.delete(`/users/${userId}`);
+      await api.delete(`/users/${deleteTarget}`);
+      toast.success('User deleted successfully');
       fetchUsers();
     } catch (error) {
       console.error('Failed to delete user', error);
-      alert(error.response?.data?.message || 'Failed to delete user');
+      toast.error(error.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -152,7 +174,7 @@ export default function UserManagement() {
 
       <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/50">
-          {['', 'TEACHER', 'STUDENT', 'ACCOUNTS'].map((role) => (
+          {['', 'ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTS'].map((role) => (
             <button
               key={role}
               onClick={() => setFilter(role)}
@@ -220,7 +242,9 @@ export default function UserManagement() {
                         editData.profilePicUrl = user.profilePicUrl || '';
                         setShowEditModal(editData);
                       }} className="text-blue-500 hover:text-blue-700 text-xs font-medium mr-3">Edit</button>
-                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                      {currentUser?.id !== user.id && (
+                        <button onClick={() => handleDeleteClick(user.id)} className="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -250,22 +274,17 @@ export default function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="John Doe" />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ERP ID</label>
-                  <input required type="text" value={formData.erpId} onChange={e => setFormData({...formData, erpId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase" placeholder="STU002" />
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                   <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="(Default: password123)" />
                 </div>
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                   <option value="STUDENT">Student</option>
                   <option value="TEACHER">Teacher</option>
                   <option value="ACCOUNTS">Accounts</option>
+                  <option value="ADMIN">Admin</option>
                 </select>
               </div>
               
@@ -298,7 +317,7 @@ export default function UserManagement() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                   <div>
                     <label className="block text-sm font-medium text-blue-800 mb-1">Class</label>
-                    <select value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value, sectionId: ''})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <select required={formData.role === 'STUDENT'} value={formData.classId} onChange={e => setFormData({...formData, classId: e.target.value, sectionId: ''})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                       <option value="">Select Class...</option>
                       {classes.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -346,8 +365,8 @@ export default function UserManagement() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ERP ID</label>
-                  <input required type="text" value={showEditModal.erpId} onChange={e => setShowEditModal({...showEditModal, erpId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ERP ID (Read-only)</label>
+                  <input readOnly type="text" value={showEditModal.erpId} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm outline-none bg-gray-50 text-gray-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
@@ -424,6 +443,19 @@ export default function UserManagement() {
         </div>,
         document.body
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

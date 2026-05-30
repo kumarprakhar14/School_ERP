@@ -9,7 +9,8 @@ const getSubjects = async (req, res) => {
     });
     res.json(subjects);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
@@ -47,7 +48,8 @@ const getPeriods = async (req, res) => {
     });
     res.json(periods);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
@@ -90,15 +92,17 @@ const deletePeriod = async (req, res) => {
 // --- TIMETABLE ENTRIES ---
 const getTimeTable = async (req, res) => {
   try {
-    const { sectionId, teacherId } = req.query;
+    const { classId, sectionId, teacherId } = req.query;
     const where = {};
+    if (classId) where.classId = classId;
     if (sectionId) where.sectionId = sectionId;
     if (teacherId) where.teacherId = teacherId;
     // For students, restrict to their own section
     if (req.user.role === 'STUDENT') {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
-      if (!profile || !profile.sectionId) return res.json([]);
-      where.sectionId = profile.sectionId;
+      if (!profile || !profile.classId) return res.json([]);
+      where.classId = profile.classId;
+      if (profile.sectionId) where.sectionId = profile.sectionId;
     }
     // For teachers, restrict to their own profile if not admin
     if (req.user.role === 'TEACHER' && !teacherId) {
@@ -110,30 +114,34 @@ const getTimeTable = async (req, res) => {
     const entries = await prisma.timeTableEntry.findMany({
       where: {
         ...where,
-        section: { class: { schoolId: req.user.schoolId } }
+        class: { schoolId: req.user.schoolId }
       },
       include: {
         subject: true,
         period: true,
         teacher: { include: { user: { select: { name: true } } } },
-        section: { include: { class: true } }
+        class: true,
+        section: true
       }
     });
     res.json(entries);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
   }
 };
 
 const createTimeTableEntry = async (req, res) => {
   try {
-    const { sectionId, subjectId, teacherId, periodId, dayOfWeek } = req.body;
+    const { classId, sectionId, subjectId, teacherId, periodId, dayOfWeek } = req.body;
     const entry = await prisma.timeTableEntry.create({
-      data: { sectionId, subjectId, teacherId, periodId, dayOfWeek },
+      data: { classId, sectionId: sectionId || null, subjectId, teacherId, periodId, dayOfWeek },
       include: {
         subject: true,
         period: true,
-        teacher: { include: { user: { select: { name: true } } } }
+        teacher: { include: { user: { select: { name: true } } } },
+        class: true,
+        section: true
       }
     });
     res.status(201).json(entry);

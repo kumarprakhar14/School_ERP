@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Settings() {
   const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: '' });
@@ -32,10 +33,10 @@ export default function Settings() {
     try {
       await api.put('/schools/settings', settings);
       document.documentElement.style.setProperty('--app-theme-color', settings.themeColor);
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save', error);
-      alert('Failed to save settings.');
+      toast.error('Failed to save settings.');
     } finally {
       setSaving(false);
     }
