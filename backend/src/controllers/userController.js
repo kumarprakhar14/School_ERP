@@ -1,5 +1,6 @@
 const prisma = require('../utils/db');
 const bcrypt = require('bcryptjs');
+const { generateNextErpId } = require('../services/erpService');
 
 const createUser = async (req, res) => {
   try {
@@ -16,28 +17,7 @@ const createUser = async (req, res) => {
       return res.status(404).json({ message: 'School not found' });
     }
 
-    // Find the user with the highest ERP ID that starts with the school code
-    const maxUser = await prisma.user.findFirst({
-      where: {
-        schoolId,
-        erpId: { startsWith: school.code }
-      },
-      orderBy: { erpId: 'desc' }
-    });
-
-    let erpId;
-    if (maxUser && maxUser.erpId) {
-      const maxIdNum = parseInt(maxUser.erpId, 10);
-      if (!isNaN(maxIdNum)) {
-        erpId = (maxIdNum + 1).toString();
-      } else {
-        // Fallback if parsing fails for some reason
-        erpId = `${school.code}001`;
-      }
-    } else {
-      // First user (though usually admin is created first)
-      erpId = `${school.code}001`;
-    }
+    const erpId = await generateNextErpId(prisma, schoolId, school.code);
 
     const passwordHash = await bcrypt.hash(password || 'password123', 10);
 

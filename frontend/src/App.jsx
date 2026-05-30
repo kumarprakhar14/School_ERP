@@ -9,6 +9,7 @@ import useAuthStore from './store/authStore';
 import SchoolsList from './pages/super-admin/SchoolsList';
 import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
+import BulkImport from './pages/admin/BulkImport';
 
 import Dashboard from './pages/Dashboard';
 import Academics from './pages/Academics';
@@ -63,6 +64,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
               <Route path="admin/settings" element={<Settings />} />
               <Route path="admin/users" element={<UserManagement />} />
+              <Route path="admin/import" element={<BulkImport />} />
             </Route>
 
             {/* Phase 3 & 4 routes */}

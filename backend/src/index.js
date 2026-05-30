@@ -31,6 +31,7 @@ app.use('/api/assignments', require('./routes/assignment.routes'));
 app.use('/api/fees', require('./routes/fee.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/timetable', require('./routes/timeTable.routes'));
+app.use('/api/import', require('./routes/importRoutes'));
 
 // 404 Handler
 app.use((req, res, next) => {

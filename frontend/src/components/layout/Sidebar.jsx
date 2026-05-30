@@ -10,6 +10,7 @@ const roleNavItems = {
   ADMIN: [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Users, label: 'Users', path: '/admin/users' },
+    { icon: FileText, label: 'Data Import', path: '/admin/import' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: Settings, label: 'School Settings', path: '/admin/settings' },

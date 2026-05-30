@@ -30,13 +30,14 @@ async function main() {
   const school = await prisma.school.create({
     data: {
       name: 'Demo International School',
+      code: '660',
       validUntil: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       settings: { create: { themeColor: '#3b82f6', description: 'A place for demo learning' } },
     },
   });
 
   // ADMIN
-  await prisma.user.create({ data: { schoolId: school.id, erpId: 'ADM001', passwordHash, role: 'ADMIN', name: 'School Admin' } });
+  await prisma.user.create({ data: { schoolId: school.id, erpId: '660001', passwordHash, role: 'ADMIN', name: 'School Admin' } });
 
   // // ACCOUNTS
   // for(let i=1; i<=5; i++) {
@@ -67,7 +68,7 @@ async function main() {
   //   });
   // }
 
-  // console.log('Seed completed successfully! Generated 5-6 dummy users for each role.');
+  console.log('Seed completed successfully! Generated 5-6 dummy users for each role.');
 }
 
 main()
