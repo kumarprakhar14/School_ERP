@@ -97,7 +97,7 @@ export default function Login() {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-3">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -109,6 +109,15 @@ export default function Login() {
                   <LogIn className="w-4 h-4 mr-2" />
                 )}
                 Sign in
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => navigate('/user-guide')}
+                className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-200 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+              >
+                <BookOpen className="w-4 h-4 mr-2 text-gray-500" />
+                View User Guide
               </button>
             </div>
           </form>

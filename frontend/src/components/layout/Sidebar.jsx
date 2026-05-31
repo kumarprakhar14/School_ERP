@@ -108,7 +108,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
       </nav>
       
       <div className="p-4 mt-auto">
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-4 border border-blue-100/50 relative overflow-hidden group">
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-4 border border-blue-100/50 relative overflow-hidden group mb-3">
           <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl group-hover:bg-blue-400/20 transition-all duration-500"></div>
           <p className="text-xs font-semibold text-blue-800 mb-1 flex items-center">
             <Bug className="w-3 h-3 mr-1" /> Found a bug?
@@ -121,6 +121,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             Report an Issue
           </button>
         </div>
+        
+        <Link 
+          to="/user-guide"
+          onClick={() => setIsOpen(false)}
+          className="flex items-center justify-center w-full py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
+        >
+          <BookOpen className="w-4 h-4 mr-2 text-gray-500" />
+          User Guide
+        </Link>
       </div>
 
       <ReportBugModal 

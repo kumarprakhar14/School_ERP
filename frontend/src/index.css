@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-blue-50: color-mix(in srgb, var(--app-theme-color, #3b82f6) 10%, white);

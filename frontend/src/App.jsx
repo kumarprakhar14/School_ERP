@@ -37,6 +37,8 @@ function DashboardRouter() {
   }
 }
 
+import UserGuide from './pages/UserGuide';
+
 function App() {
   return (
     <>
@@ -57,6 +59,7 @@ function App() {
       <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/user-guide" element={<UserGuide />} />
         
         <Route path="/" element={<ProtectedRoute />}>
           <Route element={<Layout />}>
