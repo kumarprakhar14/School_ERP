@@ -8,9 +8,10 @@ const generateNextErpId = async (prisma, schoolId, schoolCode) => {
   });
 
   if (maxUser && maxUser.erpId) {
-    const maxIdNum = parseInt(maxUser.erpId, 10);
+    const numericPart = maxUser.erpId.substring(schoolCode.length);
+    const maxIdNum = parseInt(numericPart, 10);
     if (!isNaN(maxIdNum)) {
-      return (maxIdNum + 1).toString();
+      return schoolCode + (maxIdNum + 1).toString().padStart(3, '0');
     }
   }
   
@@ -27,11 +28,12 @@ const generateNextErpId = async (prisma, schoolId, schoolCode) => {
  */
 const generateBatchErpIds = async (prisma, schoolId, schoolCode, count) => {
   const startingErpIdStr = await generateNextErpId(prisma, schoolId, schoolCode);
-  const startingIdNum = parseInt(startingErpIdStr, 10);
+  const numericPart = startingErpIdStr.substring(schoolCode.length);
+  const startingIdNum = parseInt(numericPart, 10);
   
   const erpIds = [];
   for (let i = 0; i < count; i++) {
-    erpIds.push((startingIdNum + i).toString());
+    erpIds.push(schoolCode + (startingIdNum + i).toString().padStart(3, '0'));
   }
   
   return erpIds;

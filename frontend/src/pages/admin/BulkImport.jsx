@@ -53,9 +53,7 @@ export default function BulkImport() {
     const startTime = Date.now();
 
     try {
-      const response = await api.post(`/import/${activeTab}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post(`/import/${activeTab}`, formData);
       
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       

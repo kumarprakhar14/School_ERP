@@ -18,7 +18,9 @@ const buildErrorReport = (errors) => {
     // Basic CSV escaping
     const row = e.row;
     const field = `"${String(e.field).replace(/"/g, '""')}"`;
-    const err = `"${String(e.error).replace(/"/g, '""')}"`;
+    // Replace newlines with spaces so Excel doesn't hide the text
+    const errString = String(e.error || '').replace(/\r?\n|\r/g, ' ');
+    const err = `"${errString.replace(/"/g, '""')}"`;
     csv += `${row},${field},${err}\n`;
   });
   return csv;
@@ -33,17 +35,6 @@ const importStudents = async (schoolId, fileBuffer) => {
     return { success: false, errors: [{ row: 0, field: 'File', error: 'File is empty' }], report: buildErrorReport([{ row: 0, field: 'File', error: 'File is empty' }]) };
   }
 
-  // Pre-fetch all classes and sections for this school
-  const schoolClasses = await prisma.class.findMany({
-    where: { schoolId },
-    include: { sections: true }
-  });
-
-  const classMap = new Map();
-  schoolClasses.forEach(c => {
-    classMap.set(c.name.toLowerCase(), c);
-  });
-
   // Validate each row
   data.forEach((row, index) => {
     const rowNum = index + 2; // +1 for 0-index, +1 for header
@@ -51,34 +42,30 @@ const importStudents = async (schoolId, fileBuffer) => {
     const className = String(row['Class'] || '').trim();
     const sectionName = String(row['Section'] || '').trim();
     const contact = String(row['Contact'] || '').trim();
-    const admissionDate = row['Admission Date'] ? new Date(row['Admission Date']) : new Date();
-
-    if (!name) errors.push({ row: rowNum, field: 'Student Name', error: 'Required field missing' });
-    if (!className) {
-      errors.push({ row: rowNum, field: 'Class', error: 'Required field missing' });
-    } else {
-      const matchedClass = classMap.get(className.toLowerCase());
-      if (!matchedClass) {
-        errors.push({ row: rowNum, field: 'Class', error: `Class "${className}" does not exist in this school` });
+    
+    let admissionDate = new Date();
+    if (row['Admission Date']) {
+      if (typeof row['Admission Date'] === 'number') {
+        admissionDate = new Date((row['Admission Date'] - 25569) * 86400 * 1000);
       } else {
-        let matchedSection = null;
-        if (sectionName) {
-          matchedSection = matchedClass.sections.find(s => s.name.toLowerCase() === sectionName.toLowerCase());
-          if (!matchedSection) {
-            errors.push({ row: rowNum, field: 'Section', error: `Section "${sectionName}" does not exist in Class "${className}"` });
-          }
-        }
-        
-        if (name && matchedClass && (!sectionName || matchedSection)) {
-          validRows.push({
-            name,
-            classId: matchedClass.id,
-            sectionId: matchedSection ? matchedSection.id : null,
-            contactDetails: contact || null,
-            admissionDate
-          });
+        const parsed = new Date(row['Admission Date']);
+        if (!isNaN(parsed.getTime())) {
+          admissionDate = parsed;
         }
       }
+    }
+
+    if (!name) errors.push({ row: rowNum, field: 'Student Name', error: 'Required field missing' });
+    if (!className) errors.push({ row: rowNum, field: 'Class', error: 'Required field missing' });
+
+    if (name && className) {
+      validRows.push({
+        name,
+        className,
+        sectionName,
+        contactDetails: contact || null,
+        admissionDate
+      });
     }
   });
 
@@ -92,9 +79,33 @@ const importStudents = async (schoolId, fileBuffer) => {
       const school = await tx.school.findUnique({ where: { id: schoolId } });
       const erpIds = await generateBatchErpIds(tx, schoolId, school.code, validRows.length);
       const passwordHash = await bcrypt.hash('password123', 10);
+      
+      let currentClasses = await tx.class.findMany({
+        where: { schoolId },
+        include: { sections: true }
+      });
 
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i];
+        
+        // Resolve or create Class and Section on the fly
+        let cls = currentClasses.find(c => c.name.toLowerCase() === row.className.toLowerCase());
+        if (!cls) {
+          cls = await tx.class.create({ data: { schoolId, name: row.className }, include: { sections: true } });
+          currentClasses.push(cls);
+        }
+
+        let sec = null;
+        if (row.sectionName) {
+          sec = cls.sections.find(s => s.name.toLowerCase() === row.sectionName.toLowerCase());
+          if (!sec) {
+            sec = await tx.section.create({ data: { classId: cls.id, name: row.sectionName } });
+            cls.sections.push(sec);
+          }
+        }
+        
+        row.classId = cls.id;
+        row.sectionId = sec ? sec.id : null;
         const erpId = erpIds[i];
 
         await tx.user.create({
@@ -115,14 +126,19 @@ const importStudents = async (schoolId, fileBuffer) => {
           }
         });
       }
+    }, {
+      maxWait: 10000,
+      timeout: 120000 // 120 seconds
     });
     
     return { success: true, count: validRows.length };
   } catch (error) {
+    console.error("IMPORT DB ERROR:", error);
+    const errorMsg = error.message || error.toString();
     return { 
       success: false, 
-      errors: [{ row: 'All', field: 'Database', error: error.message }],
-      report: buildErrorReport([{ row: 'All', field: 'Database', error: error.message }])
+      errors: [{ row: 'All', field: 'Database', error: errorMsg }],
+      report: buildErrorReport([{ row: 'All', field: 'Database', error: errorMsg }])
     };
   }
 };
@@ -136,12 +152,6 @@ const importTeachers = async (schoolId, fileBuffer) => {
     return { success: false, errors: [{ row: 0, field: 'File', error: 'File is empty' }], report: buildErrorReport([{ row: 0, field: 'File', error: 'File is empty' }]) };
   }
 
-  // Pre-fetch sections for validation
-  const schoolClasses = await prisma.class.findMany({
-    where: { schoolId },
-    include: { sections: true }
-  });
-
   // Section reference format expected: "ClassName-SectionName, ClassName-SectionName"
   // e.g. "10-A, 10-B"
   
@@ -154,27 +164,24 @@ const importTeachers = async (schoolId, fileBuffer) => {
 
     if (!name) errors.push({ row: rowNum, field: 'Teacher Name', error: 'Required field missing' });
 
-    let assignedSectionIds = [];
+    let pendingSections = [];
     if (sectionsStr) {
-      const sectionRefs = sectionsStr.split(',').map(s => s.trim());
+      const sectionRefs = sectionsStr.split(',').map(s => s.trim()).filter(Boolean);
       for (const ref of sectionRefs) {
+        if (ref.toLowerCase().includes('all section')) {
+          continue; // Gracefully bypass strict section validation for global roles
+        }
         const parts = ref.split('-');
         if (parts.length !== 2) {
           errors.push({ row: rowNum, field: 'Assigned Sections', error: `Invalid format for section "${ref}". Expected "Class-Section".` });
           continue;
         }
         const [cName, sName] = parts;
-        const matchedClass = schoolClasses.find(c => c.name.toLowerCase() === cName.toLowerCase());
-        if (!matchedClass) {
-          errors.push({ row: rowNum, field: 'Assigned Sections', error: `Class "${cName}" not found.` });
+        if (!cName.trim() || !sName.trim()) {
+          errors.push({ row: rowNum, field: 'Assigned Sections', error: `Invalid format for section "${ref}". Expected "Class-Section".` });
           continue;
         }
-        const matchedSection = matchedClass.sections.find(s => s.name.toLowerCase() === sName.toLowerCase());
-        if (!matchedSection) {
-          errors.push({ row: rowNum, field: 'Assigned Sections', error: `Section "${sName}" not found in Class "${cName}".` });
-          continue;
-        }
-        assignedSectionIds.push(matchedSection.id);
+        pendingSections.push({ className: cName.trim(), sectionName: sName.trim() });
       }
     }
 
@@ -183,7 +190,7 @@ const importTeachers = async (schoolId, fileBuffer) => {
         name,
         designation: designation || 'Teacher',
         contactDetails: contact || null,
-        assignedSectionIds
+        pendingSections
       });
     }
   });
@@ -198,8 +205,28 @@ const importTeachers = async (schoolId, fileBuffer) => {
       const erpIds = await generateBatchErpIds(tx, schoolId, school.code, validRows.length);
       const passwordHash = await bcrypt.hash('password123', 10);
 
+      let currentClasses = await tx.class.findMany({
+        where: { schoolId },
+        include: { sections: true }
+      });
+
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i];
+        
+        row.assignedSectionIds = [];
+        for (const pSec of row.pendingSections) {
+          let cls = currentClasses.find(c => c.name.toLowerCase() === pSec.className.toLowerCase());
+          if (!cls) {
+            cls = await tx.class.create({ data: { schoolId, name: pSec.className }, include: { sections: true } });
+            currentClasses.push(cls);
+          }
+          let sec = cls.sections.find(s => s.name.toLowerCase() === pSec.sectionName.toLowerCase());
+          if (!sec) {
+            sec = await tx.section.create({ data: { classId: cls.id, name: pSec.sectionName } });
+            cls.sections.push(sec);
+          }
+          row.assignedSectionIds.push(sec.id);
+        }
         const erpId = erpIds[i];
 
         await tx.user.create({
@@ -221,13 +248,18 @@ const importTeachers = async (schoolId, fileBuffer) => {
           }
         });
       }
+    }, {
+      maxWait: 10000,
+      timeout: 120000 // 120 seconds
     });
     return { success: true, count: validRows.length };
   } catch (error) {
+    console.error("IMPORT DB ERROR:", error);
+    const errorMsg = error.message || error.toString();
     return { 
       success: false, 
-      errors: [{ row: 'All', field: 'Database', error: error.message }],
-      report: buildErrorReport([{ row: 'All', field: 'Database', error: error.message }])
+      errors: [{ row: 'All', field: 'Database', error: errorMsg }],
+      report: buildErrorReport([{ row: 'All', field: 'Database', error: errorMsg }])
     };
   }
 };
