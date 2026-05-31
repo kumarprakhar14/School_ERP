@@ -37,7 +37,31 @@ function DashboardRouter() {
   }
 }
 
+function PublicRoute({ children }) {
+  const { user, isInitialized, fetchProfile } = useAuthStore();
+  
+  React.useEffect(() => {
+    if (!isInitialized) {
+      fetchProfile();
+    }
+  }, [isInitialized, fetchProfile]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <span className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 import UserGuide from './pages/UserGuide';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -58,7 +82,7 @@ function App() {
       />
       <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/user-guide" element={<UserGuide />} />
         
         <Route path="/" element={<ProtectedRoute />}>
@@ -92,6 +116,9 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
         </Route>
+        
+        {/* Fallback 404 Route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </Router>
     </>
