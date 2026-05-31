@@ -11,6 +11,7 @@ import SchoolsManagement from './pages/super-admin/SchoolsManagement';
 import SchoolDetail from './pages/super-admin/SchoolDetail';
 import BugReports from './pages/super-admin/BugReports';
 import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
+import SuperAdminManagement from './pages/super-admin/SuperAdminManagement';
 import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
 import AdminUserProfile from './pages/admin/AdminUserProfile';
@@ -68,6 +69,7 @@ function App() {
               <Route path="super-admin/schools/:id" element={<SchoolDetail />} />
               <Route path="super-admin/bugs" element={<BugReports />} />
               <Route path="super-admin/profile" element={<SuperAdminProfile />} />
+              <Route path="super-admin/managers" element={<SuperAdminManagement />} />
             </Route>
             
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>

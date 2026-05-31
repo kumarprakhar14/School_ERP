@@ -1,4 +1,20 @@
 const generateNextErpId = async (prisma, schoolId, schoolCode) => {
+  // For SUPER_ADMIN, schoolId and schoolCode will be null/undefined.
+  if (!schoolCode) {
+    const maxAdmin = await prisma.user.findFirst({
+      where: { role: 'SUPER_ADMIN' },
+      orderBy: { erpId: 'desc' }
+    });
+    if (maxAdmin && maxAdmin.erpId) {
+      const numericPart = maxAdmin.erpId.substring(2); // Remove "SA"
+      const maxIdNum = parseInt(numericPart, 10);
+      if (!isNaN(maxIdNum)) {
+        return 'SA' + (maxIdNum + 1).toString().padStart(3, '0');
+      }
+    }
+    return 'SA001';
+  }
+
   const maxUser = await prisma.user.findFirst({
     where: {
       schoolId,

@@ -79,7 +79,8 @@ const createSchool = async (req, res) => {
           erpId, 
           passwordHash,
           role: 'ADMIN',
-          schoolId: school.id
+          schoolId: school.id,
+          isPrimary: true
         }
       });
     }

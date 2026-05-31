@@ -8,6 +8,7 @@ const roleNavItems = {
   SUPER_ADMIN: [
     { icon: Building2, label: 'Dashboard', path: '/super-admin' },
     { icon: Building2, label: 'Schools', path: '/super-admin/schools' },
+    { icon: Users, label: 'Administrators', path: '/super-admin/managers' },
     { icon: Bug, label: 'Bug Reports', path: '/super-admin/bugs' },
   ],
   ADMIN: [

@@ -8,23 +8,27 @@ const createUser = async (req, res) => {
     let schoolId = req.user.schoolId;
 
     if (req.user.role === 'SUPER_ADMIN') {
-      if (!bodySchoolId) {
-        return res.status(400).json({ message: 'schoolId is required when SUPER_ADMIN creates a user' });
+      if (role !== 'SUPER_ADMIN' && !bodySchoolId) {
+        return res.status(400).json({ message: 'schoolId is required when SUPER_ADMIN creates a non-super-admin user' });
       }
-      schoolId = bodySchoolId;
+      schoolId = role === 'SUPER_ADMIN' ? null : bodySchoolId;
     }
 
-    if (!['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN'].includes(role)) {
+    if (!['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role for user creation' });
     }
 
     // Generate ERP ID
-    const school = await prisma.school.findUnique({ where: { id: schoolId } });
-    if (!school) {
-      return res.status(404).json({ message: 'School not found' });
+    let erpId;
+    if (role === 'SUPER_ADMIN') {
+      erpId = await generateNextErpId(prisma, null, null);
+    } else {
+      const school = await prisma.school.findUnique({ where: { id: schoolId } });
+      if (!school) {
+        return res.status(404).json({ message: 'School not found' });
+      }
+      erpId = await generateNextErpId(prisma, schoolId, school.code);
     }
-
-    const erpId = await generateNextErpId(prisma, schoolId, school.code);
 
     const passwordHash = await bcrypt.hash(password || 'password123', 10);
 
@@ -33,7 +37,7 @@ const createUser = async (req, res) => {
       passwordHash,
       role,
       name,
-      schoolId
+      schoolId: role === 'SUPER_ADMIN' ? null : schoolId
     };
 
     const user = await prisma.user.create({
@@ -90,6 +94,7 @@ const getUsers = async (req, res) => {
         erpId: true,
         name: true,
         role: true,
+        isPrimary: true,
         profilePicUrl: true,
         contactDetails: true,
         studentProfile: { include: { section: { include: { class: true } } } },
@@ -107,7 +112,7 @@ const getUsers = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    let { name, erpId, password, role, profileData, contactDetails } = req.body;
+    let { name, erpId, password, role, profileData, contactDetails, isPrimary } = req.body;
     
     if (typeof profileData === 'string') {
       try {
@@ -122,6 +127,31 @@ const updateUser = async (req, res) => {
     if (profilePicUrl !== undefined) data.profilePicUrl = profilePicUrl;
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 10);
+    }
+    
+    // Handle isPrimary transfer
+    if (isPrimary === true && userId !== req.user.userId) {
+      if (req.user.role === 'SUPER_ADMIN') {
+        const currentPrimary = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        if (currentPrimary && currentPrimary.isPrimary) {
+          await prisma.$transaction([
+            prisma.user.updateMany({ where: { role: 'SUPER_ADMIN' }, data: { isPrimary: false } }),
+            prisma.user.update({ where: { id: userId }, data: { isPrimary: true } })
+          ]);
+        } else {
+          return res.status(403).json({ message: 'Only the current primary Super Admin can transfer primary status' });
+        }
+      } else if (req.user.role === 'ADMIN') {
+        const currentPrimary = await prisma.user.findUnique({ where: { id: req.user.userId } });
+        if (currentPrimary && currentPrimary.isPrimary) {
+          await prisma.$transaction([
+            prisma.user.updateMany({ where: { role: 'ADMIN', schoolId: req.user.schoolId }, data: { isPrimary: false } }),
+            prisma.user.update({ where: { id: userId }, data: { isPrimary: true } })
+          ]);
+        } else {
+          return res.status(403).json({ message: 'Only the current primary Admin can transfer primary status' });
+        }
+      }
     }
     
     // Update basic user
@@ -170,6 +200,15 @@ const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (targetUser.isPrimary) {
+      return res.status(403).json({ message: 'The primary Super Admin account cannot be deleted' });
+    }
+
     // Use a transaction to clean up profiles first, since they hold strict FKs to User.
     // If the user has other history (attendance, fees), the User delete will still safely throw P2003.
     await prisma.$transaction([
@@ -202,7 +241,7 @@ const getUser = async (req, res) => {
       },
       select: {
         id: true, erpId: true, name: true, role: true, profilePicUrl: true, contactDetails: true,
-        isActive: true, isArchived: true, createdAt: true, updatedAt: true,
+        isActive: true, isArchived: true, isPrimary: true, createdAt: true, updatedAt: true,
         school: { select: { name: true, code: true } },
         studentProfile: { include: { section: { include: { class: true } } } },
         teacherProfile: { include: { assignedSections: { include: { class: true } } } }

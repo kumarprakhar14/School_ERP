@@ -13,7 +13,7 @@ const login = async (req, res, next) => {
     // SUPER_ADMIN might login without schoolId, others need schoolId or we infer from erpId
     // Let's find user by erpId and optional schoolId
     const selectFields = {
-      id: true, name: true, role: true, schoolId: true, erpId: true, profilePicUrl: true, contactDetails: true, passwordHash: true, isActive: true, isArchived: true,
+      id: true, name: true, role: true, schoolId: true, erpId: true, profilePicUrl: true, contactDetails: true, passwordHash: true, isActive: true, isArchived: true, isPrimary: true,
       school: { select: { settings: true, name: true, code: true } },
       studentProfile: { include: { section: { include: { class: true } } } },
       teacherProfile: { include: { assignedSections: { include: { class: true } } } }
@@ -54,6 +54,7 @@ const login = async (req, res, next) => {
         schoolId: user.schoolId,
         erpId: user.erpId,
         profilePicUrl: user.profilePicUrl,
+        isPrimary: user.isPrimary,
         schoolSettings: user.school?.settings,
         schoolName: user.school?.name,
         schoolCode: user.school?.code,
@@ -79,6 +80,7 @@ const getMe = async (req, res, next) => {
         erpId: true,
         profilePicUrl: true,
         contactDetails: true,
+        isPrimary: true,
         school: { select: { settings: true, name: true, code: true } },
         studentProfile: { include: { section: { include: { class: true } } } },
         teacherProfile: { include: { assignedSections: { include: { class: true } } } }

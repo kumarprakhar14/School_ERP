@@ -97,6 +97,7 @@ model User {
   contactDetails  String?
   isActive        Boolean  @default(true)
   isArchived      Boolean  @default(false)
+  isPrimary       Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

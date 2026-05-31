@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { UserPlus, Users as UsersIcon, User, X } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, User, X, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../store/authStore';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function UserManagement() {
   const { user: currentUser } = useAuthStore();
@@ -21,6 +22,11 @@ export default function UserManagement() {
     name: '', password: '', role: 'STUDENT',
     designation: '', sectionId: '', classId: '', teacherSectionIds: []
   });
+
+  const [showPrimaryConfirm, setShowPrimaryConfirm] = useState(false);
+  const [selectedAdminForPrimary, setSelectedAdminForPrimary] = useState(null);
+
+  const amIPrimary = currentUser?.isPrimary;
 
   const resetForm = () => {
     setFormData({ name: '', password: '', role: 'STUDENT', designation: '', sectionId: '', classId: '', teacherSectionIds: [] });
@@ -75,6 +81,29 @@ export default function UserManagement() {
     } catch (error) {
       console.error('Failed to create user', error);
       toast.error(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMakePrimary = async () => {
+    setIsSubmitting(true);
+    try {
+      await api.put(`/users/${selectedAdminForPrimary.id}`, { isPrimary: true });
+      toast.success(`${selectedAdminForPrimary.name} is now the primary Admin`);
+      
+      // Update local storage user if their status changed
+      if (currentUser.id === selectedAdminForPrimary.id) {
+        useAuthStore.setState({ user: { ...currentUser, isPrimary: true } });
+      } else if (amIPrimary) {
+        useAuthStore.setState({ user: { ...currentUser, isPrimary: false } });
+      }
+      
+      fetchUsers();
+      setShowPrimaryConfirm(false);
+      setSelectedAdminForPrimary(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to transfer primary status');
     } finally {
       setIsSubmitting(false);
     }
@@ -140,16 +169,16 @@ export default function UserManagement() {
                   <th className="p-4 font-semibold">ERP ID</th>
                   <th className="p-4 font-semibold">Role</th>
                   <th className="p-4 font-semibold">Details</th>
+                  <th className="p-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {users.map(user => (
                   <tr 
                     key={user.id} 
-                    onClick={() => navigate(`/admin/users/${user.id}`)}
-                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                    className="hover:bg-gray-50/50 transition-colors group"
                   >
-                    <td className="p-4">
+                    <td className="p-4 cursor-pointer" onClick={() => navigate(`/admin/users/${user.id}`)}>
                       <div className="flex items-center">
                         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 mr-3">
                           <User className="h-4 w-4" />
@@ -168,6 +197,22 @@ export default function UserManagement() {
                       {user.role === 'STUDENT' && user.studentProfile && 'Student Profile'}
                       {user.role === 'ACCOUNTS' && 'Accounts Staff'}
                       {user.role === 'ADMIN' && 'Administrator'}
+                    </td>
+                    <td className="p-4 whitespace-nowrap text-right text-sm font-medium">
+                      {user.role === 'ADMIN' && user.isPrimary ? (
+                        <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
+                          <Star className="w-3 h-3 mr-1 fill-current" />
+                          Primary
+                        </span>
+                      ) : null}
+                      {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
+                          className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md text-xs font-medium border border-blue-100"
+                        >
+                          Make Primary
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

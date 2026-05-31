@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { toast } from 'sonner';
-import { User, Phone, Edit2, Camera, Save, Shield, Calendar, Activity, Database, Clock } from 'lucide-react';
+import { User, Phone, Edit2, Camera, Save, Shield, Calendar, Activity, Database, Clock, Star, Trash2 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function SuperAdminProfile() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function SuperAdminProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Local state for edits
   const [formData, setFormData] = useState({});
@@ -87,6 +89,17 @@ export default function SuperAdminProfile() {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success('Account deleted successfully');
+      useAuthStore.getState().logout();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete account');
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -219,9 +232,16 @@ export default function SuperAdminProfile() {
                 </button>
               </div>
             )}
-            <p className="text-base sm:text-lg text-gray-500 font-medium capitalize mt-1">
-              Super Administrator
-            </p>
+            <div className="flex items-center mt-1">
+              <p className="text-base sm:text-lg text-gray-500 font-medium capitalize mr-3">
+                Super Administrator
+              </p>
+              {user.isPrimary && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                  <Star className="w-3 h-3 mr-1 fill-amber-500" /> Primary
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -272,8 +292,35 @@ export default function SuperAdminProfile() {
             </button>
           </div>
 
+          {!user.isPrimary && (
+            <div className="mt-8 bg-red-50/50 rounded-2xl border border-red-100 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-red-900 mb-1">Danger Zone</h3>
+                <p className="text-sm text-red-700/80">
+                  Permanently delete your Super Admin account. You will be logged out immediately.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-xl shadow-sm hover:bg-red-700 transition-all font-medium text-sm shrink-0 focus:ring-4 focus:ring-red-100"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Account
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Your Account"
+        message="WARNING: You are about to permanently delete your own account. This action cannot be undone and you will lose access immediately. Are you absolutely certain you wish to proceed?"
+        confirmText="Yes, Delete My Account"
+        cancelText="Cancel"
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }
