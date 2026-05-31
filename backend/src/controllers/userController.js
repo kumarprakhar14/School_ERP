@@ -4,8 +4,15 @@ const { generateNextErpId } = require('../services/erpService');
 
 const createUser = async (req, res) => {
   try {
-    const { password, role, name, profileData } = req.body;
-    const schoolId = req.user.schoolId;
+    const { password, role, name, profileData, schoolId: bodySchoolId } = req.body;
+    let schoolId = req.user.schoolId;
+
+    if (req.user.role === 'SUPER_ADMIN') {
+      if (!bodySchoolId) {
+        return res.status(400).json({ message: 'schoolId is required when SUPER_ADMIN creates a user' });
+      }
+      schoolId = bodySchoolId;
+    }
 
     if (!['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role for user creation' });
@@ -66,12 +73,16 @@ const createUser = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-    const { role } = req.query;
-    const schoolId = req.user.schoolId;
+    const { role, schoolId: querySchoolId } = req.query;
+    let schoolId = req.user.schoolId;
+    
+    if (req.user.role === 'SUPER_ADMIN' && querySchoolId) {
+      schoolId = querySchoolId;
+    }
 
     const users = await prisma.user.findMany({
       where: {
-        schoolId,
+        ...(schoolId !== undefined && { schoolId }),
         ...(role && { role })
       },
       select: {
@@ -115,7 +126,10 @@ const updateUser = async (req, res) => {
     
     // Update basic user
     const user = await prisma.user.update({
-      where: { id: userId, schoolId: req.user.schoolId },
+      where: { 
+        id: userId,
+        ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId })
+      },
       data,
       select: { id: true, erpId: true, name: true, role: true }
     });
@@ -145,6 +159,9 @@ const updateUser = async (req, res) => {
     
     res.json(user);
   } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'This ERP ID is already taken.' });
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -152,9 +169,20 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    await prisma.user.delete({
-      where: { id: userId, schoolId: req.user.schoolId }
-    });
+
+    // Use a transaction to clean up profiles first, since they hold strict FKs to User.
+    // If the user has other history (attendance, fees), the User delete will still safely throw P2003.
+    await prisma.$transaction([
+      prisma.studentProfile.deleteMany({ where: { userId } }),
+      prisma.teacherProfile.deleteMany({ where: { userId } }),
+      prisma.user.delete({
+        where: { 
+          id: userId,
+          ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId })
+        }
+      })
+    ]);
+
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     if (error.code === 'P2003') {
@@ -164,4 +192,31 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUsers, updateUser, deleteUser };
+const getUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { 
+        id: userId,
+        ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId })
+      },
+      select: {
+        id: true, erpId: true, name: true, role: true, profilePicUrl: true, contactDetails: true,
+        isActive: true, isArchived: true, createdAt: true, updatedAt: true,
+        school: { select: { name: true, code: true } },
+        studentProfile: { include: { section: { include: { class: true } } } },
+        teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createUser, getUsers, getUser, updateUser, deleteUser };

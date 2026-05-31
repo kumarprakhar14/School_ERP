@@ -20,6 +20,31 @@ const getSchools = async (req, res) => {
   }
 };
 
+// SUPER ADMIN: Get school by ID
+const getSchoolById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const school = await prisma.school.findUnique({
+      where: { id },
+      include: {
+        settings: true,
+        _count: {
+          select: { users: true, classes: true }
+        }
+      }
+    });
+
+    if (!school) {
+      return res.status(404).json({ message: 'School not found' });
+    }
+
+    res.json(school);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An unexpected server error occurred.' });
+  }
+};
+
 // SUPER ADMIN: Create school
 const createSchool = async (req, res) => {
   try {
@@ -122,10 +147,43 @@ const updateSchoolSettings = async (req, res) => {
   }
 };
 
+// SUPER ADMIN: Delete a school
+const deleteSchool = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.$transaction([
+      prisma.assignmentSubmission.deleteMany({ where: { assignment: { schoolId: id } } }),
+      prisma.attendance.deleteMany({ where: { class: { schoolId: id } } }),
+      prisma.feeRecord.deleteMany({ where: { schoolId: id } }),
+      prisma.bugReport.deleteMany({ where: { reportedBy: { schoolId: id } } }),
+      prisma.timeTableEntry.deleteMany({ where: { class: { schoolId: id } } }),
+      prisma.assignment.deleteMany({ where: { schoolId: id } }),
+      prisma.notice.deleteMany({ where: { schoolId: id } }),
+      prisma.studentProfile.deleteMany({ where: { user: { schoolId: id } } }),
+      prisma.teacherProfile.deleteMany({ where: { user: { schoolId: id } } }),
+      prisma.period.deleteMany({ where: { schoolId: id } }),
+      prisma.subject.deleteMany({ where: { schoolId: id } }),
+      prisma.section.deleteMany({ where: { class: { schoolId: id } } }),
+      prisma.class.deleteMany({ where: { schoolId: id } }),
+      prisma.user.deleteMany({ where: { schoolId: id } }),
+      prisma.schoolSettings.deleteMany({ where: { schoolId: id } }),
+      prisma.school.delete({ where: { id } })
+    ]);
+
+    res.json({ message: 'School deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete school:', error);
+    res.status(500).json({ message: 'Failed to delete school' });
+  }
+};
+
 module.exports = {
   getSchools,
+  getSchoolById,
   createSchool,
   updateSchool,
+  deleteSchool,
   getSchoolSettings,
   updateSchoolSettings
 };

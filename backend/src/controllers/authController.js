@@ -12,22 +12,23 @@ const login = async (req, res, next) => {
 
     // SUPER_ADMIN might login without schoolId, others need schoolId or we infer from erpId
     // Let's find user by erpId and optional schoolId
+    const selectFields = {
+      id: true, name: true, role: true, schoolId: true, erpId: true, profilePicUrl: true, contactDetails: true, passwordHash: true, isActive: true, isArchived: true,
+      school: { select: { settings: true, name: true, code: true } },
+      studentProfile: { include: { section: { include: { class: true } } } },
+      teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+    };
+
     let user;
     if (schoolId) {
       user = await prisma.user.findUnique({
-        where: {
-          schoolId_erpId: {
-            schoolId,
-            erpId,
-          },
-        },
-        include: { school: { select: { settings: true, name: true } } }
+        where: { schoolId_erpId: { schoolId, erpId } },
+        select: selectFields
       });
     } else {
-      // If schoolId is not provided, maybe it's SUPER_ADMIN or we just find first matching erpId
       user = await prisma.user.findFirst({
         where: { erpId },
-        include: { school: { select: { settings: true, name: true } } }
+        select: selectFields
       });
     }
 
@@ -55,6 +56,10 @@ const login = async (req, res, next) => {
         profilePicUrl: user.profilePicUrl,
         schoolSettings: user.school?.settings,
         schoolName: user.school?.name,
+        schoolCode: user.school?.code,
+        contactDetails: user.contactDetails,
+        studentProfile: user.studentProfile,
+        teacherProfile: user.teacherProfile
       },
     });
   } catch (error) {
@@ -73,7 +78,10 @@ const getMe = async (req, res, next) => {
         schoolId: true,
         erpId: true,
         profilePicUrl: true,
-        school: { select: { settings: true, name: true } }
+        contactDetails: true,
+        school: { select: { settings: true, name: true, code: true } },
+        studentProfile: { include: { section: { include: { class: true } } } },
+        teacherProfile: { include: { assignedSections: { include: { class: true } } } }
       },
     });
 
@@ -85,6 +93,7 @@ const getMe = async (req, res, next) => {
       ...user,
       schoolSettings: user.school?.settings,
       schoolName: user.school?.name,
+      schoolCode: user.school?.code,
       school: undefined
     };
 

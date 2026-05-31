@@ -6,10 +6,14 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import useAuthStore from './store/authStore';
 
-import SchoolsList from './pages/super-admin/SchoolsList';
+import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
+import SchoolsManagement from './pages/super-admin/SchoolsManagement';
+import SchoolDetail from './pages/super-admin/SchoolDetail';
 import BugReports from './pages/super-admin/BugReports';
+import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
+import AdminUserProfile from './pages/admin/AdminUserProfile';
 import BulkImport from './pages/admin/BulkImport';
 
 import Dashboard from './pages/Dashboard';
@@ -26,7 +30,7 @@ function DashboardRouter() {
   if (!user) return <Navigate to="/login" />;
   
   if (user.role === 'SUPER_ADMIN') {
-    return <Navigate to="/super-admin/schools" replace />;
+    return <Navigate to="/super-admin" replace />;
   } else {
     return <Dashboard />;
   }
@@ -59,13 +63,17 @@ function App() {
             
             {/* Phase 2: Super Admin & Admin routes */}
             <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
-              <Route path="super-admin/schools" element={<SchoolsList />} />
+              <Route path="super-admin" element={<SuperAdminDashboard />} />
+              <Route path="super-admin/schools" element={<SchoolsManagement />} />
+              <Route path="super-admin/schools/:id" element={<SchoolDetail />} />
               <Route path="super-admin/bugs" element={<BugReports />} />
+              <Route path="super-admin/profile" element={<SuperAdminProfile />} />
             </Route>
             
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
               <Route path="admin/settings" element={<Settings />} />
               <Route path="admin/users" element={<UserManagement />} />
+              <Route path="admin/users/:id" element={<AdminUserProfile />} />
               <Route path="admin/import" element={<BulkImport />} />
             </Route>
 

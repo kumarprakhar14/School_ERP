@@ -6,6 +6,7 @@ import ReportBugModal from '../modals/ReportBugModal';
 
 const roleNavItems = {
   SUPER_ADMIN: [
+    { icon: Building2, label: 'Dashboard', path: '/super-admin' },
     { icon: Building2, label: 'Schools', path: '/super-admin/schools' },
     { icon: Bug, label: 'Bug Reports', path: '/super-admin/bugs' },
   ],
@@ -81,7 +82,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          const isActive = location.pathname === item.path || (item.path !== '/' && item.path !== '/super-admin' && location.pathname.startsWith(item.path));
           
           return (
             <Link
