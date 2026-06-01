@@ -11,12 +11,8 @@ const getClasses = async (req, res, next) => {
         sections: {
           include: {
             teachers: { include: { user: { select: { id: true, name: true, erpId: true } } } },
-            students: { include: { user: { select: { id: true, name: true, erpId: true } } } }
+            _count: { select: { students: true, teachers: true } }
           }
-        },
-        students: {
-          where: { sectionId: null },
-          include: { user: { select: { id: true, name: true, erpId: true } } }
         }
       },
       orderBy: { name: 'asc' }
@@ -144,4 +140,65 @@ const updateSection = async (req, res, next) => {
   }
 };
 
-module.exports = { getClasses, createClass, createSection, deleteSection, updateClass, updateSection };
+const getSectionStudents = async (req, res, next) => {
+  try {
+    const { sectionId } = req.params;
+    const schoolId = req.user.schoolId;
+
+    // Verify the section belongs to the school
+    const section = await prisma.section.findFirst({
+      where: { id: sectionId, class: { schoolId } }
+    });
+    if (!section) {
+      throw new ForbiddenError('The specified section does not belong to your school');
+    }
+
+    const students = await prisma.studentProfile.findMany({
+      where: { sectionId },
+      include: {
+        user: { select: { id: true, name: true, erpId: true } }
+      }
+    });
+
+    res.json(students);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getClassStudents = async (req, res, next) => {
+  try {
+    const { classId } = req.params;
+    const schoolId = req.user.schoolId;
+
+    // Verify the class belongs to the school
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, schoolId }
+    });
+    if (!cls) {
+      throw new ForbiddenError('The specified class does not belong to your school');
+    }
+
+    const students = await prisma.studentProfile.findMany({
+      where: { classId, sectionId: null },
+      include: {
+        user: { select: { id: true, name: true, erpId: true } }
+      }
+    });
+
+    res.json(students);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  getClasses, 
+  createClass, 
+  createSection, 
+  deleteSection, 
+  updateClass, 
+  updateSection,
+  getSectionStudents,
+  getClassStudents
+};

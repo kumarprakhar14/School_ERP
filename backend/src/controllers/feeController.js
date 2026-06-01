@@ -39,15 +39,30 @@ const getFees = async (req, res, next) => {
       whereClause.studentId = req.user.userId;
     }
 
-    const fees = await prisma.feeRecord.findMany({
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+    let queryOptions = {
       where: whereClause,
       include: {
         student: { select: { name: true, erpId: true, studentProfile: { include: { section: { include: { class: true } } } } } },
         creator: { select: { name: true } }
       },
       orderBy: { year: 'desc' }
-    });
+    };
 
+    if (page && limit) {
+      const totalCount = await prisma.feeRecord.count({ where: whereClause });
+      res.setHeader('X-Total-Count', totalCount);
+      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
+      res.setHeader('X-Current-Page', page);
+      res.setHeader('X-Limit', limit);
+
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const fees = await prisma.feeRecord.findMany(queryOptions);
     res.json(fees);
   } catch (error) {
     next(error);

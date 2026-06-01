@@ -28,7 +28,10 @@ const submitBug = async (req, res, next) => {
 
 const getAllBugs = async (req, res, next) => {
   try {
-    const bugs = await prisma.bugReport.findMany({
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+    let queryOptions = {
       orderBy: { createdAt: 'desc' },
       include: {
         reportedBy: {
@@ -40,7 +43,20 @@ const getAllBugs = async (req, res, next) => {
           }
         }
       }
-    });
+    };
+
+    if (page && limit) {
+      const totalCount = await prisma.bugReport.count();
+      res.setHeader('X-Total-Count', totalCount);
+      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
+      res.setHeader('X-Current-Page', page);
+      res.setHeader('X-Limit', limit);
+
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const bugs = await prisma.bugReport.findMany(queryOptions);
     res.status(200).json({ bugs });
   } catch (error) {
     next(error);

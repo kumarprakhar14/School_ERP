@@ -6,9 +6,11 @@ const getDashboardStats = async (req, res, next) => {
     const role = req.user.role;
 
     if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-      const studentCount = await prisma.user.count({ where: { schoolId, role: 'STUDENT', isActive: true, isArchived: false } });
-      const teacherCount = await prisma.user.count({ where: { schoolId, role: 'TEACHER', isActive: true, isArchived: false } });
-      const classCount = await prisma.class.count({ where: { schoolId } });
+      const [studentCount, teacherCount, classCount] = await Promise.all([
+        prisma.user.count({ where: { schoolId, role: 'STUDENT', isActive: true, isArchived: false } }),
+        prisma.user.count({ where: { schoolId, role: 'TEACHER', isActive: true, isArchived: false } }),
+        prisma.class.count({ where: { schoolId } })
+      ]);
       
       return res.json({ studentCount, teacherCount, classCount });
     }
@@ -19,14 +21,16 @@ const getDashboardStats = async (req, res, next) => {
       const nextDate = new Date(today);
       nextDate.setDate(nextDate.getDate() + 1);
 
-      const attendance = await prisma.attendance.findFirst({
-        where: {
-          studentId: req.user.userId,
-          date: { gte: today, lt: nextDate }
-        }
-      });
+      const [attendance, profile] = await Promise.all([
+        prisma.attendance.findFirst({
+          where: {
+            studentId: req.user.userId,
+            date: { gte: today, lt: nextDate }
+          }
+        }),
+        prisma.studentProfile.findUnique({ where: { userId: req.user.userId } })
+      ]);
 
-      const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
       let pendingAssignments = 0;
       if (profile) {
         pendingAssignments = await prisma.assignment.count({

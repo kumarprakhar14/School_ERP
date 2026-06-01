@@ -78,11 +78,16 @@ const getUsers = async (req, res, next) => {
       schoolId = querySchoolId;
     }
 
-    const users = await prisma.user.findMany({
-      where: {
-        ...(schoolId !== undefined && { schoolId }),
-        ...(role && { role })
-      },
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+    const whereClause = {
+      ...(schoolId !== undefined && { schoolId }),
+      ...(role && { role })
+    };
+
+    let queryOptions = {
+      where: whereClause,
       select: {
         id: true,
         erpId: true,
@@ -95,7 +100,20 @@ const getUsers = async (req, res, next) => {
         teacherProfile: { include: { assignedSections: { include: { class: true } } } }
       },
       orderBy: { createdAt: 'desc' }
-    });
+    };
+
+    if (page && limit) {
+      const totalCount = await prisma.user.count({ where: whereClause });
+      res.setHeader('X-Total-Count', totalCount);
+      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
+      res.setHeader('X-Current-Page', page);
+      res.setHeader('X-Limit', limit);
+
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const users = await prisma.user.findMany(queryOptions);
     res.json(users);
   } catch (error) {
     next(error);

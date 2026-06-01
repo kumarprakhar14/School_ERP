@@ -19,6 +19,30 @@ export default function Assignments() {
   const [submitUrl, setSubmitUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Lazy loading submissions states
+  const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+  const [submissionsMap, setSubmissionsMap] = useState({});
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+
+  const handleToggleSubmissions = async (assignmentId) => {
+    if (expandedAssignmentId === assignmentId) {
+      setExpandedAssignmentId(null);
+      return;
+    }
+    setExpandedAssignmentId(assignmentId);
+    if (!submissionsMap[assignmentId]) {
+      setLoadingSubmissions(true);
+      try {
+        const res = await api.get(`/assignments/${assignmentId}/submissions`);
+        setSubmissionsMap(prev => ({ ...prev, [assignmentId]: res.data }));
+      } catch (error) {
+        toast.error('Failed to load submissions');
+      } finally {
+        setLoadingSubmissions(false);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchAssignments();
     if (user?.role === 'TEACHER' || user?.role === 'ADMIN') {
@@ -159,22 +183,45 @@ export default function Assignments() {
                 </div>
               ) : (
                 <div className="mt-4 pt-4 border-t border-gray-50">
-                  <h4 className="text-sm font-bold text-gray-700 mb-3">Submissions ({assign.submissions?.length || 0})</h4>
-                  {assign.submissions?.length > 0 ? (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                      {assign.submissions.map(sub => (
-                        <div key={sub.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">{sub.student?.name}</p>
-                            <p className="text-xs text-gray-500 font-mono">{sub.student?.erpId}</p>
-                          </div>
-                          <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center">
-                            <FileText className="w-3 h-3 mr-1" /> View
-                          </a>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-sm font-bold text-gray-700">Submissions ({assign._count?.submissions || 0})</h4>
+                    {(assign._count?.submissions || 0) > 0 && (
+                      <button 
+                        onClick={() => handleToggleSubmissions(assign.id)}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 focus:outline-none"
+                      >
+                        {expandedAssignmentId === assign.id ? 'Hide Submissions' : 'View Submissions'}
+                      </button>
+                    )}
+                  </div>
+                  
+                  {expandedAssignmentId === assign.id && (
+                    <div className="mt-2 space-y-2">
+                      {loadingSubmissions && !submissionsMap[assign.id] ? (
+                        <div className="text-xs text-gray-500 italic py-2 flex items-center justify-center">
+                          <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mr-2"></span>
+                          Loading submissions...
                         </div>
-                      ))}
+                      ) : submissionsMap[assign.id] && submissionsMap[assign.id].length > 0 ? (
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                          {submissionsMap[assign.id].map(sub => (
+                            <div key={sub.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                              <div>
+                                <p className="text-sm font-bold text-gray-900">{sub.student?.name}</p>
+                                <p className="text-xs text-gray-500 font-mono">{sub.student?.erpId}</p>
+                              </div>
+                              <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center">
+                                <FileText className="w-3 h-3 mr-1" /> View
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic">No submissions yet.</p>
+                      )}
                     </div>
-                  ) : (
+                  )}
+                  {(!assign._count?.submissions || assign._count.submissions === 0) && (
                     <p className="text-xs text-gray-500 italic">No submissions yet.</p>
                   )}
                 </div>

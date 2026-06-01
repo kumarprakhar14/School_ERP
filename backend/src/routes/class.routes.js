@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getClasses, createClass, createSection, deleteSection, updateClass, updateSection } = require('../controllers/classController');
+const { 
+  getClasses, 
+  createClass, 
+  createSection, 
+  deleteSection, 
+  updateClass, 
+  updateSection,
+  getSectionStudents,
+  getClassStudents
+} = require('../controllers/classController');
 const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
 const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
 const { validate } = require('../validators/validate');
@@ -11,6 +20,8 @@ router.use(schoolValidityMiddleware);
 
 // All roles in the school can view classes/sections (useful for teachers/students)
 router.get('/', getClasses);
+router.get('/sections/:sectionId/students', getSectionStudents);
+router.get('/:classId/students', getClassStudents);
 
 // Only ADMIN can create classes and sections
 router.use(roleMiddleware(['ADMIN']));

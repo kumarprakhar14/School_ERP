@@ -9,7 +9,7 @@ const app = express();
 app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// app.use(express.urlencoded({ extended: true }));  // not needed for now. include Per-request savings when required.
 
 if (process.env.NODE_ENV==="production") {
     cronJob.start();
@@ -30,9 +30,9 @@ app.use('/api/notices', require('./routes/notice.routes'));
 app.use('/api/assignments', require('./routes/assignment.routes'));
 app.use('/api/fees', require('./routes/fee.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/timetable', require('./routes/timeTable.routes'));
-app.use('/api/import', require('./routes/importRoutes'));
-app.use('/api/bugs', require('./routes/bugRoutes'));
+app.use('/api/timetable', require('./routes/timetable.routes'));
+app.use('/api/import', require('./routes/import.routes'));
+app.use('/api/bugs', require('./routes/bug.routes'));
 
 // 404 Handler
 app.use((req, res, next) => {

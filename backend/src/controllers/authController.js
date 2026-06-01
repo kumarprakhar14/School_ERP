@@ -3,15 +3,29 @@ const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/jwt');
 const { NotFoundError, UnauthorizedError } = require('../errors');
 
+const USER_SELECT_FIELDS = {
+  id: true,
+  name: true,
+  role: true,
+  schoolId: true,
+  erpId: true,
+  profilePicUrl: true,
+  contactDetails: true,
+  isPrimary: true,
+  school: { select: { settings: true, name: true, code: true } },
+  studentProfile: { include: { section: { include: { class: true } } } },
+  teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+};
+
 const login = async (req, res, next) => {
   try {
     const { erpId, password, schoolId } = req.body;
 
     const selectFields = {
-      id: true, name: true, role: true, schoolId: true, erpId: true, profilePicUrl: true, contactDetails: true, passwordHash: true, isActive: true, isArchived: true, isPrimary: true,
-      school: { select: { settings: true, name: true, code: true } },
-      studentProfile: { include: { section: { include: { class: true } } } },
-      teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+      ...USER_SELECT_FIELDS,
+      passwordHash: true,
+      isActive: true,
+      isArchived: true
     };
 
     let user;
@@ -67,19 +81,7 @@ const getMe = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        schoolId: true,
-        erpId: true,
-        profilePicUrl: true,
-        contactDetails: true,
-        isPrimary: true,
-        school: { select: { settings: true, name: true, code: true } },
-        studentProfile: { include: { section: { include: { class: true } } } },
-        teacherProfile: { include: { assignedSections: { include: { class: true } } } }
-      },
+      select: USER_SELECT_FIELDS,
     });
 
     if (!user) {

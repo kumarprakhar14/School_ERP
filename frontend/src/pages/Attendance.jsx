@@ -82,11 +82,11 @@ export default function Attendance() {
     try {
       let targetStudents = [];
       if (selectedSectionId) {
-        const sec = cls.sections.find(s => s.id === selectedSectionId);
-        targetStudents = sec?.students || [];
+        const studRes = await api.get(`/classes/sections/${selectedSectionId}/students`);
+        targetStudents = studRes.data || [];
       } else {
-        // Class has no sections, use class students directly
-        targetStudents = cls.students || [];
+        const studRes = await api.get(`/classes/${selectedClassId}/students`);
+        targetStudents = studRes.data || [];
       }
 
       setStudents(targetStudents);

@@ -49,18 +49,33 @@ const getAssignments = async (req, res, next) => {
       }
     }
 
-    const assignments = await prisma.assignment.findMany({
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+    let queryOptions = {
       where: whereClause,
       include: {
         class: { select: { name: true } },
         section: { select: { name: true } },
-        submissions: req.user.role === 'STUDENT' 
-          ? { where: { studentId: req.user.userId } } 
-          : { include: { student: { select: { name: true, erpId: true } } } }
+        ...(req.user.role === 'STUDENT'
+          ? { submissions: { where: { studentId: req.user.userId } } }
+          : { _count: { select: { submissions: true } } })
       },
       orderBy: { createdAt: 'desc' }
-    });
+    };
 
+    if (page && limit) {
+      const totalCount = await prisma.assignment.count({ where: whereClause });
+      res.setHeader('X-Total-Count', totalCount);
+      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
+      res.setHeader('X-Current-Page', page);
+      res.setHeader('X-Limit', limit);
+
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const assignments = await prisma.assignment.findMany(queryOptions);
     res.json(assignments);
   } catch (error) {
     next(error);
@@ -104,4 +119,43 @@ const submitAssignment = async (req, res, next) => {
   }
 };
 
-module.exports = { createAssignment, getAssignments, submitAssignment };
+const getAssignmentSubmissions = async (req, res, next) => {
+  try {
+    const { assignmentId } = req.params;
+    const schoolId = req.user.schoolId;
+
+    // Verify assignment belongs to the user's school
+    const assignment = await prisma.assignment.findFirst({
+      where: { id: assignmentId, schoolId }
+    });
+    if (!assignment) {
+      throw new ForbiddenError('The specified assignment does not belong to your school');
+    }
+
+    // Only non-students can fetch all submissions for an assignment
+    if (req.user.role === 'STUDENT') {
+      throw new ForbiddenError('Students are not authorized to view all submissions');
+    }
+
+    const submissions = await prisma.assignmentSubmission.findMany({
+      where: { assignmentId },
+      include: {
+        student: {
+          select: { name: true, erpId: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(submissions);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  createAssignment, 
+  getAssignments, 
+  submitAssignment,
+  getAssignmentSubmissions
+};
