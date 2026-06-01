@@ -1,16 +1,17 @@
 import jwt from 'jsonwebtoken';
+import { config } from '../config/env.js';
 
 const generateToken = (userId, schoolId, role) => {
   return jwt.sign(
     { userId, schoolId, role },
-    process.env.JWT_SECRET,
+    config.jwtSecret,
     { expiresIn: '30d' }
   );
 };
 
 const verifyToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    return jwt.verify(token, config.jwtSecret);
   } catch (error) {
     return null;
   }

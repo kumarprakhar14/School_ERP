@@ -1,6 +1,7 @@
-import 'dotenv/config';
+import { config } from './config/env.js';
 import express from 'express';
 import cors from 'cors';
+import corsOptions from './config/cors.js';
 import morgan from 'morgan';
 import cronJob from './utils/cron.js';
 
@@ -19,12 +20,13 @@ import bugRoutes from './routes/bug.routes.js';
 
 const app = express();
 
+app.use(cors(corsOptions));
+
 app.use(morgan('dev'));
-app.use(cors());
 app.use(express.json());
 // app.use(express.urlencoded({ extended: true }));  // not needed for now. include Per-request savings when required.
 
-if (process.env.NODE_ENV==="production") {
+if (config.nodeEnv==="production") {
     cronJob.start();
 }
 
@@ -56,6 +58,10 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   // Always log the full error for server-side debugging
   console.error(`[ERROR] ${req.method} ${req.originalUrl}:`, err);
+
+  if (err.message?.startsWith("CORS:")) {
+    return res.status(403).json({ error: err.message });
+  }
 
   // 1. Our own AppError subclasses (isOperational = true) — safe to send message to client
   if (err.isOperational) {
@@ -95,7 +101,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
