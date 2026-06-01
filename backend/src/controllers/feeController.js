@@ -1,6 +1,7 @@
 const prisma = require('../utils/db');
+const { ForbiddenError, NotFoundError } = require('../errors');
 
-const createFeeRecord = async (req, res) => {
+const createFeeRecord = async (req, res, next) => {
   try {
     const { studentId, amount, month, year, remarks, paymentMode, referenceNo, status } = req.body;
     const schoolId = req.user.schoolId;
@@ -23,11 +24,11 @@ const createFeeRecord = async (req, res) => {
 
     res.status(201).json(feeRecord);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const getFees = async (req, res) => {
+const getFees = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
     let whereClause = {
@@ -49,15 +50,24 @@ const getFees = async (req, res) => {
 
     res.json(fees);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
-const markFeePaid = async (req, res) => {
+// Fix 5: Enforce schoolId on markFeePaid
+const markFeePaid = async (req, res, next) => {
   try {
     const { feeId } = req.params;
     const { paymentMode, referenceNo } = req.body;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Verify fee record belongs to user's school
+    const existing = await prisma.feeRecord.findFirst({
+      where: { id: feeId, schoolId }
+    });
+    if (!existing) {
+      throw new NotFoundError('Fee record');
+    }
     
     const feeRecord = await prisma.feeRecord.update({
       where: { id: feeId },
@@ -72,15 +82,14 @@ const markFeePaid = async (req, res) => {
 
     res.json(feeRecord);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const getFeeSummary = async (req, res) => {
+const getFeeSummary = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
     
-    // Fetch all students for the school
     let studentsWhere = { schoolId, role: 'STUDENT', isActive: true };
     if (req.user.role === 'STUDENT') {
       studentsWhere.id = req.user.userId;
@@ -139,8 +148,7 @@ const getFeeSummary = async (req, res) => {
 
     res.json(summary);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 

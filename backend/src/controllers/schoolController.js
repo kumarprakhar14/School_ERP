@@ -1,8 +1,9 @@
 const prisma = require('../utils/db');
 const bcrypt = require('bcryptjs');
+const { NotFoundError } = require('../errors');
 
 // SUPER ADMIN: Get all schools
-const getSchools = async (req, res) => {
+const getSchools = async (req, res, next) => {
   try {
     const schools = await prisma.school.findMany({
       include: {
@@ -15,13 +16,12 @@ const getSchools = async (req, res) => {
     });
     res.json(schools);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
 // SUPER ADMIN: Get school by ID
-const getSchoolById = async (req, res) => {
+const getSchoolById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const school = await prisma.school.findUnique({
@@ -35,18 +35,17 @@ const getSchoolById = async (req, res) => {
     });
 
     if (!school) {
-      return res.status(404).json({ message: 'School not found' });
+      throw new NotFoundError('School');
     }
 
     res.json(school);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
 // SUPER ADMIN: Create school
-const createSchool = async (req, res) => {
+const createSchool = async (req, res, next) => {
   try {
     const { name, code, validUntil, themeColor, description, adminName, adminEmail, adminPassword } = req.body;
     
@@ -87,12 +86,12 @@ const createSchool = async (req, res) => {
 
     res.status(201).json(school);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // SUPER ADMIN: Update school
-const updateSchool = async (req, res) => {
+const updateSchool = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, validUntil, themeColor, description } = req.body;
@@ -115,12 +114,12 @@ const updateSchool = async (req, res) => {
     });
     res.json(school);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // ADMIN: Get current school settings
-const getSchoolSettings = async (req, res) => {
+const getSchoolSettings = async (req, res, next) => {
   try {
     const school = await prisma.school.findUnique({
       where: { id: req.user.schoolId },
@@ -128,13 +127,12 @@ const getSchoolSettings = async (req, res) => {
     });
     res.json(school);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
 // ADMIN: Update current school settings
-const updateSchoolSettings = async (req, res) => {
+const updateSchoolSettings = async (req, res, next) => {
   try {
     const { themeColor, description, logoUrl } = req.body;
     const settings = await prisma.schoolSettings.upsert({
@@ -144,12 +142,12 @@ const updateSchoolSettings = async (req, res) => {
     });
     res.json(settings);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // SUPER ADMIN: Delete a school
-const deleteSchool = async (req, res) => {
+const deleteSchool = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -174,8 +172,7 @@ const deleteSchool = async (req, res) => {
 
     res.json({ message: 'School deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete school:', error);
-    res.status(500).json({ message: 'Failed to delete school' });
+    next(error);
   }
 };
 

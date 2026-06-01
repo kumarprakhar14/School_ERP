@@ -1,9 +1,17 @@
 const prisma = require('../utils/db');
+const { AppError, ForbiddenError } = require('../errors');
 
-const createAssignment = async (req, res) => {
+const createAssignment = async (req, res, next) => {
   try {
     const { title, description, dueDate, classId, sectionId } = req.body;
     const fileUrl = req.file ? req.file.path : null;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Verify classId belongs to user's school
+    const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
+    if (!cls) {
+      throw new ForbiddenError('The specified class does not belong to your school');
+    }
 
     const assignment = await prisma.assignment.create({
       data: {
@@ -13,22 +21,23 @@ const createAssignment = async (req, res) => {
         fileUrl,
         classId,
         sectionId: sectionId || null,
-        schoolId: req.user.schoolId,
+        schoolId,
         createdBy: req.user.userId
       }
     });
 
     res.status(201).json(assignment);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const getAssignments = async (req, res) => {
+const getAssignments = async (req, res, next) => {
   try {
     const { classId, sectionId } = req.query;
+    const schoolId = req.user.schoolId;
     
-    const whereClause = { schoolId: req.user.schoolId };
+    const whereClause = { schoolId }; // Fix 5: Already has schoolId
     if (classId) whereClause.classId = classId;
     if (sectionId) whereClause.sectionId = sectionId;
 
@@ -54,14 +63,15 @@ const getAssignments = async (req, res) => {
 
     res.json(assignments);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
-const submitAssignment = async (req, res) => {
+// Fix 5: Verify assignment belongs to student's school before submission
+const submitAssignment = async (req, res, next) => {
   try {
     const { assignmentId } = req.params;
+    const schoolId = req.user.schoolId;
     let fileUrl = req.body.fileUrl; 
 
     if (req.file) {
@@ -69,7 +79,15 @@ const submitAssignment = async (req, res) => {
     }
 
     if (!fileUrl) {
-      return res.status(400).json({ message: 'A file or URL is required for submission.' });
+      throw new AppError('A file or URL is required for submission.', 400);
+    }
+
+    // Fix 5: Verify the assignment belongs to the student's school
+    const assignment = await prisma.assignment.findFirst({
+      where: { id: assignmentId, schoolId }
+    });
+    if (!assignment) {
+      throw new ForbiddenError('The specified assignment does not belong to your school');
     }
 
     const submission = await prisma.assignmentSubmission.create({
@@ -82,7 +100,7 @@ const submitAssignment = async (req, res) => {
 
     res.status(201).json(submission);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 

@@ -1,7 +1,8 @@
 const prisma = require('../utils/db');
+const { ForbiddenError } = require('../errors');
 
 // Get all classes and sections for the school
-const getClasses = async (req, res) => {
+const getClasses = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
     const classes = await prisma.class.findMany({
@@ -22,13 +23,12 @@ const getClasses = async (req, res) => {
     });
     res.json(classes);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
 // Create a new class
-const createClass = async (req, res) => {
+const createClass = async (req, res, next) => {
   try {
     const { name } = req.body;
     const schoolId = req.user.schoolId;
@@ -39,68 +39,108 @@ const createClass = async (req, res) => {
     });
     res.status(201).json(newClass);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // Create a new section under a class
-const createSection = async (req, res) => {
+// Fix 5: Verify classId belongs to user's school
+const createSection = async (req, res, next) => {
   try {
     const { classId } = req.params;
     const { name } = req.body;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Ensure the class belongs to the user's school
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, schoolId }
+    });
+    if (!cls) {
+      throw new ForbiddenError('The specified class does not belong to your school');
+    }
 
     const section = await prisma.section.create({
       data: { name, classId }
     });
     res.status(201).json(section);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // Delete a section
-const deleteSection = async (req, res) => {
+// Fix 5: Verify sectionId belongs to user's school
+const deleteSection = async (req, res, next) => {
   try {
     const { sectionId } = req.params;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Ensure the section belongs to the user's school
+    const section = await prisma.section.findFirst({
+      where: { id: sectionId, class: { schoolId } }
+    });
+    if (!section) {
+      throw new ForbiddenError('The specified section does not belong to your school');
+    }
+
     await prisma.section.delete({
       where: { id: sectionId }
     });
     res.json({ message: 'Section deleted successfully' });
   } catch (error) {
-    if (error.code === 'P2003') {
-      return res.status(400).json({ message: 'Cannot delete section because it contains students or is linked to other records.' });
-    }
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // Update a class
-const updateClass = async (req, res) => {
+// Fix 5: Enforce schoolId in where clause
+const updateClass = async (req, res, next) => {
   try {
     const { classId } = req.params;
     const { name } = req.body;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Ensure the class belongs to the user's school
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, schoolId }
+    });
+    if (!cls) {
+      throw new ForbiddenError('The specified class does not belong to your school');
+    }
+
     const updatedClass = await prisma.class.update({
       where: { id: classId },
       data: { name }
     });
     res.json(updatedClass);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
 // Update a section
-const updateSection = async (req, res) => {
+// Fix 5: Enforce schoolId via class relation
+const updateSection = async (req, res, next) => {
   try {
     const { sectionId } = req.params;
     const { name } = req.body;
+    const schoolId = req.user.schoolId;
+
+    // Fix 5: Ensure the section belongs to the user's school
+    const section = await prisma.section.findFirst({
+      where: { id: sectionId, class: { schoolId } }
+    });
+    if (!section) {
+      throw new ForbiddenError('The specified section does not belong to your school');
+    }
+
     const updatedSection = await prisma.section.update({
       where: { id: sectionId },
       data: { name }
     });
     res.json(updatedSection);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 

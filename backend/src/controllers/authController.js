@@ -1,17 +1,12 @@
 const prisma = require('../utils/db');
 const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/jwt');
+const { NotFoundError, UnauthorizedError } = require('../errors');
 
 const login = async (req, res, next) => {
   try {
     const { erpId, password, schoolId } = req.body;
 
-    if (!erpId || !password) {
-      return res.status(400).json({ message: 'Please provide erpId and password' });
-    }
-
-    // SUPER_ADMIN might login without schoolId, others need schoolId or we infer from erpId
-    // Let's find user by erpId and optional schoolId
     const selectFields = {
       id: true, name: true, role: true, schoolId: true, erpId: true, profilePicUrl: true, contactDetails: true, passwordHash: true, isActive: true, isArchived: true, isPrimary: true,
       school: { select: { settings: true, name: true, code: true } },
@@ -33,13 +28,13 @@ const login = async (req, res, next) => {
     }
 
     if (!user || !user.isActive || user.isArchived) {
-      return res.status(401).json({ message: 'Invalid credentials or inactive account' });
+      throw new UnauthorizedError('Invalid credentials or inactive account');
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      throw new UnauthorizedError('Invalid credentials');
     }
 
     const token = generateToken(user.id, user.schoolId, user.role);
@@ -88,7 +83,7 @@ const getMe = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      throw new NotFoundError('User');
     }
 
     const formattedUser = {

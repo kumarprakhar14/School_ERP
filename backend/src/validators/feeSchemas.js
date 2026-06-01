@@ -1,0 +1,30 @@
+const { z } = require('zod');
+
+const VALID_STATUSES = ['PENDING', 'PAID', 'OVERDUE'];
+
+const createFeeSchema = z.object({
+  studentId: z.string({ required_error: 'Student ID is required' }).uuid('Invalid student ID format'),
+  amount: z.union([z.number(), z.string()]).refine(val => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0;
+  }, { message: 'Amount must be a valid positive number' }),
+  month: z.union([z.number(), z.string()]).refine(val => {
+    const num = Number(val);
+    return Number.isInteger(num) && num >= 1 && num <= 12;
+  }, { message: 'Month must be between 1 and 12' }),
+  year: z.union([z.number(), z.string()]).refine(val => {
+    const num = Number(val);
+    return Number.isInteger(num) && num >= 2000 && num <= 2100;
+  }, { message: 'Year must be between 2000 and 2100' }),
+  status: z.enum(VALID_STATUSES).optional().default('PENDING'),
+  paymentMode: z.string().optional().nullable(),
+  referenceNo: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable()
+});
+
+const markFeePaidSchema = z.object({
+  paymentMode: z.string().optional(),
+  referenceNo: z.string().optional()
+});
+
+module.exports = { createFeeSchema, markFeePaidSchema };

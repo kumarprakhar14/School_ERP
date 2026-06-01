@@ -1,21 +1,18 @@
 const prisma = require('../utils/db');
 const bcrypt = require('bcryptjs');
 const { generateNextErpId } = require('../services/erpService');
+const { NotFoundError, ForbiddenError, AppError } = require('../errors');
 
-const createUser = async (req, res) => {
+const createUser = async (req, res, next) => {
   try {
     const { password, role, name, profileData, schoolId: bodySchoolId } = req.body;
     let schoolId = req.user.schoolId;
 
     if (req.user.role === 'SUPER_ADMIN') {
       if (role !== 'SUPER_ADMIN' && !bodySchoolId) {
-        return res.status(400).json({ message: 'schoolId is required when SUPER_ADMIN creates a non-super-admin user' });
+        throw new AppError('schoolId is required when SUPER_ADMIN creates a non-super-admin user', 400);
       }
       schoolId = role === 'SUPER_ADMIN' ? null : bodySchoolId;
-    }
-
-    if (!['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN', 'SUPER_ADMIN'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid role for user creation' });
     }
 
     // Generate ERP ID
@@ -25,7 +22,7 @@ const createUser = async (req, res) => {
     } else {
       const school = await prisma.school.findUnique({ where: { id: schoolId } });
       if (!school) {
-        return res.status(404).json({ message: 'School not found' });
+        throw new NotFoundError('School');
       }
       erpId = await generateNextErpId(prisma, schoolId, school.code);
     }
@@ -68,14 +65,11 @@ const createUser = async (req, res) => {
 
     res.status(201).json({ message: 'User created successfully', user });
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ message: 'ERP ID must be unique within the school' });
-    }
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const getUsers = async (req, res) => {
+const getUsers = async (req, res, next) => {
   try {
     const { role, schoolId: querySchoolId } = req.query;
     let schoolId = req.user.schoolId;
@@ -104,12 +98,11 @@ const getUsers = async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
     let { name, erpId, password, role, profileData, contactDetails, isPrimary } = req.body;
@@ -139,7 +132,7 @@ const updateUser = async (req, res) => {
             prisma.user.update({ where: { id: userId }, data: { isPrimary: true } })
           ]);
         } else {
-          return res.status(403).json({ message: 'Only the current primary Super Admin can transfer primary status' });
+          throw new ForbiddenError('Only the current primary Super Admin can transfer primary status');
         }
       } else if (req.user.role === 'ADMIN') {
         const currentPrimary = await prisma.user.findUnique({ where: { id: req.user.userId } });
@@ -149,7 +142,7 @@ const updateUser = async (req, res) => {
             prisma.user.update({ where: { id: userId }, data: { isPrimary: true } })
           ]);
         } else {
-          return res.status(403).json({ message: 'Only the current primary Admin can transfer primary status' });
+          throw new ForbiddenError('Only the current primary Admin can transfer primary status');
         }
       }
     }
@@ -189,24 +182,21 @@ const updateUser = async (req, res) => {
     
     res.json(user);
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ message: 'This ERP ID is already taken.' });
-    }
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const deleteUser = async (req, res) => {
+const deleteUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
     const targetUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!targetUser) {
-      return res.status(404).json({ message: 'User not found' });
+      throw new NotFoundError('User');
     }
     
     if (targetUser.isPrimary) {
-      return res.status(403).json({ message: 'The primary Super Admin account cannot be deleted' });
+      throw new ForbiddenError('The primary Super Admin account cannot be deleted');
     }
 
     // Use a transaction to clean up profiles first, since they hold strict FKs to User.
@@ -224,14 +214,11 @@ const deleteUser = async (req, res) => {
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    if (error.code === 'P2003') {
-      return res.status(400).json({ message: 'Cannot delete user because they have associated records (e.g. attendance, fees).' });
-    }
-    res.status(400).json({ message: error.message });
+    next(error);
   }
 };
 
-const getUser = async (req, res) => {
+const getUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
     const user = await prisma.user.findUnique({
@@ -249,12 +236,12 @@ const getUser = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      throw new NotFoundError('User');
     }
 
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

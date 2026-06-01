@@ -14,36 +14,33 @@ const handleImportResponse = (res, result, type) => {
   });
 };
 
-const uploadStudents = async (req, res) => {
+const uploadStudents = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
     const result = await importStudents(req.user.schoolId, req.file.buffer);
     return handleImportResponse(res, result, 'students');
   } catch (error) {
-    console.error('Import Students Error:', error);
-    res.status(500).json({ message: 'An unexpected server error occurred during import' });
+    next(error);
   }
 };
 
-const uploadTeachers = async (req, res) => {
+const uploadTeachers = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
     const result = await importTeachers(req.user.schoolId, req.file.buffer);
     return handleImportResponse(res, result, 'teachers');
   } catch (error) {
-    console.error('Import Teachers Error:', error);
-    res.status(500).json({ message: 'An unexpected server error occurred during import' });
+    next(error);
   }
 };
 
-const uploadFees = async (req, res) => {
+const uploadFees = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
     const result = await importFees(req.user.schoolId, req.file.buffer);
     return handleImportResponse(res, result, 'fees');
   } catch (error) {
-    console.error('Import Fees Error:', error);
-    res.status(500).json({ message: 'An unexpected server error occurred during import' });
+    next(error);
   }
 };
 

@@ -1,6 +1,6 @@
 const prisma = require('../utils/db');
 
-const getDashboardStats = async (req, res) => {
+const getDashboardStats = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
     const role = req.user.role;
@@ -31,6 +31,7 @@ const getDashboardStats = async (req, res) => {
       if (profile) {
         pendingAssignments = await prisma.assignment.count({
           where: {
+            schoolId, // Fix 5: Enforce schoolId
             sectionId: profile.sectionId,
             dueDate: { gte: new Date() },
             submissions: { none: { studentId: req.user.userId } }
@@ -46,8 +47,7 @@ const getDashboardStats = async (req, res) => {
 
     res.json({});
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
+    next(error);
   }
 };
 
