@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const createAssignmentSchema = z.object({
   title: z.string({ required_error: 'Title is required' }).min(1, 'Title cannot be empty'),
@@ -8,4 +8,4 @@ const createAssignmentSchema = z.object({
   sectionId: z.string().uuid('Invalid section ID format').optional().nullable()
 });
 
-module.exports = { createAssignmentSchema };
+export { createAssignmentSchema  };

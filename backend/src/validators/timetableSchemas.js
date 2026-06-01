@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
@@ -28,4 +28,4 @@ const createTimeTableEntrySchema = z.object({
   dayOfWeek: z.enum(VALID_DAYS, { required_error: 'Day of week is required', invalid_type_error: `Day must be one of: ${VALID_DAYS.join(', ')}` })
 });
 
-module.exports = { createSubjectSchema, createPeriodSchema, updatePeriodSchema, createTimeTableEntrySchema };
+export { createSubjectSchema, createPeriodSchema, updatePeriodSchema, createTimeTableEntrySchema  };

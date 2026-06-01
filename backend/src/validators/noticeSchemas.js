@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_ROLES = ['STUDENT', 'TEACHER', 'ADMIN', 'ACCOUNTS', 'SUPER_ADMIN'];
 
@@ -8,4 +8,4 @@ const createNoticeSchema = z.object({
   targetRoles: z.array(z.enum(VALID_ROLES)).optional().default([])
 });
 
-module.exports = { createNoticeSchema };
+export { createNoticeSchema  };

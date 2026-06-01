@@ -45,11 +45,10 @@ class UnauthorizedError extends AppError {
   }
 }
 
-module.exports = {
-  AppError,
+export { AppError,
   ValidationError,
   NotFoundError,
   ForbiddenError,
   ConflictError,
   UnauthorizedError
-};
+ };

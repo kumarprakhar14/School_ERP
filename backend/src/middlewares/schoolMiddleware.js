@@ -1,4 +1,4 @@
-const prisma = require('../utils/db');
+import prisma from '../utils/db.js';
 
 const schoolValidityMiddleware = async (req, res, next) => {
   if (req.user.role === 'SUPER_ADMIN') {
@@ -30,6 +30,5 @@ const schoolValidityMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  schoolValidityMiddleware
-};
+export { schoolValidityMiddleware
+ };

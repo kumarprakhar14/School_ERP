@@ -1,8 +1,21 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const cronJob = require('./utils/cron.js')
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import cronJob from './utils/cron.js';
+
+import authRoutes from './routes/auth.routes.js';
+import schoolRoutes from './routes/school.routes.js';
+import userRoutes from './routes/user.routes.js';
+import classRoutes from './routes/class.routes.js';
+import attendanceRoutes from './routes/attendance.routes.js';
+import noticeRoutes from './routes/notice.routes.js';
+import assignmentRoutes from './routes/assignment.routes.js';
+import feeRoutes from './routes/fee.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import timetableRoutes from './routes/timetable.routes.js';
+import importRoutes from './routes/import.routes.js';
+import bugRoutes from './routes/bug.routes.js';
 
 const app = express();
 
@@ -21,18 +34,18 @@ app.get('/api/health', (req, res) => {
 });
 
 // Import and use routes here
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/schools', require('./routes/school.routes'));
-app.use('/api/users', require('./routes/user.routes'));
-app.use('/api/classes', require('./routes/class.routes'));
-app.use('/api/attendance', require('./routes/attendance.routes'));
-app.use('/api/notices', require('./routes/notice.routes'));
-app.use('/api/assignments', require('./routes/assignment.routes'));
-app.use('/api/fees', require('./routes/fee.routes'));
-app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/timetable', require('./routes/timetable.routes'));
-app.use('/api/import', require('./routes/import.routes'));
-app.use('/api/bugs', require('./routes/bug.routes'));
+app.use('/api/auth', authRoutes);
+app.use('/api/schools', schoolRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/notices', noticeRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/fees', feeRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/import', importRoutes);
+app.use('/api/bugs', bugRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

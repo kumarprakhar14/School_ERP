@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { markAttendance, getAttendance, lockAttendance, unlockAttendance, saveAttendance } = require('../controllers/attendanceController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { validate } = require('../validators/validate');
-const { markAttendanceSchema, attendanceStateSchema } = require('../validators/attendanceSchemas');
+import { markAttendance, getAttendance, lockAttendance, unlockAttendance, saveAttendance } from '../controllers/attendanceController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { markAttendanceSchema, attendanceStateSchema } from '../validators/attendanceSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
@@ -15,4 +15,4 @@ router.put('/lock', roleMiddleware(['ADMIN', 'TEACHER']), validate({ body: atten
 router.put('/unlock', roleMiddleware(['ADMIN', 'TEACHER']), validate({ body: attendanceStateSchema }), unlockAttendance);
 router.put('/save', roleMiddleware(['ADMIN', 'TEACHER']), validate({ body: attendanceStateSchema }), saveAttendance);
 
-module.exports = router;
+export default router;

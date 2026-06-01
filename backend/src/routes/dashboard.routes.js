@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { getDashboardStats } = require('../controllers/dashboardController');
-const { authMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
+import { getDashboardStats } from '../controllers/dashboardController.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
 
 router.get('/stats', getDashboardStats);
 
-module.exports = router;
+export default router;

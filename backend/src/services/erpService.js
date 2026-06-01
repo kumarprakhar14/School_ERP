@@ -55,7 +55,6 @@ const generateBatchErpIds = async (prisma, schoolId, schoolCode, count) => {
   return erpIds;
 };
 
-module.exports = {
-  generateNextErpId,
+export { generateNextErpId,
   generateBatchErpIds
-};
+ };

@@ -1,6 +1,6 @@
-const cron = require("cron");
-const https = require("https");
-const prisma = require('./db'); // Assuming db is here
+import cron from 'cron';
+import https from 'https';
+import prisma from './db.js'; // Assuming db is here
 
 const pingJob = new cron.CronJob("*/14 * * * *", function () {
     https
@@ -31,9 +31,11 @@ const attendanceAutoSaveJob = new cron.CronJob("0 0 * * *", async function () {
     }
 });
 
-module.exports = {
+const cronJob = {
     start: () => {
         pingJob.start();
         attendanceAutoSaveJob.start();
     }
 };
+
+export default cronJob;

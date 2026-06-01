@@ -1,7 +1,7 @@
-const prisma = require('../utils/db');
-const bcrypt = require('bcryptjs');
-const { generateToken } = require('../utils/jwt');
-const { NotFoundError, UnauthorizedError } = require('../errors');
+import prisma from '../utils/db.js';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../utils/jwt.js';
+import { NotFoundError, UnauthorizedError } from '../errors/index.js';
 
 const USER_SELECT_FIELDS = {
   id: true,
@@ -102,7 +102,6 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  login,
+export { login,
   getMe,
-};
+ };

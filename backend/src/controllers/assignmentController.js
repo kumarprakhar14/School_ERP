@@ -1,5 +1,5 @@
-const prisma = require('../utils/db');
-const { AppError, ForbiddenError } = require('../errors');
+import prisma from '../utils/db.js';
+import { AppError, ForbiddenError } from '../errors/index.js';
 
 const createAssignment = async (req, res, next) => {
   try {
@@ -153,9 +153,8 @@ const getAssignmentSubmissions = async (req, res, next) => {
   }
 };
 
-module.exports = { 
-  createAssignment, 
+export { createAssignment, 
   getAssignments, 
   submitAssignment,
   getAssignmentSubmissions
-};
+ };

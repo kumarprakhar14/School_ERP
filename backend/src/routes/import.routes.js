@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const multer = require('multer');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware.js');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware.js');
-const importController = require('../controllers/importController.js');
+import multer from 'multer';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { getTemplate, uploadStudents, uploadTeachers, uploadFees } from '../controllers/importController.js';
 
 // Setup multer to store file in memory
 const upload = multer({ storage: multer.memoryStorage() });
@@ -13,10 +13,10 @@ router.use(authMiddleware);
 router.use(schoolValidityMiddleware); // Fix: was missing — expired schools could import data
 router.use(roleMiddleware(['ADMIN', 'SUPER_ADMIN']));
 
-router.get('/template/:type', importController.getTemplate);
+router.get('/template/:type', getTemplate);
 
-router.post('/students', upload.single('file'), importController.uploadStudents);
-router.post('/teachers', upload.single('file'), importController.uploadTeachers);
-router.post('/fees', upload.single('file'), importController.uploadFees);
+router.post('/students', upload.single('file'), uploadStudents);
+router.post('/teachers', upload.single('file'), uploadTeachers);
+router.post('/fees', upload.single('file'), uploadFees);
 
-module.exports = router;
+export default router;

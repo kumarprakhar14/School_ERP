@@ -1,9 +1,9 @@
-const express = require('express');
-const { login, getMe } = require('../controllers/authController');
-const { authMiddleware } = require('../middlewares/authMiddleware');
-const { validate } = require('../validators/validate');
-const { loginSchema } = require('../validators/authSchemas');
-const rateLimit = require('express-rate-limit');
+import express from 'express';
+import { login, getMe } from '../controllers/authController.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { loginSchema } from '../validators/authSchemas.js';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
@@ -19,4 +19,4 @@ const loginLimiter = rateLimit({
 router.post('/login', loginLimiter, validate({ body: loginSchema }), login);
 router.get('/me', authMiddleware, getMe);
 
-module.exports = router;
+export default router;

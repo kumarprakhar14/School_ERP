@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_BUG_STATUSES = ['OPEN', 'IN_PROGRESS', 'CLOSED'];
 
@@ -11,4 +11,4 @@ const updateBugStatusSchema = z.object({
   status: z.enum(VALID_BUG_STATUSES, { required_error: 'Status is required', invalid_type_error: `Status must be one of: ${VALID_BUG_STATUSES.join(', ')}` })
 });
 
-module.exports = { submitBugSchema, updateBugStatusSchema };
+export { submitBugSchema, updateBugStatusSchema  };

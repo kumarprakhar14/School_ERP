@@ -1,5 +1,5 @@
-const prisma = require('../utils/db');
-const { ForbiddenError, NotFoundError } = require('../errors');
+import prisma from '../utils/db.js';
+import { ForbiddenError, NotFoundError } from '../errors/index.js';
 
 const createFeeRecord = async (req, res, next) => {
   try {
@@ -167,4 +167,4 @@ const getFeeSummary = async (req, res, next) => {
   }
 };
 
-module.exports = { createFeeRecord, getFees, markFeePaid, getFeeSummary };
+export { createFeeRecord, getFees, markFeePaid, getFeeSummary  };

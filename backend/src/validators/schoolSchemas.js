@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const createSchoolSchema = z.object({
   name: z.string({ required_error: 'School name is required' }).min(1, 'School name cannot be empty'),
@@ -24,4 +24,4 @@ const updateSchoolSettingsSchema = z.object({
   logoUrl: z.string().url('Invalid logo URL').optional().nullable()
 });
 
-module.exports = { createSchoolSchema, updateSchoolSchema, updateSchoolSettingsSchema };
+export { createSchoolSchema, updateSchoolSchema, updateSchoolSettingsSchema  };

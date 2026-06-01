@@ -1,4 +1,4 @@
-const { ZodError } = require('zod');
+import { ZodError } from 'zod';
 
 /**
  * Express middleware factory that validates request data against a Zod schema.
@@ -41,4 +41,4 @@ const validate = (schemas) => {
   };
 };
 
-module.exports = { validate };
+export { validate  };

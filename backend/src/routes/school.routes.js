@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { getSchools, getSchoolById, createSchool, updateSchool, deleteSchool, getSchoolSettings, updateSchoolSettings } = require('../controllers/schoolController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { validate } = require('../validators/validate');
-const { createSchoolSchema, updateSchoolSchema, updateSchoolSettingsSchema } = require('../validators/schoolSchemas');
+import { getSchools, getSchoolById, createSchool, updateSchool, deleteSchool, getSchoolSettings, updateSchoolSettings } from '../controllers/schoolController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { createSchoolSchema, updateSchoolSchema, updateSchoolSettingsSchema } from '../validators/schoolSchemas.js';
 
 router.use(authMiddleware);
 
@@ -19,4 +19,4 @@ router.post('/', roleMiddleware(['SUPER_ADMIN']), validate({ body: createSchoolS
 router.put('/:id', roleMiddleware(['SUPER_ADMIN']), validate({ body: updateSchoolSchema }), updateSchool);
 router.delete('/:id', roleMiddleware(['SUPER_ADMIN']), deleteSchool);
 
-module.exports = router;
+export default router;

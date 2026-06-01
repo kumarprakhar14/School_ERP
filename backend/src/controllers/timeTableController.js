@@ -1,5 +1,5 @@
-const prisma = require('../utils/db');
-const { ForbiddenError } = require('../errors');
+import prisma from '../utils/db.js';
+import { ForbiddenError } from '../errors/index.js';
 
 // --- SUBJECTS ---
 const getSubjects = async (req, res, next) => {
@@ -226,8 +226,7 @@ const deleteTimeTableEntry = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  getSubjects, createSubject, deleteSubject,
+export { getSubjects, createSubject, deleteSubject,
   getPeriods, createPeriod, updatePeriod, deletePeriod,
   getTimeTable, createTimeTableEntry, deleteTimeTableEntry
-};
+ };

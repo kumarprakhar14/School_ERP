@@ -1,5 +1,5 @@
-const path = require('path');
-const { importStudents, importTeachers, importFees } = require('../services/importService');
+import path from 'path';
+import { importStudents, importTeachers, importFees } from '../services/importService.js';
 
 const handleImportResponse = (res, result, type) => {
   if (!result.success) {
@@ -67,9 +67,8 @@ const getTemplate = (req, res) => {
   res.send(csvContent);
 };
 
-module.exports = {
-  uploadStudents,
+export { uploadStudents,
   uploadTeachers,
   uploadFees,
   getTemplate
-};
+ };

@@ -1,16 +1,16 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { 
+import { 
   createAssignment, 
   getAssignments, 
   submitAssignment,
   getAssignmentSubmissions
-} = require('../controllers/assignmentController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { upload } = require('../utils/cloudinary');
-const { validate } = require('../validators/validate');
-const { createAssignmentSchema } = require('../validators/assignmentSchemas');
+} from '../controllers/assignmentController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { upload } from '../utils/cloudinary.js';
+import { validate } from '../validators/validate.js';
+import { createAssignmentSchema } from '../validators/assignmentSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
@@ -21,4 +21,4 @@ router.get('/:assignmentId/submissions', roleMiddleware(['TEACHER', 'ADMIN']), g
 router.post('/', roleMiddleware(['TEACHER', 'ADMIN']), upload.single('file'), validate({ body: createAssignmentSchema }), createAssignment);
 router.post('/:assignmentId/submit', roleMiddleware(['STUDENT']), upload.single('file'), submitAssignment);
 
-module.exports = router;
+export default router;

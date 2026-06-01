@@ -1,5 +1,5 @@
-const prisma = require('../utils/db');
-const { AppError, ForbiddenError } = require('../errors');
+import prisma from '../utils/db.js';
+import { AppError, ForbiddenError } from '../errors/index.js';
 
 // Fix 5: Helper to verify a classId belongs to the user's school
 const verifyClassBelongsToSchool = async (classId, schoolId) => {
@@ -165,4 +165,4 @@ const lockAttendance = (req, res, next) => updateAttendanceState(req, res, next,
 const unlockAttendance = (req, res, next) => updateAttendanceState(req, res, next, { isLocked: false, lockedAt: null });
 const saveAttendance = (req, res, next) => updateAttendanceState(req, res, next, { isSaved: true });
 
-module.exports = { markAttendance, getAttendance, lockAttendance, unlockAttendance, saveAttendance };
+export { markAttendance, getAttendance, lockAttendance, unlockAttendance, saveAttendance  };

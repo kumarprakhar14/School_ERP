@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_STATUSES = ['PRESENT', 'ABSENT', 'LEAVE'];
 
@@ -20,4 +20,4 @@ const attendanceStateSchema = z.object({
   date: z.string({ required_error: 'Date is required' })
 });
 
-module.exports = { markAttendanceSchema, attendanceStateSchema };
+export { markAttendanceSchema, attendanceStateSchema  };

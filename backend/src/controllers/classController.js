@@ -1,5 +1,5 @@
-const prisma = require('../utils/db');
-const { ForbiddenError } = require('../errors');
+import prisma from '../utils/db.js';
+import { ForbiddenError } from '../errors/index.js';
 
 // Get all classes and sections for the school
 const getClasses = async (req, res, next) => {
@@ -192,8 +192,7 @@ const getClassStudents = async (req, res, next) => {
   }
 };
 
-module.exports = { 
-  getClasses, 
+export { getClasses, 
   createClass, 
   createSection, 
   deleteSection, 
@@ -201,4 +200,4 @@ module.exports = {
   updateSection,
   getSectionStudents,
   getClassStudents
-};
+ };

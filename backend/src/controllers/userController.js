@@ -1,7 +1,7 @@
-const prisma = require('../utils/db');
-const bcrypt = require('bcryptjs');
-const { generateNextErpId } = require('../services/erpService');
-const { NotFoundError, ForbiddenError, AppError } = require('../errors');
+import prisma from '../utils/db.js';
+import bcrypt from 'bcryptjs';
+import { generateNextErpId } from '../services/erpService.js';
+import { NotFoundError, ForbiddenError, AppError } from '../errors/index.js';
 
 const createUser = async (req, res, next) => {
   try {
@@ -263,4 +263,4 @@ const getUser = async (req, res, next) => {
   }
 };
 
-module.exports = { createUser, getUsers, getUser, updateUser, deleteUser };
+export { createUser, getUsers, getUser, updateUser, deleteUser  };

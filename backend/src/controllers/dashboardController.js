@@ -1,4 +1,4 @@
-const prisma = require('../utils/db');
+import prisma from '../utils/db.js';
 
 const getDashboardStats = async (req, res, next) => {
   try {
@@ -55,4 +55,4 @@ const getDashboardStats = async (req, res, next) => {
   }
 };
 
-module.exports = { getDashboardStats };
+export { getDashboardStats  };

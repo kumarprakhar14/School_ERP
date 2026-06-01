@@ -1,14 +1,14 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const {
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import {
   getSubjects, createSubject, deleteSubject,
   getPeriods, createPeriod, updatePeriod, deletePeriod,
   getTimeTable, createTimeTableEntry, deleteTimeTableEntry
-} = require('../controllers/timeTableController');
-const { validate } = require('../validators/validate');
-const { createSubjectSchema, createPeriodSchema, updatePeriodSchema, createTimeTableEntrySchema } = require('../validators/timetableSchemas');
+} from '../controllers/timeTableController.js';
+import { validate } from '../validators/validate.js';
+import { createSubjectSchema, createPeriodSchema, updatePeriodSchema, createTimeTableEntrySchema } from '../validators/timetableSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
@@ -30,4 +30,4 @@ router.delete('/periods/:id', deletePeriod);
 router.post('/', validate({ body: createTimeTableEntrySchema }), createTimeTableEntry);
 router.delete('/:id', deleteTimeTableEntry);
 
-module.exports = router;
+export default router;

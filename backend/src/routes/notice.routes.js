@@ -1,10 +1,10 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { createNotice, getNotices } = require('../controllers/noticeController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { validate } = require('../validators/validate');
-const { createNoticeSchema } = require('../validators/noticeSchemas');
+import { createNotice, getNotices } from '../controllers/noticeController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { createNoticeSchema } from '../validators/noticeSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
@@ -12,4 +12,4 @@ router.use(schoolValidityMiddleware);
 router.get('/', getNotices);
 router.post('/', roleMiddleware(['ADMIN', 'TEACHER']), validate({ body: createNoticeSchema }), createNotice);
 
-module.exports = router;
+export default router;

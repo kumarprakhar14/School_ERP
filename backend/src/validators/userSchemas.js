@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_ROLES = ['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN', 'SUPER_ADMIN'];
 
@@ -28,4 +28,4 @@ const updateUserSchema = z.object({
   profileData: z.union([z.string(), profileDataSchema]).optional()
 });
 
-module.exports = { createUserSchema, updateUserSchema };
+export { createUserSchema, updateUserSchema  };

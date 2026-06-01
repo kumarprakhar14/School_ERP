@@ -1,22 +1,22 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { upload } = require('../utils/cloudinary');
-const bugController = require('../controllers/bugController');
-const { validate } = require('../validators/validate');
-const { submitBugSchema, updateBugStatusSchema } = require('../validators/bugSchemas');
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { upload } from '../utils/cloudinary.js';
+import { submitBug, getAllBugs, updateBugStatus } from '../controllers/bugController.js';
+import { validate } from '../validators/validate.js';
+import { submitBugSchema, updateBugStatusSchema } from '../validators/bugSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
 
 // Submit a bug report (Authenticated users)
 // Note: validation runs after multer parses multipart form data
-router.post('/', upload.array('screenshots', 3), validate({ body: submitBugSchema }), bugController.submitBug);
+router.post('/', upload.array('screenshots', 3), validate({ body: submitBugSchema }), submitBug);
 
 // Super Admin routes
 router.use(roleMiddleware(['SUPER_ADMIN']));
-router.get('/', bugController.getAllBugs);
-router.patch('/:id/status', validate({ body: updateBugStatusSchema }), bugController.updateBugStatus);
+router.get('/', getAllBugs);
+router.patch('/:id/status', validate({ body: updateBugStatusSchema }), updateBugStatus);
 
-module.exports = router;
+export default router;

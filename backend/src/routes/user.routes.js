@@ -1,15 +1,15 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { createUser, getUsers, getUser, updateUser, deleteUser } = require('../controllers/userController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { validate } = require('../validators/validate');
-const { createUserSchema, updateUserSchema } = require('../validators/userSchemas');
+import { createUser, getUsers, getUser, updateUser, deleteUser } from '../controllers/userController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { createUserSchema, updateUserSchema } from '../validators/userSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
 
-const { upload } = require('../utils/cloudinary');
+import { upload } from '../utils/cloudinary.js';
 
 router.get('/', roleMiddleware(['ADMIN', 'ACCOUNTS', 'TEACHER', 'SUPER_ADMIN']), getUsers);
 router.get('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), getUser);
@@ -18,4 +18,4 @@ router.post('/', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), validate({ body: crea
 router.put('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), upload.single('profilePic'), validate({ body: updateUserSchema }), updateUser);
 router.delete('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), deleteUser);
 
-module.exports = router;
+export default router;

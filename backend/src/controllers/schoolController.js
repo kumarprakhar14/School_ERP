@@ -1,6 +1,6 @@
-const prisma = require('../utils/db');
-const bcrypt = require('bcryptjs');
-const { NotFoundError } = require('../errors');
+import prisma from '../utils/db.js';
+import bcrypt from 'bcryptjs';
+import { NotFoundError } from '../errors/index.js';
 
 // SUPER ADMIN: Get all schools
 const getSchools = async (req, res, next) => {
@@ -176,12 +176,11 @@ const deleteSchool = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  getSchools,
+export { getSchools,
   getSchoolById,
   createSchool,
   updateSchool,
   deleteSchool,
   getSchoolSettings,
   updateSchoolSettings
-};
+ };

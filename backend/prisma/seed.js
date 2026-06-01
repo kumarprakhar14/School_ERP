@@ -1,5 +1,5 @@
-const prisma = require('../src/utils/db.js');
-const bcrypt = require('bcryptjs');
+import prisma from '../src/utils/db.js';
+import bcrypt from 'bcryptjs';
 
 async function main() {
   console.log('Starting seed...');

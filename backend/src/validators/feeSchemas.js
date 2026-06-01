@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 const VALID_STATUSES = ['PENDING', 'PAID', 'OVERDUE'];
 
@@ -27,4 +27,4 @@ const markFeePaidSchema = z.object({
   referenceNo: z.string().optional()
 });
 
-module.exports = { createFeeSchema, markFeePaidSchema };
+export { createFeeSchema, markFeePaidSchema  };

@@ -1,4 +1,4 @@
-const prisma = require('../utils/db');
+import prisma from '../utils/db.js';
 
 const submitBug = async (req, res, next) => {
   try {
@@ -80,8 +80,7 @@ const updateBugStatus = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  submitBug,
+export { submitBug,
   getAllBugs,
   updateBugStatus
-};
+ };

@@ -1,7 +1,7 @@
-const xlsx = require('xlsx');
-const prisma = require('../utils/db');
-const { generateBatchErpIds } = require('./erpService');
-const bcrypt = require('bcryptjs');
+import xlsx from 'xlsx';
+import prisma from '../utils/db.js';
+import { generateBatchErpIds } from './erpService.js';
+import bcrypt from 'bcryptjs';
 
 const parseExcel = (buffer) => {
   const workbook = xlsx.read(buffer, { type: 'buffer' });
@@ -369,8 +369,7 @@ const importFees = async (schoolId, fileBuffer) => {
   }
 };
 
-module.exports = {
-  importStudents,
+export { importStudents,
   importTeachers,
   importFees
-};
+ };

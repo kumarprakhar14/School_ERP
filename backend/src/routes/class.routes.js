@@ -1,6 +1,6 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { 
+import { 
   getClasses, 
   createClass, 
   createSection, 
@@ -9,11 +9,11 @@ const {
   updateSection,
   getSectionStudents,
   getClassStudents
-} = require('../controllers/classController');
-const { authMiddleware, roleMiddleware } = require('../middlewares/authMiddleware');
-const { schoolValidityMiddleware } = require('../middlewares/schoolMiddleware');
-const { validate } = require('../validators/validate');
-const { createClassSchema, createSectionSchema, updateClassSchema, updateSectionSchema } = require('../validators/classSchemas');
+} from '../controllers/classController.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
+import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
+import { validate } from '../validators/validate.js';
+import { createClassSchema, createSectionSchema, updateClassSchema, updateSectionSchema } from '../validators/classSchemas.js';
 
 router.use(authMiddleware);
 router.use(schoolValidityMiddleware);
@@ -31,4 +31,4 @@ router.put('/:classId', validate({ body: updateClassSchema }), updateClass);
 router.put('/sections/:sectionId', validate({ body: updateSectionSchema }), updateSection);
 router.delete('/sections/:sectionId', deleteSection);
 
-module.exports = router;
+export default router;
