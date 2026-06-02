@@ -178,8 +178,8 @@ export default function Fees() {
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{summary.student.erpId}</p>
                           </td>
                           <td className="p-4 text-sm text-gray-600">{summary.student.classDetails}</td>
-                          <td className="p-4 font-mono font-medium text-gray-600">${summary.totalAmount.toFixed(2)}</td>
-                          <td className="p-4 font-mono font-bold text-gray-900">${summary.dueAmount.toFixed(2)}</td>
+                          <td className="p-4 font-mono font-medium text-gray-600">₹{summary.totalAmount.toFixed(2)}</td>
+                          <td className="p-4 font-mono font-bold text-gray-900">₹{summary.dueAmount.toFixed(2)}</td>
                           <td className="p-4 text-sm text-gray-600">
                             {summary.dueDate ? new Date(summary.dueDate).toLocaleDateString() : '-'}
                           </td>

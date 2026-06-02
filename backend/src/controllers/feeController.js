@@ -5,6 +5,19 @@ const createFeeRecord = async (req, res, next) => {
   try {
     const { studentId, amount, month, year, remarks, paymentMode, referenceNo, status } = req.body;
     const schoolId = req.user.schoolId;
+
+    // Check whether a student belongs to the same school as the user
+    // Otherwise, a malicious admin from school A can create record for student of school B
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+        schoolId,
+        role: 'STUDENT'
+      }
+    });
+    if (!student) {
+      throw new NotFoundError('Student not found');
+    }
     
     const feeRecord = await prisma.feeRecord.create({
       data: {
