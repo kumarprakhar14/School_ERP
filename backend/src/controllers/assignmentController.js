@@ -140,7 +140,7 @@ const getAssignmentSubmissions = async (req, res, next) => {
           select: { name: true, erpId: true }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { submittedAt: 'desc' }
     });
 
     res.json(submissions);

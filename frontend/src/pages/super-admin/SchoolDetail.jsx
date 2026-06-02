@@ -269,11 +269,14 @@ export default function SchoolDetail() {
                   <h1 className="text-2xl font-bold text-gray-900 leading-tight mr-3">{school.name}</h1>
                   {school.isArchived ? (
                     <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</span>
-                  ) : school.status === 'INACTIVE' ? (
+                  ) : new Date(school.validUntil) < new Date() ? (
+                      <span className='px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-100'>Expired</span>
+                    ) : (
+                    school.status === 'INACTIVE' ? (
                     <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</span>
                   ) : (
                     <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</span>
-                  )}
+                  ))}
                 </div>
                 <p className="text-sm text-gray-500 flex items-center mt-1 font-medium">
                   School Code: <span className="ml-1 text-gray-800 bg-gray-100 px-2 py-0.5 rounded font-mono">{school.code}</span>

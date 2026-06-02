@@ -69,7 +69,15 @@ export default function SuperAdminDashboard() {
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                       : 'bg-red-50 text-red-700 border border-red-100'
                   }`}>
-                    {new Date(school.validUntil) > new Date() ? 'Active' : 'Expired'}
+                    {school.isArchived ? (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</span>
+                    ) : new Date(school.validUntil) < new Date() ? (
+                      <span className='px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-100'>Expired</span>
+                    ) : school.status === 'INACTIVE' ? (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</span>
+                    )}
                   </span>
                 </div>
               </div>

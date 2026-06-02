@@ -12,7 +12,7 @@ const USER_SELECT_FIELDS = {
   profilePicUrl: true,
   contactDetails: true,
   isPrimary: true,
-  school: { select: { settings: true, name: true, code: true, status: true, isArchived: true } },
+  school: { select: { settings: true, name: true, code: true, status: true, isArchived: true, validUntil: true } },
   studentProfile: { include: { section: { include: { class: true } } } },
   teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
 };
@@ -52,6 +52,11 @@ const login = async (req, res, next) => {
       }
       if (user.school.status === 'INACTIVE') {
         throw new UnauthorizedError('School account is inactive. Please contact administration.');
+      }
+      if (user.school.validUntil && new Date(user.school.validUntil) < new Date()) {
+        if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+          throw new UnauthorizedError('School subscription has expired. Please contact administration.');
+        }
       }
     }
 

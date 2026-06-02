@@ -20,7 +20,11 @@ const schoolValidityMiddleware = async (req, res, next) => {
     }
 
     if (new Date(school.validUntil) < new Date()) {
-      return res.status(403).json({ message: 'School subscription has expired. Please contact administration.' });
+      if (req.user.role === 'ADMIN') {
+        return res.status(403).json({ message: 'School subscription has expired. Please contact administration.', code: 'SCHOOL_EXPIRED_ADMIN' });
+      } else {
+        return res.status(401).json({ message: 'School subscription has expired. You have been logged out.', code: 'SCHOOL_EXPIRED' });
+      }
     }
 
     next();
