@@ -61,7 +61,7 @@ const getAssignments = async (req, res, next) => {
           ? { submissions: { where: { studentId: req.user.userId } } }
           : { _count: { select: { submissions: true } } })
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { submittedAt: 'desc' }
     };
 
     if (page && limit) {

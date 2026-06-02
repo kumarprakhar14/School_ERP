@@ -151,10 +151,15 @@ const updateAttendanceState = async (req, res, next, stateUpdate) => {
     if (sectionId) whereClause.sectionId = sectionId;
     else whereClause.sectionId = null;
 
-    await prisma.attendance.updateMany({
+    const result = await prisma.attendance.updateMany({
       where: whereClause,
       data: stateUpdate
     });
+
+    if (result.count === 0) {
+      throw new AppError('No attendance records found to update. Please save attendance first.', 400);
+    }
+
     res.json({ message: 'Attendance state updated successfully' });
   } catch (error) {
     next(error);

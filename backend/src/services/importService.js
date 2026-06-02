@@ -358,6 +358,9 @@ const importFees = async (schoolId, fileBuffer) => {
           }
         });
       }
+    }, {
+      maxWait: 10000,
+      timeout: 120000 // 120 seconds
     });
     return { success: true, count: validRows.length };
   } catch (error) {

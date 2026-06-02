@@ -19,7 +19,7 @@ const USER_SELECT_FIELDS = {
 
 const login = async (req, res, next) => {
   try {
-    const { erpId, password, schoolId } = req.body;
+    const { erpId, password } = req.body;
 
     const selectFields = {
       ...USER_SELECT_FIELDS,
@@ -29,17 +29,10 @@ const login = async (req, res, next) => {
     };
 
     let user;
-    if (schoolId) {
-      user = await prisma.user.findUnique({
-        where: { schoolId_erpId: { schoolId, erpId } },
-        select: selectFields
-      });
-    } else {
-      user = await prisma.user.findFirst({
-        where: { erpId },
-        select: selectFields
-      });
-    }
+    user = await prisma.user.findFirst({
+      where: { erpId },
+      select: selectFields
+    });
 
     if (!user || !user.isActive || user.isArchived) {
       throw new UnauthorizedError('Invalid credentials or inactive account');

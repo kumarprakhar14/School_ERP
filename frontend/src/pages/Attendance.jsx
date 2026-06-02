@@ -127,7 +127,7 @@ export default function Attendance() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (shouldLock = false) => {
     setSaving(true);
     try {
       const records = Object.keys(attendanceRecords).map(studentId => ({
@@ -138,14 +138,19 @@ export default function Attendance() {
       const payload = {
         classId: selectedClassId,
         date,
-        attendances: Object.values(records),
+        records: Object.values(records),
         isLocked: false
       };
       if (selectedSectionId) payload.sectionId = selectedSectionId;
 
-      await api.post('/attendance/batch', payload);
-      toast.success('Attendance saved temporarily! Remember to lock it.');
-      handleFetchStudents();
+      await api.post('/attendance', payload);
+      
+      if (shouldLock) {
+        await handleStateUpdate('lock', 'Attendance Locked!');
+      } else {
+        toast.success('Attendance saved temporarily! Remember to lock it.');
+        handleFetchStudents();
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save attendance');
     } finally {
@@ -353,7 +358,7 @@ export default function Attendance() {
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex justify-end space-x-3">
             {!isLocked && !isSaved && (
               <button 
-                onClick={handleSave}
+                onClick={() => handleSave(false)}
                 disabled={saving || isLocked || isSaved}
                 className="px-6 py-2.5 bg-gray-600 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors disabled:opacity-70 shadow-sm"
               >
@@ -362,8 +367,9 @@ export default function Attendance() {
             )}
             {!isLocked && !isSaved && (
               <button 
-                onClick={() => handleStateUpdate('lock', 'Attendance Locked!')}
-                className="px-6 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/20"
+                onClick={() => handleSave(true)}
+                disabled={saving || isLocked || isSaved}
+                className="px-6 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/20 disabled:opacity-70"
               >
                 Lock Attendance
               </button>

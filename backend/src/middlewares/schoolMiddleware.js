@@ -30,5 +30,4 @@ const schoolValidityMiddleware = async (req, res, next) => {
   }
 };
 
-export { schoolValidityMiddleware
- };
+export { schoolValidityMiddleware };
