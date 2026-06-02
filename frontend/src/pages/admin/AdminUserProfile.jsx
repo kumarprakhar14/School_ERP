@@ -59,7 +59,7 @@ export default function AdminUserProfile() {
       
       if (res.data.role === 'TEACHER' && res.data.teacherProfile) {
         initialData.designation = res.data.teacherProfile.designation || '';
-        initialData.teacherSectionIds = res.data.teacherProfile.assignedSections?.map(s => s.id) || [];
+        initialData.teacherSectionIds = res.data.teacherProfile.teacherAssignments?.map(a => a.sectionId) || [];
       } else if (res.data.role === 'STUDENT' && res.data.studentProfile) {
         initialData.classId = res.data.studentProfile.section?.classId || '';
         initialData.sectionId = res.data.studentProfile.sectionId || '';
@@ -88,7 +88,6 @@ export default function AdminUserProfile() {
         profileData.designation = formData.designation;
         profileData.assignedSectionIds = formData.teacherSectionIds?.length > 0 ? formData.teacherSectionIds : undefined;
       } else if (formData.role === 'STUDENT') {
-        profileData.classId = formData.classId || undefined;
         profileData.sectionId = formData.sectionId || undefined;
       }
       
@@ -115,14 +114,13 @@ export default function AdminUserProfile() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleLifecycleAction = async (action) => {
     try {
-      await api.delete(`/users/${id}`);
-      toast.success('User deleted successfully');
-      navigate('/admin/users');
+      await api.patch(`/users/${id}/${action}`);
+      toast.success(`User ${action}d successfully`);
+      fetchUser();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete user');
-      setShowDeleteConfirm(false);
+      toast.error(error.response?.data?.message || `Failed to ${action} user`);
     }
   };
 
@@ -249,8 +247,21 @@ export default function AdminUserProfile() {
                 className="text-2xl sm:text-3xl font-bold text-gray-900 bg-white border border-blue-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 w-full mb-1"
               />
             ) : (
-              <div className="flex items-center group">
+              <div className="flex items-center group flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mr-3">{formData.name}</h1>
+                {user.role === 'ADMIN' && user.isPrimary && (
+                  <span className="mr-3 inline-flex items-center px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-bold">
+                    <Star className="w-3 h-3 mr-1 fill-current" />
+                    Primary
+                  </span>
+                )}
+                {user.isArchived ? (
+                  <span className="mr-2 px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</span>
+                ) : !user.isActive ? (
+                  <span className="mr-2 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Disabled</span>
+                ) : (
+                  <span className="mr-2 px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</span>
+                )}
                 <button 
                   onClick={() => setEditingField('name')}
                   className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
@@ -411,14 +422,47 @@ export default function AdminUserProfile() {
             </div>
           </div>
 
-          <div className="mt-12 flex justify-end items-center pt-6 border-t border-gray-100 space-x-4">
-            <button 
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center px-5 py-2.5 bg-white text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium border border-red-200 shadow-sm"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete User
-            </button>
+          <div className="mt-12 flex flex-col sm:flex-row justify-between items-center pt-6 border-t border-gray-100 gap-4">
+            <div className="flex space-x-3">
+              {!user.isPrimary && (
+                <>
+                  {user.isArchived ? (
+                    <button 
+                      onClick={() => handleLifecycleAction('restore')}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium border border-gray-200 text-sm"
+                    >
+                      Restore User
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleLifecycleAction('archive')}
+                      className="px-4 py-2 bg-white text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium border border-gray-300 text-sm"
+                    >
+                      Archive User
+                    </button>
+                  )}
+
+                  {!user.isArchived && (
+                    user.isActive ? (
+                      <button 
+                        onClick={() => handleLifecycleAction('disable')}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-200 text-sm"
+                      >
+                        Disable User
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleLifecycleAction('enable')}
+                        className="px-4 py-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors font-medium border border-green-200 text-sm"
+                      >
+                        Enable User
+                      </button>
+                    )
+                  )}
+                </>
+              )}
+            </div>
+
             <button 
               onClick={handleUpdate}
               disabled={isSubmitting}
@@ -435,16 +479,6 @@ export default function AdminUserProfile() {
 
         </div>
       </div>
-
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Delete User"
-        message="Are you sure you want to delete this user? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
-      />
     </div>
   );
 }

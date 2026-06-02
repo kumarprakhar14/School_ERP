@@ -178,7 +178,7 @@ export default function TimeTable() {
             <button onClick={() => setShowPeriodModal(true)} className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all font-medium text-sm">
               <Plus className="w-4 h-4 mr-2" /> Period
             </button>
-            {selectedClassId && (
+            {selectedClassId && selectedSectionId && (
               <button 
                 onClick={() => {
                   setFormData({ ...formData, classId: selectedClassId, sectionId: selectedSectionId });

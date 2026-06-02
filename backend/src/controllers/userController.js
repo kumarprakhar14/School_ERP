@@ -29,6 +29,12 @@ const createUser = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password || 'password123', 10);
 
+    let currentYearId = null;
+    if (role === 'TEACHER' && profileData?.assignedSectionIds?.length > 0) {
+      const year = await prisma.academicYear.findFirst({ where: { schoolId, isCurrent: true } });
+      if (year) currentYearId = year.id;
+    }
+
     const userData = {
       erpId,
       passwordHash,
@@ -43,7 +49,6 @@ const createUser = async (req, res, next) => {
         ...(role === 'STUDENT' && profileData && {
           studentProfile: {
             create: {
-              classId: profileData.classId,
               sectionId: profileData.sectionId,
               admissionDate: profileData.admissionDate ? new Date(profileData.admissionDate) : new Date()
             }
@@ -53,9 +58,14 @@ const createUser = async (req, res, next) => {
           teacherProfile: {
             create: {
               designation: profileData?.designation || 'Teacher',
-              assignedSections: profileData?.assignedSectionIds ? {
-                connect: profileData.assignedSectionIds.map(id => ({ id }))
-              } : undefined
+              ...(currentYearId && profileData.assignedSectionIds ? {
+                teacherAssignments: {
+                  create: profileData.assignedSectionIds.map(id => ({
+                    sectionId: id,
+                    academicYearId: currentYearId
+                  }))
+                }
+              } : {})
             }
           }
         })
@@ -81,9 +91,12 @@ const getUsers = async (req, res, next) => {
     const page = req.query.page ? parseInt(req.query.page) : null;
     const limit = req.query.limit ? parseInt(req.query.limit) : null;
 
+    const includeArchived = req.query.includeArchived === 'true';
+
     const whereClause = {
       ...(schoolId !== undefined && { schoolId }),
-      ...(role && { role })
+      ...(role && { role }),
+      ...(!includeArchived && { isArchived: false })
     };
 
     let queryOptions = {
@@ -93,11 +106,13 @@ const getUsers = async (req, res, next) => {
         erpId: true,
         name: true,
         role: true,
+        isActive: true,
+        isArchived: true,
         isPrimary: true,
         profilePicUrl: true,
         contactDetails: true,
         studentProfile: { include: { section: { include: { class: true } } } },
-        teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+        teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
       },
       orderBy: { createdAt: 'desc' }
     };
@@ -181,18 +196,35 @@ const updateUser = async (req, res, next) => {
         await prisma.teacherProfile.update({
           where: { userId },
           data: {
-            designation: profileData.designation || undefined,
-            assignedSections: {
-              set: profileData.assignedSectionIds ? profileData.assignedSectionIds.map(id => ({ id })) : []
-            }
+            designation: profileData.designation || undefined
           }
         });
+        
+        if (profileData.assignedSectionIds !== undefined) {
+          const year = await prisma.academicYear.findFirst({ where: { schoolId: req.user.schoolId, isCurrent: true } });
+          if (year) {
+            const tp = await prisma.teacherProfile.findUnique({ where: { userId } });
+            if (tp) {
+              await prisma.teacherAssignment.deleteMany({
+                where: { teacherId: tp.id, academicYearId: year.id }
+              });
+              if (profileData.assignedSectionIds.length > 0) {
+                await prisma.teacherAssignment.createMany({
+                  data: profileData.assignedSectionIds.map(secId => ({
+                    teacherId: tp.id,
+                    sectionId: secId,
+                    academicYearId: year.id
+                  }))
+                });
+              }
+            }
+          }
+        }
       } else if (role === 'STUDENT') {
         await prisma.studentProfile.update({
           where: { userId },
           data: {
-            classId: profileData.classId || undefined,
-            sectionId: profileData.sectionId || null
+            sectionId: profileData.sectionId || undefined
           }
         });
       }
@@ -204,33 +236,67 @@ const updateUser = async (req, res, next) => {
   }
 };
 
-const deleteUser = async (req, res, next) => {
+const disableUser = async (req, res, next) => {
   try {
     const { userId } = req.params;
-
     const targetUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (!targetUser) {
-      throw new NotFoundError('User');
-    }
-    
-    if (targetUser.isPrimary) {
-      throw new ForbiddenError('The primary Super Admin account cannot be deleted');
-    }
+    if (!targetUser) throw new NotFoundError('User');
+    if (targetUser.isPrimary) throw new ForbiddenError('Cannot disable primary account');
 
-    // Use a transaction to clean up profiles first, since they hold strict FKs to User.
-    // If the user has other history (attendance, fees), the User delete will still safely throw P2003.
-    await prisma.$transaction([
-      prisma.studentProfile.deleteMany({ where: { userId } }),
-      prisma.teacherProfile.deleteMany({ where: { userId } }),
-      prisma.user.delete({
-        where: { 
-          id: userId,
-          ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId })
-        }
-      })
-    ]);
+    await prisma.user.update({
+      where: { id: userId, ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId }) },
+      data: { isActive: false }
+    });
+    res.json({ message: 'User disabled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    res.json({ message: 'User deleted successfully' });
+const enableUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw new NotFoundError('User');
+
+    await prisma.user.update({
+      where: { id: userId, ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId }) },
+      data: { isActive: true }
+    });
+    res.json({ message: 'User enabled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const archiveUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw new NotFoundError('User');
+    if (targetUser.isPrimary) throw new ForbiddenError('Cannot archive primary account');
+
+    await prisma.user.update({
+      where: { id: userId, ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId }) },
+      data: { isArchived: true, isActive: false }
+    });
+    res.json({ message: 'User archived successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const restoreUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!targetUser) throw new NotFoundError('User');
+
+    await prisma.user.update({
+      where: { id: userId, ...(req.user.role !== 'SUPER_ADMIN' && { schoolId: req.user.schoolId }) },
+      data: { isArchived: false, isActive: true }
+    });
+    res.json({ message: 'User restored successfully' });
   } catch (error) {
     next(error);
   }
@@ -249,7 +315,7 @@ const getUser = async (req, res, next) => {
         isActive: true, isArchived: true, isPrimary: true, createdAt: true, updatedAt: true,
         school: { select: { name: true, code: true } },
         studentProfile: { include: { section: { include: { class: true } } } },
-        teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+        teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
       }
     });
 
@@ -263,4 +329,4 @@ const getUser = async (req, res, next) => {
   }
 };
 
-export { createUser, getUsers, getUser, updateUser, deleteUser  };
+export { createUser, getUsers, getUser, updateUser, disableUser, enableUser, archiveUser, restoreUser };

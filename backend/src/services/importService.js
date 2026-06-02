@@ -118,7 +118,6 @@ const importStudents = async (schoolId, fileBuffer) => {
             contactDetails: row.contactDetails,
             studentProfile: {
               create: {
-                classId: row.classId,
                 sectionId: row.sectionId,
                 admissionDate: row.admissionDate
               }
@@ -210,6 +209,19 @@ const importTeachers = async (schoolId, fileBuffer) => {
         include: { sections: true }
       });
 
+      let academicYear = await tx.academicYear.findFirst({ where: { schoolId, status: 'ACTIVE' } });
+      if (!academicYear && validRows.some(r => r.pendingSections.length > 0)) {
+        academicYear = await tx.academicYear.create({
+          data: {
+            schoolId,
+            name: 'Default Year',
+            startDate: new Date(),
+            endDate: new Date(),
+            status: 'ACTIVE'
+          }
+        });
+      }
+
       for (let i = 0; i < validRows.length; i++) {
         const row = validRows[i];
         
@@ -240,8 +252,8 @@ const importTeachers = async (schoolId, fileBuffer) => {
             teacherProfile: {
               create: {
                 designation: row.designation,
-                assignedSections: row.assignedSectionIds.length > 0 ? {
-                  connect: row.assignedSectionIds.map(id => ({ id }))
+                teacherAssignments: (row.assignedSectionIds.length > 0 && academicYear) ? {
+                  create: row.assignedSectionIds.map(id => ({ sectionId: id, academicYearId: academicYear.id }))
                 } : undefined
               }
             }
@@ -276,7 +288,7 @@ const importFees = async (schoolId, fileBuffer) => {
   // Pre-fetch all students in this school
   const students = await prisma.user.findMany({
     where: { schoolId, role: 'STUDENT' },
-    include: { studentProfile: { include: { class: true } } }
+    include: { studentProfile: { include: { section: { include: { class: true } } } } }
   });
 
   const validStatuses = ['PENDING', 'PAID', 'OVERDUE'];
@@ -304,7 +316,7 @@ const importFees = async (schoolId, fileBuffer) => {
       // Find matching students
       const matches = students.filter(s => 
         s.name.toLowerCase() === studentName.toLowerCase() && 
-        s.studentProfile?.class?.name?.toLowerCase() === className.toLowerCase()
+        s.studentProfile?.section?.class?.name?.toLowerCase() === className.toLowerCase()
       );
 
       if (matches.length === 0) {

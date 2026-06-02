@@ -1,25 +1,24 @@
 import prisma from '../utils/db.js';
 import { AppError, ForbiddenError } from '../errors/index.js';
 
-// Fix 5: Helper to verify a classId belongs to the user's school
-const verifyClassBelongsToSchool = async (classId, schoolId) => {
-  const cls = await prisma.class.findFirst({
-    where: { id: classId, schoolId }
+// Helper to verify a sectionId belongs to the user's school
+const verifySectionBelongsToSchool = async (sectionId, schoolId) => {
+  const section = await prisma.section.findFirst({
+    where: { id: sectionId, class: { schoolId } }
   });
-  if (!cls) {
-    throw new ForbiddenError('The specified class does not belong to your school');
+  if (!section) {
+    throw new ForbiddenError('The specified section does not belong to your school');
   }
-  return cls;
+  return section;
 };
 
 // TEACHER/ADMIN: Mark attendance
 const markAttendance = async (req, res, next) => {
   try {
-    const { classId, sectionId, date, records } = req.body; 
+    const { sectionId, date, records } = req.body; 
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Verify classId belongs to this school
-    await verifyClassBelongsToSchool(classId, schoolId);
+    await verifySectionBelongsToSchool(sectionId, schoolId);
 
     const existingDate = new Date(date);
     existingDate.setHours(0,0,0,0);
@@ -27,12 +26,9 @@ const markAttendance = async (req, res, next) => {
     nextDate.setDate(nextDate.getDate() + 1);
 
     const whereClause = {
-      classId,
-      class: { schoolId }, // Fix 5: Enforce schoolId via relation
+      sectionId,
       date: { gte: existingDate, lt: nextDate }
     };
-    if (sectionId) whereClause.sectionId = sectionId;
-    else whereClause.sectionId = null;
 
     // Fix 4: Wrap check-delete-create in a transaction to prevent race conditions
     await prisma.$transaction(async (tx) => {
@@ -51,8 +47,7 @@ const markAttendance = async (req, res, next) => {
 
       const newRecords = records.map(r => ({
         studentId: r.studentId,
-        classId,
-        sectionId: sectionId || null,
+        sectionId,
         date: existingDate,
         status: r.status,
         createdBy: req.user.userId
@@ -72,21 +67,14 @@ const markAttendance = async (req, res, next) => {
 // ANY ROLE: Get attendance
 const getAttendance = async (req, res, next) => {
   try {
-    const { classId, sectionId, date, studentId } = req.query;
+    const { sectionId, date, studentId } = req.query;
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Always scope attendance queries to the user's school
     const whereClause = {
-      class: { schoolId } // Enforce school boundary via class relation
+      section: { class: { schoolId } } // Enforce school boundary via class relation
     };
 
-    if (classId) whereClause.classId = classId;
     if (sectionId) whereClause.sectionId = sectionId;
-    else if (classId) whereClause.sectionId = null;
-    
-    if (classId && sectionId === '') {
-      whereClause.sectionId = null;
-    }
 
     if (date) {
       const targetDate = new Date(date);
@@ -132,11 +120,10 @@ const getAttendance = async (req, res, next) => {
 
 const updateAttendanceState = async (req, res, next, stateUpdate) => {
   try {
-    const { classId, sectionId, date } = req.body;
+    const { sectionId, date } = req.body;
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Verify classId belongs to this school
-    await verifyClassBelongsToSchool(classId, schoolId);
+    await verifySectionBelongsToSchool(sectionId, schoolId);
 
     const targetDate = new Date(date);
     targetDate.setHours(0,0,0,0);
@@ -144,12 +131,9 @@ const updateAttendanceState = async (req, res, next, stateUpdate) => {
     nextDate.setDate(nextDate.getDate() + 1);
 
     const whereClause = {
-      classId,
-      class: { schoolId }, // Fix 5: Enforce schoolId
+      sectionId,
       date: { gte: targetDate, lt: nextDate }
     };
-    if (sectionId) whereClause.sectionId = sectionId;
-    else whereClause.sectionId = null;
 
     const result = await prisma.attendance.updateMany({
       where: whereClause,

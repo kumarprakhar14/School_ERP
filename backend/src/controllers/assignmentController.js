@@ -3,14 +3,14 @@ import { AppError, ForbiddenError } from '../errors/index.js';
 
 const createAssignment = async (req, res, next) => {
   try {
-    const { title, description, dueDate, classId, sectionId } = req.body;
+    const { title, description, dueDate, sectionId } = req.body;
     const fileUrl = req.file ? req.file.path : null;
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Verify classId belongs to user's school
-    const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
-    if (!cls) {
-      throw new ForbiddenError('The specified class does not belong to your school');
+    // Verify sectionId belongs to user's school
+    const section = await prisma.section.findFirst({ where: { id: sectionId, class: { schoolId } } });
+    if (!section) {
+      throw new ForbiddenError('The specified section does not belong to your school');
     }
 
     const assignment = await prisma.assignment.create({
@@ -19,8 +19,7 @@ const createAssignment = async (req, res, next) => {
         description,
         dueDate: new Date(dueDate),
         fileUrl,
-        classId,
-        sectionId: sectionId || null,
+        sectionId,
         schoolId,
         createdBy: req.user.userId
       }
@@ -34,18 +33,16 @@ const createAssignment = async (req, res, next) => {
 
 const getAssignments = async (req, res, next) => {
   try {
-    const { classId, sectionId } = req.query;
+    const { sectionId } = req.query;
     const schoolId = req.user.schoolId;
     
     const whereClause = { schoolId }; // Fix 5: Already has schoolId
-    if (classId) whereClause.classId = classId;
     if (sectionId) whereClause.sectionId = sectionId;
 
     if (req.user.role === 'STUDENT') {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
-      if (profile) {
-        whereClause.classId = profile.classId;
-        if (profile.sectionId) whereClause.sectionId = profile.sectionId;
+      if (profile && profile.sectionId) {
+        whereClause.sectionId = profile.sectionId;
       }
     }
 
@@ -55,13 +52,12 @@ const getAssignments = async (req, res, next) => {
     let queryOptions = {
       where: whereClause,
       include: {
-        class: { select: { name: true } },
-        section: { select: { name: true } },
+        section: { select: { name: true, class: { select: { name: true } } } },
         ...(req.user.role === 'STUDENT'
           ? { submissions: { where: { studentId: req.user.userId } } }
           : { _count: { select: { submissions: true } } })
       },
-      orderBy: { submittedAt: 'desc' }
+      orderBy: { createdAt: 'desc' }
     };
 
     if (page && limit) {

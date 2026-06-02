@@ -29,7 +29,7 @@ export default function SchoolsManagement() {
 
   const fetchSchools = async () => {
     try {
-      const res = await api.get('/schools');
+      const res = await api.get('/schools?includeArchived=true');
       setSchools(res.data);
     } catch (error) {
       console.error('Failed to fetch schools', error);
@@ -123,13 +123,23 @@ export default function SchoolsManagement() {
                           </div>
                         </td>
                         <td className="py-4 px-6">
-                          <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                            isActive 
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-red-50 text-red-700 border-red-200'
-                          }`}>
-                            {isActive ? <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
-                            {isActive ? 'Active' : 'Expired'}
+                          <div className="flex flex-col gap-1 items-start">
+                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+                              isActive 
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-red-50 text-red-700 border-red-200'
+                            }`}>
+                              {isActive ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                              {isActive ? 'Valid Sub' : 'Expired Sub'}
+                            </div>
+                            
+                            {school.isArchived ? (
+                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</div>
+                            ) : school.status === 'INACTIVE' ? (
+                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</div>
+                            ) : (
+                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</div>
+                            )}
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right">

@@ -8,15 +8,13 @@ const attendanceRecordSchema = z.object({
 });
 
 const markAttendanceSchema = z.object({
-  classId: z.string({ required_error: 'Class ID is required' }).uuid('Invalid class ID format'),
-  sectionId: z.string().uuid('Invalid section ID format').optional().nullable(),
+  sectionId: z.string({ required_error: 'Section ID is required' }).uuid('Invalid section ID format'),
   date: z.string({ required_error: 'Date is required' }),
   records: z.array(attendanceRecordSchema, { required_error: 'Attendance records are required' }).min(1, 'At least one attendance record is required')
 });
 
 const attendanceStateSchema = z.object({
-  classId: z.string({ required_error: 'Class ID is required' }).uuid('Invalid class ID format'),
-  sectionId: z.string().uuid('Invalid section ID format').optional().nullable(),
+  sectionId: z.string({ required_error: 'Section ID is required' }).uuid('Invalid section ID format'),
   date: z.string({ required_error: 'Date is required' })
 });
 

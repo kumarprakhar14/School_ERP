@@ -3,7 +3,6 @@ import { z } from 'zod';
 const VALID_ROLES = ['TEACHER', 'STUDENT', 'ACCOUNTS', 'ADMIN', 'SUPER_ADMIN'];
 
 const profileDataSchema = z.object({
-  classId: z.string().uuid().optional(),
   sectionId: z.string().uuid().nullable().optional(),
   admissionDate: z.string().optional(),
   designation: z.string().optional(),

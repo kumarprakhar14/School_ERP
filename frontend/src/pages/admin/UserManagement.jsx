@@ -49,7 +49,8 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/users${filter ? `?role=${filter}` : ''}`);
+      const roleParam = filter ? `role=${filter}&` : '';
+      const res = await api.get(`/users?${roleParam}includeArchived=true`);
       setUsers(res.data);
     } catch (error) {
       console.error('Failed to fetch users', error);
@@ -68,7 +69,6 @@ export default function UserManagement() {
         role: formData.role,
         profileData: formData.role === 'ADMIN' ? undefined : {
           designation: formData.designation,
-          classId: formData.classId || undefined,
           sectionId: formData.sectionId || undefined,
           assignedSectionIds: formData.teacherSectionIds.length > 0 ? formData.teacherSectionIds : undefined
         }
@@ -106,6 +106,17 @@ export default function UserManagement() {
       toast.error(error.response?.data?.message || 'Failed to transfer primary status');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleLifecycleAction = async (e, userId, action) => {
+    e.stopPropagation();
+    try {
+      await api.patch(`/users/${userId}/${action}`);
+      toast.success(`User ${action}d successfully`);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || `Failed to ${action} user`);
     }
   };
 
@@ -188,9 +199,18 @@ export default function UserManagement() {
                     </td>
                     <td className="p-4 text-sm text-gray-600 font-mono bg-gray-50/50 rounded-lg inline-block mt-2 mb-2 ml-2">{user.erpId}</td>
                     <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${getRoleColor(user.role)}`}>
-                        {user.role}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${getRoleColor(user.role)}`}>
+                          {user.role}
+                        </span>
+                        {user.isArchived ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">Archived</span>
+                        ) : !user.isActive ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">Disabled</span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">Active</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-sm text-gray-500">
                       {user.role === 'TEACHER' && user.teacherProfile?.designation}
@@ -199,20 +219,39 @@ export default function UserManagement() {
                       {user.role === 'ADMIN' && 'Administrator'}
                     </td>
                     <td className="p-4 whitespace-nowrap text-right text-sm font-medium">
-                      {user.role === 'ADMIN' && user.isPrimary ? (
-                        <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
-                          <Star className="w-3 h-3 mr-1 fill-current" />
-                          Primary
-                        </span>
-                      ) : null}
-                      {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
-                          className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md text-xs font-medium border border-blue-100"
-                        >
-                          Make Primary
-                        </button>
-                      )}
+                      <div className="flex justify-end gap-2 items-center">
+                        {user.role === 'ADMIN' && user.isPrimary ? (
+                          <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
+                            <Star className="w-3 h-3 mr-1 fill-current" />
+                            Primary
+                          </span>
+                        ) : null}
+                        {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
+                            className="text-blue-600 hover:text-blue-900 bg-blue-50 px-2 py-1 rounded text-xs font-medium border border-blue-100"
+                          >
+                            Make Primary
+                          </button>
+                        )}
+                        {!user.isPrimary && (
+                          <div className="flex gap-1 ml-2">
+                            {user.isArchived ? (
+                              <button onClick={(e) => handleLifecycleAction(e, user.id, 'restore')} className="px-2 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs">Restore</button>
+                            ) : (
+                              <button onClick={(e) => handleLifecycleAction(e, user.id, 'archive')} className="px-2 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs">Archive</button>
+                            )}
+                            
+                            {!user.isArchived && (
+                              user.isActive ? (
+                                <button onClick={(e) => handleLifecycleAction(e, user.id, 'disable')} className="px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs">Disable</button>
+                              ) : (
+                                <button onClick={(e) => handleLifecycleAction(e, user.id, 'enable')} className="px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded text-xs">Enable</button>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -294,7 +333,7 @@ export default function UserManagement() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-blue-800 mb-1">Section</label>
-                    <select value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white" disabled={!formData.classId}>
+                    <select required={formData.role === 'STUDENT'} value={formData.sectionId} onChange={e => setFormData({...formData, sectionId: e.target.value})} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white" disabled={!formData.classId}>
                       <option value="">Select Section...</option>
                       {formData.classId && classes.find(c => c.id === formData.classId)?.sections?.map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>

@@ -10,8 +10,8 @@ const getClasses = async (req, res, next) => {
       include: {
         sections: {
           include: {
-            teachers: { include: { user: { select: { id: true, name: true, erpId: true } } } },
-            _count: { select: { students: true, teachers: true } }
+            teacherAssignments: { include: { teacher: { include: { user: { select: { id: true, name: true, erpId: true } } } } } },
+            _count: { select: { students: true, teacherAssignments: true } }
           }
         }
       },
@@ -180,7 +180,7 @@ const getClassStudents = async (req, res, next) => {
     }
 
     const students = await prisma.studentProfile.findMany({
-      where: { classId, sectionId: null },
+      where: { section: { classId } },
       include: {
         user: { select: { id: true, name: true, erpId: true } }
       }

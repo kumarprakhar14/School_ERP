@@ -5,7 +5,11 @@ import { NotFoundError } from '../errors/index.js';
 // SUPER ADMIN: Get all schools
 const getSchools = async (req, res, next) => {
   try {
+    const includeArchived = req.query.includeArchived === 'true';
     const schools = await prisma.school.findMany({
+      where: {
+        ...(!includeArchived && { isArchived: false })
+      },
       include: {
         settings: true,
         _count: {
@@ -176,11 +180,55 @@ const deleteSchool = async (req, res, next) => {
   }
 };
 
+const disableSchool = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.school.update({ where: { id }, data: { status: 'INACTIVE' } });
+    res.json({ message: 'School disabled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const enableSchool = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.school.update({ where: { id }, data: { status: 'ACTIVE' } });
+    res.json({ message: 'School enabled successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const archiveSchool = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.school.update({ where: { id }, data: { isArchived: true } });
+    res.json({ message: 'School archived successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const restoreSchool = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.school.update({ where: { id }, data: { isArchived: false } });
+    res.json({ message: 'School restored successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export { getSchools,
   getSchoolById,
   createSchool,
   updateSchool,
   deleteSchool,
+  disableSchool,
+  enableSchool,
+  archiveSchool,
+  restoreSchool,
   getSchoolSettings,
   updateSchoolSettings
  };

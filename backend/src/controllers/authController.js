@@ -12,9 +12,9 @@ const USER_SELECT_FIELDS = {
   profilePicUrl: true,
   contactDetails: true,
   isPrimary: true,
-  school: { select: { settings: true, name: true, code: true } },
+  school: { select: { settings: true, name: true, code: true, status: true, isArchived: true } },
   studentProfile: { include: { section: { include: { class: true } } } },
-  teacherProfile: { include: { assignedSections: { include: { class: true } } } }
+  teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
 };
 
 const login = async (req, res, next) => {
@@ -34,8 +34,25 @@ const login = async (req, res, next) => {
       select: selectFields
     });
 
-    if (!user || !user.isActive || user.isArchived) {
-      throw new UnauthorizedError('Invalid credentials or inactive account');
+    if (!user) {
+      throw new UnauthorizedError('Invalid credentials');
+    }
+    
+    if (user.isArchived) {
+      throw new UnauthorizedError('Account is archived. Please contact administration.');
+    }
+    
+    if (!user.isActive) {
+      throw new UnauthorizedError('Account is disabled. Please contact administration.');
+    }
+    
+    if (user.school) {
+      if (user.school.isArchived) {
+        throw new UnauthorizedError('School account is archived. Please contact administration.');
+      }
+      if (user.school.status === 'INACTIVE') {
+        throw new UnauthorizedError('School account is inactive. Please contact administration.');
+      }
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);

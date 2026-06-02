@@ -127,9 +127,8 @@ const getTimeTable = async (req, res, next) => {
     // For students, restrict to their own section
     if (req.user.role === 'STUDENT') {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
-      if (!profile || !profile.classId) return res.json([]);
-      where.classId = profile.classId;
-      if (profile.sectionId) where.sectionId = profile.sectionId;
+      if (!profile || !profile.sectionId) return res.json([]);
+      where.sectionId = profile.sectionId;
     }
     // For teachers, restrict to their own profile if not admin
     if (req.user.role === 'TEACHER' && !teacherId) {
@@ -163,10 +162,12 @@ const createTimeTableEntry = async (req, res, next) => {
     const { classId, sectionId, subjectId, teacherId, periodId, dayOfWeek } = req.body;
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Verify classId belongs to user's school
-    const cls = await prisma.class.findFirst({ where: { id: classId, schoolId } });
-    if (!cls) {
-      throw new ForbiddenError('The specified class does not belong to your school');
+    // Verify classId and sectionId belong to user's school
+    const section = await prisma.section.findFirst({ 
+      where: { id: sectionId, classId, class: { schoolId } } 
+    });
+    if (!section) {
+      throw new ForbiddenError('The specified class or section does not belong to your school');
     }
 
     // Fix 5: Verify subjectId belongs to user's school
@@ -190,7 +191,7 @@ const createTimeTableEntry = async (req, res, next) => {
     }
 
     const entry = await prisma.timeTableEntry.create({
-      data: { classId, sectionId: sectionId || null, subjectId, teacherId, periodId, dayOfWeek },
+      data: { classId, sectionId, subjectId, teacherId, periodId, dayOfWeek },
       include: {
         subject: true,
         period: true,

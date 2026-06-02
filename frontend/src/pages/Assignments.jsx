@@ -78,8 +78,7 @@ export default function Assignments() {
     data.append('title', formData.title);
     data.append('description', formData.description);
     data.append('dueDate', formData.dueDate);
-    data.append('classId', formData.classId);
-    if (formData.sectionId) data.append('sectionId', formData.sectionId);
+    data.append('sectionId', formData.sectionId);
     if (formData.file) data.append('file', formData.file);
 
     try {
@@ -253,8 +252,8 @@ export default function Assignments() {
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
 
-              <select value={formData.sectionId} onChange={e=>setFormData({...formData, sectionId: e.target.value})} disabled={!formData.classId} className="w-full p-2.5 border rounded-xl bg-white disabled:opacity-50">
-                <option value="">Select Section (Optional)</option>
+              <select required value={formData.sectionId} onChange={e=>setFormData({...formData, sectionId: e.target.value})} disabled={!formData.classId} className="w-full p-2.5 border rounded-xl bg-white disabled:opacity-50">
+                <option value="">Select Section</option>
                 {formData.classId && classes.find(c => c.id === formData.classId)?.sections?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
 

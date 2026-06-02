@@ -57,7 +57,7 @@ const getDashboardStats = async (req, res, next) => {
       // 3. Compute today's attendance rate
       const attendanceToday = await prisma.attendance.findMany({
         where: {
-          class: { schoolId },
+          section: { class: { schoolId } },
           date: { gte: todayStart, lt: todayEnd }
         },
         select: { status: true }
@@ -87,7 +87,7 @@ const getDashboardStats = async (req, res, next) => {
       const markedSectionsToday = await prisma.attendance.groupBy({
         by: ['sectionId'],
         where: {
-          class: { schoolId },
+          section: { class: { schoolId } },
           date: { gte: todayStart, lt: todayEnd }
         }
       });
@@ -173,17 +173,25 @@ const getDashboardStats = async (req, res, next) => {
         where: { schoolId, isArchived: false },
         select: {
           name: true,
-          students: {
-            where: { user: { isActive: true, isArchived: false } },
-            select: { id: true }
+          sections: {
+            where: { isArchived: false },
+            select: {
+              students: {
+                where: { user: { isActive: true, isArchived: false } },
+                select: { id: true }
+              }
+            }
           }
         }
       });
       const academicSnapshot = classesWithStudents
-        .map(c => ({
-          className: `Class ${c.name}`,
-          studentCount: c.students.length
-        }))
+        .map(c => {
+          const studentCount = c.sections.reduce((sum, s) => sum + s.students.length, 0);
+          return {
+            className: `Class ${c.name}`,
+            studentCount
+          };
+        })
         .filter(c => c.studentCount > 0);
 
       // 8. Attendance Snapshot (Last 7 Days Trend)
@@ -198,7 +206,7 @@ const getDashboardStats = async (req, res, next) => {
         
         const dayRecords = await prisma.attendance.findMany({
           where: {
-            class: { schoolId },
+            section: { class: { schoolId } },
             date: { gte: d, lt: dNext }
           },
           select: { status: true }
@@ -237,8 +245,8 @@ const getDashboardStats = async (req, res, next) => {
           take: 15
         }),
         prisma.attendance.findMany({
-          where: { class: { schoolId } },
-          select: { createdAt: true, date: true, class: { select: { name: true } }, section: { select: { name: true } } },
+          where: { section: { class: { schoolId } } },
+          select: { createdAt: true, date: true, section: { select: { name: true, class: { select: { name: true } } } } },
           orderBy: { createdAt: 'desc' },
           take: 60
         })
@@ -318,7 +326,7 @@ const getDashboardStats = async (req, res, next) => {
       // Process attendance submissions (Group by class + section + date + minute of createdAt)
       const attendanceGroups = {};
       rawAttendance.forEach(a => {
-        const className = a.class?.name || 'Unknown';
+        const className = a.section?.class?.name || 'Unknown';
         const sectionName = a.section?.name || '';
         const classSectionStr = sectionName ? `${className}-${sectionName}` : className;
         const dateStr = a.date.toISOString().substring(0, 10);

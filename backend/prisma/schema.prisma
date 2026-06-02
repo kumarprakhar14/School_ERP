@@ -56,57 +56,58 @@ enum DayOfWeek {
 // -----------------------------------------------------------------------------
 
 model School {
-  id              String       @id @default(uuid())
-  code            String       @unique
-  name            String
-  status          SchoolStatus @default(ACTIVE)
-  validUntil      DateTime
-  isArchived      Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id         String       @id @default(uuid())
+  code       String       @unique
+  name       String
+  status     SchoolStatus @default(ACTIVE)
+  validUntil DateTime
+  isArchived Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  settings        SchoolSettings?
-  users           User[]
-  classes         Class[]
-  notices         Notice[]
-  assignments     Assignment[]
-  subjects        Subject[]
-  periods         Period[]
+  settings      SchoolSettings?
+  users         User[]
+  classes       Class[]
+  notices       Notice[]
+  assignments   Assignment[]
+  subjects      Subject[]
+  periods       Period[]
+  academicYears AcademicYear[]
 }
 
 model SchoolSettings {
-  id              String   @id @default(uuid())
-  schoolId        String   @unique
-  school          School   @relation(fields: [schoolId], references: [id])
-  logoUrl         String?
-  themeColor      String   @default("#3b82f6") // Tailwind blue-500
-  description     String?
-  contactInfo     String?
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(uuid())
+  schoolId    String   @unique
+  school      School   @relation(fields: [schoolId], references: [id])
+  logoUrl     String?
+  themeColor  String   @default("#3b82f6") // Tailwind blue-500
+  description String?
+  contactInfo String?
+  updatedAt   DateTime @updatedAt
 }
 
 model User {
-  id              String   @id @default(uuid())
-  schoolId        String?  // Nullable for SUPER_ADMIN
-  school          School?  @relation(fields: [schoolId], references: [id])
-  erpId           String
-  passwordHash    String
-  role            UserRole
-  name            String
-  profilePicUrl   String?
-  contactDetails  String?
-  isActive        Boolean  @default(true)
-  isArchived      Boolean  @default(false)
-  isPrimary       Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(uuid())
+  schoolId       String? // Nullable for SUPER_ADMIN
+  school         School?  @relation(fields: [schoolId], references: [id])
+  erpId          String
+  passwordHash   String
+  role           UserRole
+  name           String
+  profilePicUrl  String?
+  contactDetails String?
+  isActive       Boolean  @default(true)
+  isArchived     Boolean  @default(false)
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  studentProfile  StudentProfile?
-  teacherProfile  TeacherProfile?
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
 
   authoredNotices Notice[]
-  feeRecords      FeeRecord[] @relation("FeeStudent")
-  createdFees     FeeRecord[] @relation("FeeCreator")
+  feeRecords      FeeRecord[]            @relation("FeeStudent")
+  createdFees     FeeRecord[]            @relation("FeeCreator")
   attendances     Attendance[]
   submissions     AssignmentSubmission[]
   reportedBugs    BugReport[]
@@ -119,24 +120,26 @@ model User {
 // -----------------------------------------------------------------------------
 
 model StudentProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  classId         String
-  class           Class    @relation(fields: [classId], references: [id])
-  sectionId       String?
-  section         Section? @relation(fields: [sectionId], references: [id])
-  admissionDate   DateTime?
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  sectionId     String
+  section       Section   @relation(fields: [sectionId], references: [id])
+  admissionDate DateTime?
+
+  attendances Attendance[]
+
+  @@index([sectionId])
 }
 
 model TeacherProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
-  designation     String?
-  
-  assignedSections Section[] @relation("TeacherSections")
-  timeTableEntries TimeTableEntry[]
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  designation String?
+
+  timeTableEntries   TimeTableEntry[]
+  teacherAssignments TeacherAssignment[]
 }
 
 // -----------------------------------------------------------------------------
@@ -144,33 +147,30 @@ model TeacherProfile {
 // -----------------------------------------------------------------------------
 
 model Class {
-  id              String   @id @default(uuid())
-  schoolId        String
-  school          School   @relation(fields: [schoolId], references: [id])
-  name            String   // e.g., "10", "12"
-  isArchived      Boolean  @default(false)
-  
-  sections        Section[]
-  students        StudentProfile[]
+  id         String  @id @default(uuid())
+  schoolId   String
+  school     School  @relation(fields: [schoolId], references: [id])
+  name       String // e.g., "10", "12"
+  isArchived Boolean @default(false)
+
+  sections         Section[]
   timeTableEntries TimeTableEntry[]
-  attendances     Attendance[]
-  assignments     Assignment[]
-  
+
   @@unique([schoolId, name])
 }
 
 model Section {
-  id              String   @id @default(uuid())
-  classId         String
-  class           Class    @relation(fields: [classId], references: [id])
-  name            String   // e.g., "A", "B"
-  isArchived      Boolean  @default(false)
+  id         String  @id @default(uuid())
+  classId    String
+  class      Class   @relation(fields: [classId], references: [id])
+  name       String // e.g., "A", "B"
+  isArchived Boolean @default(false)
 
-  students        StudentProfile[]
-  teachers        TeacherProfile[] @relation("TeacherSections")
-  assignments     Assignment[]
-  attendances     Attendance[]
-  timeTableEntries TimeTableEntry[]
+  students           StudentProfile[]
+  assignments        Assignment[]
+  attendances        Attendance[]
+  timeTableEntries   TimeTableEntry[]
+  teacherAssignments TeacherAssignment[]
 
   @@unique([classId, name])
 }
@@ -180,149 +180,190 @@ model Section {
 // -----------------------------------------------------------------------------
 
 model Subject {
-  id              String   @id @default(uuid())
-  schoolId        String
-  school          School   @relation(fields: [schoolId], references: [id])
-  name            String
-  code            String?
-  isArchived      Boolean  @default(false)
+  id         String  @id @default(uuid())
+  schoolId   String
+  school     School  @relation(fields: [schoolId], references: [id])
+  name       String
+  code       String?
+  isArchived Boolean @default(false)
 
-  timeTableEntries TimeTableEntry[]
-  
+  timeTableEntries   TimeTableEntry[]
+  teacherAssignments TeacherAssignment[]
+
   @@unique([schoolId, name])
 }
 
 model Period {
-  id              String   @id @default(uuid())
-  schoolId        String
-  school          School   @relation(fields: [schoolId], references: [id])
-  name            String   // e.g., "Period 1", "Lunch Break"
-  startTime       String   // e.g., "08:00"
-  endTime         String   // e.g., "08:45"
-  
+  id        String @id @default(uuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id])
+  name      String // e.g., "Period 1", "Lunch Break"
+  startTime String // e.g., "08:00"
+  endTime   String // e.g., "08:45"
+
   timeTableEntries TimeTableEntry[]
 
   @@unique([schoolId, name])
 }
 
 model TimeTableEntry {
-  id              String   @id @default(uuid())
-  classId         String
-  class           Class    @relation(fields: [classId], references: [id])
-  sectionId       String?
-  section         Section? @relation(fields: [sectionId], references: [id])
-  subjectId       String
-  subject         Subject  @relation(fields: [subjectId], references: [id])
-  teacherId       String
-  teacher         TeacherProfile @relation(fields: [teacherId], references: [id])
-  periodId        String
-  period          Period   @relation(fields: [periodId], references: [id])
-  dayOfWeek       DayOfWeek
+  id        String         @id @default(uuid())
+  classId   String
+  class     Class          @relation(fields: [classId], references: [id])
+  sectionId String
+  section   Section        @relation(fields: [sectionId], references: [id])
+  subjectId String
+  subject   Subject        @relation(fields: [subjectId], references: [id])
+  teacherId String
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id])
+  periodId  String
+  period    Period         @relation(fields: [periodId], references: [id])
+  dayOfWeek DayOfWeek
 
   @@unique([classId, sectionId, periodId, dayOfWeek])
   @@unique([teacherId, periodId, dayOfWeek])
+  @@index([sectionId])
 }
 
 model Attendance {
-  id              String           @id @default(uuid())
-  classId         String
-  class           Class            @relation(fields: [classId], references: [id])
-  sectionId       String?
-  section         Section?         @relation(fields: [sectionId], references: [id])
-  studentId       String
-  student         User             @relation(fields: [studentId], references: [id])
-  date            DateTime         // Stored as Date only
-  status          AttendanceStatus
-  isLocked        Boolean          @default(false)
-  isSaved         Boolean          @default(false)
-  lockedAt        DateTime?
-  
-  createdBy       String?          // Teacher ID
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  
-  @@unique([classId, sectionId, studentId, date])
+  id        String           @id @default(uuid())
+  sectionId String
+  section   Section          @relation(fields: [sectionId], references: [id])
+  studentId String
+  student   User             @relation(fields: [studentId], references: [id])
+  date      DateTime // Stored as Date only
+  status    AttendanceStatus
+  isLocked  Boolean          @default(false)
+  isSaved   Boolean          @default(false)
+  lockedAt  DateTime?
+  remarks   String?
+
+  createdBy        String? // Teacher ID
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  studentProfile   StudentProfile? @relation(fields: [studentProfileId], references: [id])
+  studentProfileId String?
+
+  @@unique([sectionId, studentId, date])
+  @@index([sectionId])
 }
 
 model Assignment {
-  id              String   @id @default(uuid())
-  schoolId        String
-  school          School   @relation(fields: [schoolId], references: [id])
-  classId         String
-  class           Class    @relation(fields: [classId], references: [id])
-  sectionId       String?
-  section         Section? @relation(fields: [sectionId], references: [id])
-  title           String
-  description     String
-  fileUrl         String?
-  dueDate         DateTime
-  isArchived      Boolean  @default(false)
-  
-  createdBy       String?  // Teacher ID
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  submissions     AssignmentSubmission[]
+  id          String   @id @default(uuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id])
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id])
+  title       String
+  description String?
+  fileUrl     String?
+  dueDate     DateTime
+  isArchived  Boolean  @default(false)
+
+  createdBy String? // Teacher ID
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([sectionId])
 }
 
 model AssignmentSubmission {
-  id              String   @id @default(uuid())
-  assignmentId    String
-  assignment      Assignment @relation(fields: [assignmentId], references: [id])
-  studentId       String
-  student         User     @relation(fields: [studentId], references: [id])
-  fileUrl         String
-  submittedAt     DateTime @default(now())
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id])
+  fileUrl      String
+  submittedAt  DateTime   @default(now())
 
   @@unique([assignmentId, studentId])
 }
 
+// -----------------------------------------------------------------------------
+// ACADEMIC OPERATIONS
+// -----------------------------------------------------------------------------
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id])
+  name      String // e.g., "2026-27"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacherAssignments TeacherAssignment[]
+
+  @@unique([schoolId, name])
+}
+
+model TeacherAssignment {
+  id             String         @id @default(uuid())
+  teacherId      String
+  teacher        TeacherProfile @relation(fields: [teacherId], references: [id])
+  sectionId      String
+  section        Section        @relation(fields: [sectionId], references: [id])
+  subjectId      String? // Nullable because some assigned sections might not have a specific subject mapped initially
+  subject        Subject?       @relation(fields: [subjectId], references: [id])
+  academicYearId String
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([teacherId, sectionId, subjectId, academicYearId])
+  @@index([sectionId])
+}
+
 model Notice {
-  id              String   @id @default(uuid())
-  schoolId        String
-  school          School   @relation(fields: [schoolId], references: [id])
-  title           String
-  content         String
-  attachmentUrl   String?
-  targetRoles     UserRole[] // Array of roles this notice is meant for
-  isArchived      Boolean  @default(false)
-  createdBy       String?  // Author User ID
-  author          User?    @relation(fields: [createdBy], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String     @id @default(uuid())
+  schoolId      String
+  school        School     @relation(fields: [schoolId], references: [id])
+  title         String
+  content       String
+  attachmentUrl String?
+  targetRoles   UserRole[] // Array of roles this notice is meant for
+  isArchived    Boolean    @default(false)
+  createdBy     String? // Author User ID
+  author        User?      @relation(fields: [createdBy], references: [id])
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 model FeeRecord {
-  id              String    @id @default(uuid())
-  schoolId        String
-  studentId       String
-  student         User      @relation("FeeStudent", fields: [studentId], references: [id])
-  month           Int       // 1-12 (For legacy mapping, or billing month)
-  year            Int
-  amount          Float
-  status          FeeStatus @default(PENDING)
-  paymentMode     String?   // 'CASH', 'ONLINE', 'CHEQUE'
-  referenceNo     String?   // Online transaction or cheque number
-  remarks         String?
-  paidAt          DateTime?
-  
-  createdBy       String?   // Accounts Staff ID
-  creator         User?     @relation("FeeCreator", fields: [createdBy], references: [id])
-  updatedBy       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  schoolId    String
+  studentId   String
+  student     User      @relation("FeeStudent", fields: [studentId], references: [id])
+  month       Int // 1-12 (For legacy mapping, or billing month)
+  year        Int
+  amount      Float
+  status      FeeStatus @default(PENDING)
+  paymentMode String? // 'CASH', 'ONLINE', 'CHEQUE'
+  referenceNo String? // Online transaction or cheque number
+  remarks     String?
+  paidAt      DateTime?
+
+  createdBy String? // Accounts Staff ID
+  creator   User?    @relation("FeeCreator", fields: [createdBy], references: [id])
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BugReport {
-  id              String    @id @default(uuid())
-  title           String
-  description     String    @db.Text
-  screenshots     String[]
-  status          BugStatus @default(OPEN)
-  
-  reportedById    String
-  reportedBy      User      @relation(fields: [reportedById], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  title       String
+  description String    @db.Text
+  screenshots String[]
+  status      BugStatus @default(OPEN)
+
+  reportedById String
+  reportedBy   User   @relation(fields: [reportedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

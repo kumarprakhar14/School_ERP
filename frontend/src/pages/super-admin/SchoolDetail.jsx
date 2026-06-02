@@ -87,6 +87,16 @@ export default function SchoolDetail() {
     }
   };
 
+  const handleLifecycleAction = async (action) => {
+    try {
+      await api.patch(`/schools/${id}/${action}`);
+      toast.success(`School ${action}d successfully`);
+      fetchSchoolData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || `Failed to ${action} school`);
+    }
+  };
+
   // Admin Handlers
   const handleAddAdminSubmit = async (e) => {
     e.preventDefault();
@@ -255,7 +265,16 @@ export default function SchoolDetail() {
                 <Building2 className="w-8 h-8" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 leading-tight">{school.name}</h1>
+                <div className="flex items-center">
+                  <h1 className="text-2xl font-bold text-gray-900 leading-tight mr-3">{school.name}</h1>
+                  {school.isArchived ? (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</span>
+                  ) : school.status === 'INACTIVE' ? (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-500 flex items-center mt-1 font-medium">
                   School Code: <span className="ml-1 text-gray-800 bg-gray-100 px-2 py-0.5 rounded font-mono">{school.code}</span>
                 </p>
@@ -358,6 +377,46 @@ export default function SchoolDetail() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Lifecycle Actions */}
+      <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden mt-6 p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Lifecycle Controls</h3>
+        <div className="flex flex-col sm:flex-row gap-4">
+          {school.isArchived ? (
+            <button 
+              onClick={() => handleLifecycleAction('restore')}
+              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium border border-gray-200"
+            >
+              Restore School
+            </button>
+          ) : (
+            <button 
+              onClick={() => handleLifecycleAction('archive')}
+              className="px-5 py-2.5 bg-white text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium border border-gray-300"
+            >
+              Archive School
+            </button>
+          )}
+
+          {!school.isArchived && (
+            school.status === 'ACTIVE' ? (
+              <button 
+                onClick={() => handleLifecycleAction('disable')}
+                className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors font-medium border border-red-200"
+              >
+                Disable School (Prevent Login)
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleLifecycleAction('enable')}
+                className="px-5 py-2.5 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors font-medium border border-green-200"
+              >
+                Enable School
+              </button>
+            )
+          )}
         </div>
       </div>
 

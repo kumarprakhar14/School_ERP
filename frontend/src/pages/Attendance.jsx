@@ -93,10 +93,9 @@ export default function Attendance() {
       
       // Fetch existing attendance for this date
       const queryParams = new URLSearchParams({
-        classId: selectedClassId,
+        sectionId: selectedSectionId,
         date: date
       });
-      if (selectedSectionId) queryParams.append('sectionId', selectedSectionId);
       
       const attRes = await api.get(`/attendance?${queryParams.toString()}`);
       const existingMap = {};
@@ -136,12 +135,11 @@ export default function Attendance() {
       }));
       
       const payload = {
-        classId: selectedClassId,
+        sectionId: selectedSectionId,
         date,
         records: Object.values(records),
         isLocked: false
       };
-      if (selectedSectionId) payload.sectionId = selectedSectionId;
 
       await api.post('/attendance', payload);
       
@@ -160,8 +158,7 @@ export default function Attendance() {
 
   const handleStateUpdate = async (endpoint, successMsg) => {
     try {
-      const payload = { classId: selectedClassId, date };
-      if (selectedSectionId) payload.sectionId = selectedSectionId;
+      const payload = { sectionId: selectedSectionId, date };
       await api.put(`/attendance/${endpoint}`, payload);
       toast.success(successMsg);
       handleFetchStudents(); // refresh
@@ -259,7 +256,7 @@ export default function Attendance() {
                 // Add directly assigned sections (Class Teacher)
                 classes.forEach(c => {
                   c.sections.forEach(s => {
-                    if (s.teachers && s.teachers.some(t => t.user?.id === user.id)) {
+                    if (s.teacherAssignments && s.teacherAssignments.some(ta => ta.teacher?.user?.id === user.id)) {
                       optionsMap.set(s.id, `${c.name} - Section ${s.name} (Class Teacher)`);
                     }
                   });

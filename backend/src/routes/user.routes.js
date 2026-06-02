@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { createUser, getUsers, getUser, updateUser, deleteUser } from '../controllers/userController.js';
+import { createUser, getUsers, getUser, updateUser, disableUser, enableUser, archiveUser, restoreUser } from '../controllers/userController.js';
 import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
 import { schoolValidityMiddleware } from '../middlewares/schoolMiddleware.js';
 import { validate } from '../validators/validate.js';
@@ -16,6 +16,10 @@ router.get('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), getUser);
 router.post('/', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), validate({ body: createUserSchema }), createUser);
 // Note: updateUser uses multer for profilePic upload, so validation runs after multer parses multipart form
 router.put('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), upload.single('profilePic'), validate({ body: updateUserSchema }), updateUser);
-router.delete('/:userId', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), deleteUser);
+
+router.patch('/:userId/disable', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), disableUser);
+router.patch('/:userId/enable', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), enableUser);
+router.patch('/:userId/archive', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), archiveUser);
+router.patch('/:userId/restore', roleMiddleware(['ADMIN', 'SUPER_ADMIN']), restoreUser);
 
 export default router;
