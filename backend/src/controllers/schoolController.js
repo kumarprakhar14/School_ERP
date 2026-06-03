@@ -158,7 +158,8 @@ const deleteSchool = async (req, res, next) => {
     await prisma.$transaction([
       prisma.assignmentSubmission.deleteMany({ where: { assignment: { schoolId: id } } }),
       prisma.attendance.deleteMany({ where: { class: { schoolId: id } } }),
-      prisma.feeRecord.deleteMany({ where: { schoolId: id } }),
+      prisma.payment.deleteMany({ where: { schoolId: id } }),
+      prisma.feeInvoice.deleteMany({ where: { schoolId: id } }),
       prisma.bugReport.deleteMany({ where: { reportedBy: { schoolId: id } } }),
       prisma.timeTableEntry.deleteMany({ where: { class: { schoolId: id } } }),
       prisma.assignment.deleteMany({ where: { schoolId: id } }),

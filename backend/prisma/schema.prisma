@@ -106,8 +106,9 @@ model User {
   teacherProfile TeacherProfile?
 
   authoredNotices Notice[]
-  feeRecords      FeeRecord[]            @relation("FeeStudent")
-  createdFees     FeeRecord[]            @relation("FeeCreator")
+  feeInvoices     FeeInvoice[]           @relation("FeeInvoiceStudent")
+  createdInvoices FeeInvoice[]           @relation("FeeInvoiceCreator")
+  receivedPayments Payment[]             @relation("PaymentReceiver")
   attendances     Attendance[]
   submissions     AssignmentSubmission[]
   reportedBugs    BugReport[]
@@ -333,25 +334,64 @@ model Notice {
   updatedAt     DateTime   @updatedAt
 }
 
-model FeeRecord {
-  id          String    @id @default(uuid())
-  schoolId    String
-  studentId   String
-  student     User      @relation("FeeStudent", fields: [studentId], references: [id])
-  month       Int // 1-12 (For legacy mapping, or billing month)
-  year        Int
-  amount      Float
-  status      FeeStatus @default(PENDING)
-  paymentMode String? // 'CASH', 'ONLINE', 'CHEQUE'
-  referenceNo String? // Online transaction or cheque number
-  remarks     String?
-  paidAt      DateTime?
 
-  createdBy String? // Accounts Staff ID
-  creator   User?    @relation("FeeCreator", fields: [createdBy], references: [id])
-  updatedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+model FeeStructure {
+  id         String @id @default(uuid())
+  schoolId   String
+  name       String
+  isActive   Boolean @default(true)
+  createdAt  DateTime @default(now())
+
+  items      FeeStructureItems[]
+}
+
+model FeeStructureItems {
+  id              String       @id @default(uuid())
+  feeStructureId  String
+  feeStructure    FeeStructure @relation(fields: [feeStructureId], references: [id])
+  name            String
+  amount          Float
+}
+
+model FeeInvoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  schoolId      String
+  studentId     String
+  student       User     @relation("FeeInvoiceStudent", fields: [studentId], references: [id])
+  month         Int
+  year          Int
+  totalAmount   Float
+  dueDate       DateTime?
+  remarks       String?
+  createdBy     String?
+  creator       User?    @relation("FeeInvoiceCreator", fields: [createdBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payments      Payment[]
+
+  @@index([studentId])
+  @@index([schoolId])
+}
+
+model Payment {
+  id            String     @id @default(uuid())
+  schoolId      String
+  invoiceId     String
+  invoice       FeeInvoice @relation(fields: [invoiceId], references: [id])
+  amount        Float
+  paymentMode   String?
+  referenceNo   String?
+  remarks       String?
+  paidAt        DateTime
+  receivedBy    String?
+  receiver      User?      @relation("PaymentReceiver", fields: [receivedBy], references: [id])
+  createdAt     DateTime   @default(now())
+
+  @@index([invoiceId])
+  @@index([schoolId])
 }
 
 model BugReport {

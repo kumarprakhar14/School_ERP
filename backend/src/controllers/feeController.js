@@ -1,13 +1,12 @@
 import prisma from '../utils/db.js';
+import crypto from 'crypto';
 import { ForbiddenError, NotFoundError } from '../errors/index.js';
 
-const createFeeRecord = async (req, res, next) => {
+const createInvoice = async (req, res, next) => {
   try {
-    const { studentId, amount, month, year, remarks, paymentMode, referenceNo, status } = req.body;
+    const { studentId, amount, month, year, remarks, dueDate } = req.body;
     const schoolId = req.user.schoolId;
 
-    // Check whether a student belongs to the same school as the user
-    // Otherwise, a malicious admin from school A can create record for student of school B
     const student = await prisma.user.findFirst({
       where: {
         id: studentId,
@@ -19,96 +18,54 @@ const createFeeRecord = async (req, res, next) => {
       throw new NotFoundError('Student not found');
     }
     
-    const feeRecord = await prisma.feeRecord.create({
+    const invoiceNumber = `INV-${year}-${month}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+
+    const invoice = await prisma.feeInvoice.create({
       data: {
+        invoiceNumber,
         schoolId,
         studentId,
-        amount: parseFloat(amount),
+        totalAmount: parseFloat(amount),
         month: parseInt(month),
         year: parseInt(year),
+        dueDate: dueDate ? new Date(dueDate) : null,
         remarks,
-        status: status || 'PENDING',
-        paymentMode: paymentMode || null,
-        referenceNo: referenceNo || null,
-        paidAt: status === 'PAID' ? new Date() : null,
         createdBy: req.user.userId
       }
     });
 
-    res.status(201).json(feeRecord);
+    res.status(201).json(invoice);
   } catch (error) {
     next(error);
   }
 };
 
-const getFees = async (req, res, next) => {
+const recordPayment = async (req, res, next) => {
   try {
-    const schoolId = req.user.schoolId;
-    let whereClause = {
-      student: { schoolId }
-    };
-
-    if (req.user.role === 'STUDENT') {
-      whereClause.studentId = req.user.userId;
-    }
-
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-    let queryOptions = {
-      where: whereClause,
-      include: {
-        student: { select: { name: true, erpId: true, studentProfile: { include: { section: { include: { class: true } } } } } },
-        creator: { select: { name: true } }
-      },
-      orderBy: { year: 'desc' }
-    };
-
-    if (page && limit) {
-      const totalCount = await prisma.feeRecord.count({ where: whereClause });
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
-    }
-
-    const fees = await prisma.feeRecord.findMany(queryOptions);
-    res.json(fees);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Fix 5: Enforce schoolId on markFeePaid
-const markFeePaid = async (req, res, next) => {
-  try {
-    const { feeId } = req.params;
-    const { paymentMode, referenceNo } = req.body;
+    const { invoiceId, amount, paymentMode, referenceNo, remarks } = req.body;
     const schoolId = req.user.schoolId;
 
-    // Fix 5: Verify fee record belongs to user's school
-    const existing = await prisma.feeRecord.findFirst({
-      where: { id: feeId, schoolId }
+    const invoice = await prisma.feeInvoice.findFirst({
+      where: { id: invoiceId, schoolId }
     });
-    if (!existing) {
-      throw new NotFoundError('Fee record');
+    if (!invoice) {
+      throw new NotFoundError('Invoice not found');
     }
     
-    const feeRecord = await prisma.feeRecord.update({
-      where: { id: feeId },
+    const payment = await prisma.payment.create({
       data: {
-        status: 'PAID',
+        schoolId,
+        invoiceId,
+        amount: parseFloat(amount),
+        paymentMode: paymentMode || null,
+        referenceNo: referenceNo || null,
+        remarks,
         paidAt: new Date(),
-        paymentMode: paymentMode || undefined,
-        referenceNo: referenceNo || undefined,
-        updatedBy: req.user.userId
+        receivedBy: req.user.userId
       }
     });
 
-    res.json(feeRecord);
+    res.status(201).json(payment);
   } catch (error) {
     next(error);
   }
@@ -132,32 +89,40 @@ const getFeeSummary = async (req, res, next) => {
         studentProfile: {
           include: { section: { include: { class: true } } }
         },
-        feeRecords: true
+        feeInvoices: {
+          include: { payments: true }
+        }
       }
     });
 
     const summary = students.map(student => {
       let totalAmount = 0;
-      let dueAmount = 0;
-      let hasOverdue = false;
+      let totalPaid = 0;
       let earliestPending = null;
 
-      student.feeRecords.forEach(record => {
-        totalAmount += record.amount;
-        if (record.status === 'PENDING' || record.status === 'OVERDUE') {
-          dueAmount += record.amount;
-          if (record.status === 'OVERDUE') hasOverdue = true;
-          
-          const recordDate = new Date(record.year, record.month - 1, 10);
-          if (!earliestPending || recordDate < earliestPending) {
-            earliestPending = recordDate;
-          }
+      student.feeInvoices.forEach(inv => {
+        totalAmount += inv.totalAmount;
+        let invoicePaid = 0;
+        inv.payments.forEach(p => invoicePaid += p.amount);
+        totalPaid += invoicePaid;
+
+        if (invoicePaid < inv.totalAmount) {
+           if (inv.dueDate && (!earliestPending || inv.dueDate < earliestPending)) {
+             earliestPending = inv.dueDate;
+           }
         }
       });
 
+      const dueAmount = totalAmount - totalPaid;
+      
       let status = 'PAID';
       if (dueAmount > 0) {
-        status = hasOverdue || (earliestPending && earliestPending < new Date()) ? 'OVERDUE' : 'PENDING';
+        if (totalPaid > 0) status = 'PARTIALLY_PAID';
+        else status = 'PENDING';
+
+        if (earliestPending && earliestPending < new Date()) {
+          status = 'OVERDUE';
+        }
       }
 
       return {
@@ -180,4 +145,63 @@ const getFeeSummary = async (req, res, next) => {
   }
 };
 
-export { createFeeRecord, getFees, markFeePaid, getFeeSummary  };
+const getTransactionHistory = async (req, res, next) => {
+  try {
+    const schoolId = req.user.schoolId;
+    let studentId = req.query.studentId;
+
+    if (req.user.role === 'STUDENT') {
+      studentId = req.user.userId;
+    }
+    
+    let whereClause = { schoolId };
+    if (studentId) whereClause.studentId = studentId;
+
+    const invoices = await prisma.feeInvoice.findMany({
+      where: whereClause,
+      include: {
+        student: { select: { name: true, erpId: true, studentProfile: { include: { section: { include: { class: true } } } } } },
+        creator: { select: { name: true } },
+        payments: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    let history = [];
+    invoices.forEach(inv => {
+      history.push({
+        id: inv.id,
+        type: 'Invoice',
+        invoiceNumber: inv.invoiceNumber,
+        amount: inv.totalAmount,
+        date: inv.createdAt,
+        remarks: inv.remarks,
+        month: inv.month,
+        year: inv.year,
+        student: inv.student,
+        creator: inv.creator
+      });
+      inv.payments.forEach(pay => {
+        history.push({
+          id: pay.id,
+          type: 'Payment',
+          invoiceNumber: inv.invoiceNumber,
+          amount: pay.amount,
+          date: pay.paidAt,
+          paymentMode: pay.paymentMode,
+          referenceNo: pay.referenceNo,
+          remarks: pay.remarks,
+          student: inv.student,
+        });
+      });
+    });
+
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json(history);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createInvoice, recordPayment, getFeeSummary, getTransactionHistory };

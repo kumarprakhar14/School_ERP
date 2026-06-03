@@ -68,14 +68,13 @@ const getDashboardStats = async (req, res, next) => {
       const attendanceTodayRate = totalMarkedToday > 0 ? Math.round(((presentToday + leaveToday) / totalMarkedToday) * 100) : 0;
 
       // 4. Compute fee summary totals
-      const feeSummary = await prisma.feeRecord.groupBy({
-        by: ['status'],
-        where: { schoolId },
-        _sum: { amount: true }
-      });
-      const feesCollected = feeSummary.find(f => f.status === 'PAID')?._sum?.amount || 0;
-      const pendingFees = (feeSummary.find(f => f.status === 'PENDING')?._sum?.amount || 0) + (feeSummary.find(f => f.status === 'OVERDUE')?._sum?.amount || 0);
-      const totalFees = feesCollected + pendingFees;
+      const [totalInvoicesAgg, totalPaymentsAgg] = await Promise.all([
+        prisma.feeInvoice.aggregate({ where: { schoolId }, _sum: { totalAmount: true } }),
+        prisma.payment.aggregate({ where: { schoolId }, _sum: { amount: true } })
+      ]);
+      const totalFees = totalInvoicesAgg._sum.totalAmount || 0;
+      const feesCollected = totalPaymentsAgg._sum.amount || 0;
+      const pendingFees = Math.max(0, totalFees - feesCollected);
       const collectionRate = totalFees > 0 ? Math.round((feesCollected / totalFees) * 100) : 0;
 
       // 5. Compute action items
@@ -95,9 +94,14 @@ const getDashboardStats = async (req, res, next) => {
       const attendancePendingCount = activeSections.filter(s => !markedSectionIds.has(s.id)).length;
 
       // (b) Pending student fees records count
-      const pendingFeeRecordsCount = await prisma.feeRecord.count({
-        where: { schoolId, status: { in: ['PENDING', 'OVERDUE'] } }
+      const allInvoicesForDashboard = await prisma.feeInvoice.findMany({
+        where: { schoolId },
+        include: { payments: true }
       });
+      const pendingFeeRecordsCount = allInvoicesForDashboard.filter(i => {
+        const paid = i.payments.reduce((sum, p) => sum + p.amount, 0);
+        return paid < i.totalAmount;
+      }).length;
 
       // (c) Recent notice summary info
       const recentNoticesList = await prisma.notice.findMany({
@@ -238,9 +242,9 @@ const getDashboardStats = async (req, res, next) => {
           orderBy: { createdAt: 'desc' },
           take: 10
         }),
-        prisma.feeRecord.findMany({
-          where: { schoolId, status: 'PAID' },
-          select: { amount: true, paidAt: true, month: true, year: true, student: { select: { name: true, erpId: true } } },
+        prisma.payment.findMany({
+          where: { schoolId },
+          select: { amount: true, paidAt: true, invoice: { select: { month: true, year: true, student: { select: { name: true, erpId: true } } } } },
           orderBy: { paidAt: 'desc' },
           take: 15
         }),
@@ -318,7 +322,7 @@ const getDashboardStats = async (req, res, next) => {
         mergedActivities.push({
           id: `payment-${idx}-${p.paidAt.getTime()}`,
           type: 'FEE_PAID',
-          description: `Fee payment of ₹${p.amount.toLocaleString('en-IN')} received from student ${p.student?.name} (${p.student?.erpId}) for ${monthNames[p.month]} ${p.year}`,
+          description: `Fee payment of ₹${p.amount.toLocaleString('en-IN')} received from student ${p.invoice?.student?.name} (${p.invoice?.student?.erpId}) for ${monthNames[p.invoice?.month]} ${p.invoice?.year}`,
           timestamp: p.paidAt
         });
       });

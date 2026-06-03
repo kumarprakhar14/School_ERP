@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-const VALID_STATUSES = ['PENDING', 'PAID', 'OVERDUE'];
-
-const createFeeSchema = z.object({
+const createInvoiceSchema = z.object({
   studentId: z.string({ required_error: 'Student ID is required' }).uuid('Invalid student ID format'),
   amount: z.union([z.number(), z.string()]).refine(val => {
     const num = Number(val);
@@ -16,15 +14,19 @@ const createFeeSchema = z.object({
     const num = Number(val);
     return Number.isInteger(num) && num >= 2000 && num <= 2100;
   }, { message: 'Year must be between 2000 and 2100' }),
-  status: z.enum(VALID_STATUSES).optional().default('PENDING'),
-  paymentMode: z.string().optional().nullable(),
-  referenceNo: z.string().optional().nullable(),
+  dueDate: z.string().optional().nullable(),
   remarks: z.string().optional().nullable()
 });
 
-const markFeePaidSchema = z.object({
+const recordPaymentSchema = z.object({
+  invoiceId: z.string({ required_error: 'Invoice ID is required' }).uuid('Invalid invoice ID format'),
+  amount: z.union([z.number(), z.string()]).refine(val => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0;
+  }, { message: 'Amount must be a valid positive number' }),
   paymentMode: z.string().optional(),
-  referenceNo: z.string().optional()
+  referenceNo: z.string().optional(),
+  remarks: z.string().optional().nullable()
 });
 
-export { createFeeSchema, markFeePaidSchema  };
+export { createInvoiceSchema, recordPaymentSchema };

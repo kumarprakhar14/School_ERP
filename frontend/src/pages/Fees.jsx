@@ -4,7 +4,7 @@ import api from '../lib/api';
 import useAuthStore from '../store/authStore';
 import { toast } from 'sonner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
-import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
 export default function Fees() {
   const { user } = useAuthStore();
@@ -19,12 +19,14 @@ export default function Fees() {
 
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showPayConfirm, setShowPayConfirm] = useState(false);
-  const [payTarget, setPayTarget] = useState(null);
+  const [transactionType, setTransactionType] = useState('INVOICE'); // 'INVOICE' or 'PAYMENT'
   
-  const [formData, setFormData] = useState({
-    studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), remarks: '',
-    status: 'PENDING', paymentMode: '', referenceNo: ''
+  const [invoiceForm, setInvoiceForm] = useState({
+    studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), dueDate: '', remarks: ''
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    studentId: '', invoiceId: '', amount: '', paymentMode: '', referenceNo: '', remarks: ''
   });
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -38,7 +40,7 @@ export default function Fees() {
     try {
       const [summaryRes, historyRes] = await Promise.all([
         api.get('/fees/summary'),
-        api.get('/fees')
+        api.get('/fees/history')
       ]);
       setFeeSummary(summaryRes.data);
       setFeeHistory(historyRes.data);
@@ -54,34 +56,29 @@ export default function Fees() {
     }
   };
 
-  const handlePayClick = (feeId) => {
-    setPayTarget(feeId);
-    setShowPayConfirm(true);
-  };
-
-  const handlePayConfirm = async () => {
-    if (!payTarget) return;
+  const handleCreateInvoice = async (e) => {
+    e.preventDefault();
     try {
-      await api.put(`/fees/${payTarget}/pay`, { paymentMode: 'CASH' });
-      toast.success('Transaction marked as Paid');
-      fetchData(); // Cascade update
+      await api.post('/fees/invoice', invoiceForm);
+      setShowAddModal(false);
+      setInvoiceForm({ studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), dueDate: '', remarks: '' });
+      toast.success('Invoice created successfully');
+      fetchData();
     } catch (error) {
-      toast.error('Failed to process payment');
-    } finally {
-      setShowPayConfirm(false);
-      setPayTarget(null);
+      toast.error(error.response?.data?.message || 'Failed to create invoice');
     }
   };
 
-  const handleCreateFee = async (e) => {
+  const handleRecordPayment = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/fees', formData);
+      await api.post('/fees/payment', paymentForm);
       setShowAddModal(false);
-      setFormData({ studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), remarks: '', status: 'PENDING', paymentMode: '', referenceNo: '' });
-      fetchData(); // Cascade update
+      setPaymentForm({ studentId: '', invoiceId: '', amount: '', paymentMode: '', referenceNo: '', remarks: '' });
+      toast.success('Payment recorded successfully');
+      fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create fee record');
+      toast.error(error.response?.data?.message || 'Failed to record payment');
     }
   };
 
@@ -93,8 +90,18 @@ export default function Fees() {
   const filteredHistory = feeHistory.filter(f => 
     f.student?.name.toLowerCase().includes(searchHistory.toLowerCase()) || 
     f.student?.erpId.toLowerCase().includes(searchHistory.toLowerCase()) ||
-    (f.referenceNo && f.referenceNo.toLowerCase().includes(searchHistory.toLowerCase()))
+    (f.referenceNo && f.referenceNo.toLowerCase().includes(searchHistory.toLowerCase())) ||
+    (f.invoiceNumber && f.invoiceNumber.toLowerCase().includes(searchHistory.toLowerCase()))
   );
+
+  // Derive outstanding invoices for the selected student in the payment form
+  const selectedStudentInvoices = feeHistory.filter(h => h.type === 'Invoice' && h.student.id === paymentForm.studentId);
+  const outstandingInvoices = selectedStudentInvoices.filter(inv => {
+    const summaryItem = feeSummary.find(s => s.student.id === inv.student.id);
+    return summaryItem && summaryItem.dueAmount > 0;
+    // Note: A more precise logic would match payments to this specific invoice, 
+    // but filtering by pending/partially paid from history is also an option.
+  });
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -109,7 +116,7 @@ export default function Fees() {
           </div>
         </div>
         
-        {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && activeTab === 'history' && (
+        {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && (
           <button 
             onClick={() => setShowAddModal(true)}
             className="flex items-center px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-medium text-sm"
@@ -185,6 +192,7 @@ export default function Fees() {
                           </td>
                           <td className="p-4">
                             {summary.status === 'PAID' && <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>}
+                            {summary.status === 'PARTIALLY_PAID' && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 flex w-fit items-center"><DollarSign className="w-3 h-3 mr-1"/> PARTIAL</span>}
                             {summary.status === 'PENDING' && <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>}
                             {summary.status === 'OVERDUE' && <span className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-md border border-red-100 flex w-fit items-center"><AlertCircle className="w-3 h-3 mr-1"/> OVERDUE</span>}
                           </td>
@@ -213,7 +221,7 @@ export default function Fees() {
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
                     type="text" 
-                    placeholder="Search student, ERP ID, or Ref No..." 
+                    placeholder="Search student, ERP ID, Ref No, or Invoice..." 
                     value={searchHistory}
                     onChange={(e) => setSearchHistory(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
@@ -226,45 +234,55 @@ export default function Fees() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th className="p-4 w-12">Type</th>
                         <th className="p-4">Student</th>
                         <th className="p-4">Amount</th>
-                        <th className="p-4">Billing Month</th>
-                        <th className="p-4">Status & Payment</th>
+                        <th className="p-4">Details</th>
                         <th className="p-4">Remarks</th>
-                        {user?.role === 'ACCOUNTS' && <th className="p-4">Added By</th>}
-                        <th className="p-4 text-right">Action</th>
+                        <th className="p-4">Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {filteredHistory.map(fee => (
                         <tr key={fee.id} className="hover:bg-gray-50/30 transition-colors">
                           <td className="p-4">
+                            {fee.type === 'Invoice' ? (
+                              <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center" title="Invoice (Charge)">
+                                <ArrowUpRight className="w-4 h-4" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center" title="Payment (Received)">
+                                <ArrowDownLeft className="w-4 h-4" />
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4">
                             <p className="font-bold text-gray-900">{fee.student?.name}</p>
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{fee.student?.erpId}</p>
                           </td>
-                          <td className="p-4 font-mono font-bold text-gray-700">${fee.amount.toFixed(2)}</td>
-                          <td className="p-4 text-sm text-gray-600">{monthNames[fee.month - 1]} {fee.year}</td>
+                          <td className="p-4 font-mono font-bold text-gray-700">
+                            {fee.type === 'Payment' ? (
+                              <span className="text-emerald-600">+₹{fee.amount.toFixed(2)}</span>
+                            ) : (
+                              <span className="text-gray-900">₹{fee.amount.toFixed(2)}</span>
+                            )}
+                          </td>
                           <td className="p-4">
                             <div className="flex flex-col space-y-1">
-                              {fee.status === 'PAID' ? (
-                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>
+                              <span className="text-xs font-bold text-gray-700 font-mono">{fee.invoiceNumber}</span>
+                              {fee.type === 'Invoice' ? (
+                                <span className="text-xs text-gray-500">Bill: {monthNames[fee.month - 1]} {fee.year}</span>
                               ) : (
-                                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>
+                                <>
+                                  {fee.paymentMode && <span className="text-xs text-gray-500 font-medium">via {fee.paymentMode}</span>}
+                                  {fee.referenceNo && <span className="text-xs text-gray-400 font-mono">Ref: {fee.referenceNo}</span>}
+                                </>
                               )}
-                              {fee.paymentMode && <span className="text-xs text-gray-500 font-medium">via {fee.paymentMode}</span>}
-                              {fee.referenceNo && <span className="text-xs text-gray-400 font-mono">{fee.referenceNo}</span>}
                             </div>
                           </td>
                           <td className="p-4 text-sm text-gray-500">{fee.remarks || '-'}</td>
-                          {user?.role === 'ACCOUNTS' && (
-                            <td className="p-4 text-sm text-gray-700 font-medium">{fee.creator?.name || 'System'}</td>
-                          )}
-                          <td className="p-4 text-right">
-                            {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && fee.status !== 'PAID' && (
-                              <button onClick={() => handlePayClick(fee.id)} className="px-4 py-2 bg-emerald-600 text-white text-xs font-medium rounded-xl hover:bg-emerald-700 shadow-sm">
-                                Mark Paid
-                              </button>
-                            )}
+                          <td className="p-4 text-sm text-gray-500">
+                            {new Date(fee.date).toLocaleDateString()}
                           </td>
                         </tr>
                       ))}
@@ -288,90 +306,130 @@ export default function Fees() {
               <h2 className="text-lg font-bold text-gray-900 flex items-center"><FileText className="w-5 h-5 mr-2 text-emerald-600" /> Add Transaction</h2>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"><X className="w-5 h-5"/></button>
             </div>
-            <form onSubmit={handleCreateFee} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                  <select required value={formData.studentId} onChange={e => setFormData({...formData, studentId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                    <option value="">Select Student...</option>
-                    {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.erpId})</option>)}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
-                  <input required type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. 150.00" />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
-                  <select required value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                    <option value="PENDING">Bill / Fee Due (Pending)</option>
-                    <option value="PAID">Receipt / Payment (Paid)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Billing Month</label>
-                  <select required value={formData.month} onChange={e => setFormData({...formData, month: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                    {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Billing Year</label>
-                  <input required type="number" value={formData.year} onChange={e => setFormData({...formData, year: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
+            
+            <div className="px-6 pt-4">
+              <div className="flex p-1 bg-gray-100 rounded-xl">
+                <button 
+                  onClick={() => setTransactionType('INVOICE')}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${transactionType === 'INVOICE' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Create Invoice
+                </button>
+                <button 
+                  onClick={() => setTransactionType('PAYMENT')}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${transactionType === 'PAYMENT' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Record Payment
+                </button>
               </div>
+            </div>
 
-              {formData.status === 'PAID' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
-                    <select required value={formData.paymentMode} onChange={e => setFormData({...formData, paymentMode: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
-                      <option value="">Select Mode...</option>
-                      <option value="CASH">Cash</option>
-                      <option value="ONLINE">Online Transfer</option>
-                      <option value="CHEQUE">Cheque</option>
-                      <option value="CARD">Credit/Debit Card</option>
-                    </select>
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+              {transactionType === 'INVOICE' ? (
+                <form onSubmit={handleCreateInvoice} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                      <select required value={invoiceForm.studentId} onChange={e => setInvoiceForm({...invoiceForm, studentId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                        <option value="">Select Student...</option>
+                        {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.erpId})</option>)}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                      <input required type="number" step="0.01" value={invoiceForm.amount} onChange={e => setInvoiceForm({...invoiceForm, amount: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. 1500.00" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Date (Optional)</label>
+                      <input type="date" value={invoiceForm.dueDate} onChange={e => setInvoiceForm({...invoiceForm, dueDate: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Billing Month</label>
+                      <select required value={invoiceForm.month} onChange={e => setInvoiceForm({...invoiceForm, month: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                        {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Billing Year</label>
+                      <input required type="number" value={invoiceForm.year} onChange={e => setInvoiceForm({...invoiceForm, year: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reference No.</label>
-                    <input type="text" value={formData.referenceNo} onChange={e => setFormData({...formData, referenceNo: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="(Optional)" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                    <input type="text" value={invoiceForm.remarks} onChange={e => setInvoiceForm({...invoiceForm, remarks: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Tuition Fee" />
                   </div>
-                </div>
+                  
+                  <div className="pt-2 flex justify-end space-x-3">
+                    <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors">Create Invoice</button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleRecordPayment} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
+                      <select required value={paymentForm.studentId} onChange={e => setPaymentForm({...paymentForm, studentId: e.target.value, invoiceId: ''})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                        <option value="">Select Student...</option>
+                        {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.erpId})</option>)}
+                      </select>
+                    </div>
+
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Invoice</label>
+                      <select required value={paymentForm.invoiceId} onChange={e => setPaymentForm({...paymentForm, invoiceId: e.target.value})} disabled={!paymentForm.studentId} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                        <option value="">Select Invoice...</option>
+                        {outstandingInvoices.map(inv => (
+                          <option key={inv.id} value={inv.id}>
+                            {inv.invoiceNumber} ({monthNames[inv.month - 1]} {inv.year}) - ₹{inv.amount.toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid (₹)</label>
+                      <input required type="number" step="0.01" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. 500.00" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
+                      <select required value={paymentForm.paymentMode} onChange={e => setPaymentForm({...paymentForm, paymentMode: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                        <option value="">Select Mode...</option>
+                        <option value="CASH">Cash</option>
+                        <option value="ONLINE">Online Transfer</option>
+                        <option value="CHEQUE">Cheque</option>
+                        <option value="CARD">Credit/Debit Card</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Reference No.</label>
+                      <input type="text" value={paymentForm.referenceNo} onChange={e => setPaymentForm({...paymentForm, referenceNo: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="(Optional)" />
+                    </div>
+
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                      <input type="text" value={paymentForm.remarks} onChange={e => setPaymentForm({...paymentForm, remarks: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Optional notes" />
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2 flex justify-end space-x-3">
+                    <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors">Record Payment</button>
+                  </div>
+                </form>
               )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                <input type="text" value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Tuition Fee, Exam Fee" />
-              </div>
-              
-              <div className="pt-2 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors">Save Transaction</button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>,
         document.body
       )}
-
-      {/* Pay Confirm Modal */}
-      <ConfirmDialog
-        isOpen={showPayConfirm}
-        title="Mark as Paid"
-        message="Are you sure you want to mark this transaction as Paid? This action will set the payment mode to Cash."
-        confirmText="Mark Paid"
-        cancelText="Cancel"
-        isDestructive={false}
-        onConfirm={handlePayConfirm}
-        onCancel={() => {
-          setShowPayConfirm(false);
-          setPayTarget(null);
-        }}
-      />
     </div>
   );
 }

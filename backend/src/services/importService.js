@@ -1,5 +1,6 @@
 import xlsx from 'xlsx';
 import prisma from '../utils/db.js';
+import crypto from 'crypto';
 import { generateBatchErpIds } from './erpService.js';
 import bcrypt from 'bcryptjs';
 
@@ -355,20 +356,34 @@ const importFees = async (schoolId, fileBuffer) => {
   try {
     await prisma.$transaction(async (tx) => {
       for (const row of validRows) {
-        await tx.feeRecord.create({
+        const invoiceNumber = `INV-${row.year}-${row.month}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
+
+        const invoice = await tx.feeInvoice.create({
           data: {
+            invoiceNumber,
             schoolId,
             studentId: row.studentId,
-            amount: row.amount,
+            totalAmount: row.amount,
             month: row.month,
             year: row.year,
-            status: row.status,
-            paymentMode: row.paymentMode,
-            referenceNo: row.referenceNo,
+            dueDate: new Date(row.year, row.month - 1, 10),
             remarks: row.remarks,
-            paidAt: row.paidAt
           }
         });
+
+        if (row.status === 'PAID') {
+          await tx.payment.create({
+            data: {
+              schoolId,
+              invoiceId: invoice.id,
+              amount: row.amount,
+              paymentMode: row.paymentMode,
+              referenceNo: row.referenceNo,
+              remarks: row.remarks,
+              paidAt: row.paidAt || new Date()
+            }
+          });
+        }
       }
     }, {
       maxWait: 10000,
