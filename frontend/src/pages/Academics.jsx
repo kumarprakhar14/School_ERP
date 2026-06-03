@@ -200,7 +200,12 @@ export default function Academics() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {(user?.role === 'STUDENT' ? classes.filter(c => c.sections?.some(s => s.students?.some(st => st.userId === user.id))) : classes).map(cls => (
+          {classes.filter(cls => {
+            if (user?.role === 'TEACHER') {
+              return cls.sections?.some(sec => sec.teacherAssignments?.some(ta => ta.teacher?.user?.id === user?.id));
+            }
+            return true;
+          }).map(cls => (
             <div key={cls.id} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden group hover:shadow-lg transition-all">
               <div className="p-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
                 <div className="flex items-center space-x-2">
@@ -218,7 +223,12 @@ export default function Academics() {
                 {cls.sections?.length === 0 ? (
                   <p className="text-sm text-gray-400 italic text-center py-4">No sections added yet.</p>
                 ) : (
-                  (user?.role === 'STUDENT' ? cls.sections?.filter(s => s.students?.some(st => st.userId === user.id)) : cls.sections).map(sec => (
+                  cls.sections?.filter(sec => {
+                    if (user?.role === 'TEACHER') {
+                      return sec.teacherAssignments?.some(ta => ta.teacher?.user?.id === user?.id);
+                    }
+                    return true;
+                  }).map(sec => (
                     <div key={sec.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors">
                       <div className="flex items-center">
                         <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm mr-3">
@@ -227,7 +237,7 @@ export default function Academics() {
                         <span className="text-sm font-medium text-gray-700">Section {sec.name}</span>
                       </div>
                       <div className="flex items-center text-gray-400 text-xs font-medium space-x-3">
-                        <span className="flex items-center"><Users className="w-3.5 h-3.5 mr-1" />{sec.students?.length || 0}</span>
+                        <span className="flex items-center"><Users className="w-3.5 h-3.5 mr-1" />{sec._count?.students || 0}</span>
                         {user?.role === 'ADMIN' && (
                           <div className="flex items-center space-x-1">
                             <button onClick={() => { setSectionName(sec.name); setShowEditSectionModal(sec); }} className="p-1 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors" title="Edit Section">
