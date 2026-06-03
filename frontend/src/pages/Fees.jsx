@@ -185,8 +185,8 @@ export default function Fees() {
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{summary.student.erpId}</p>
                           </td>
                           <td className="p-4 text-sm text-gray-600">{summary.student.classDetails}</td>
-                          <td className="p-4 font-mono font-medium text-gray-600">₹{summary.totalAmount.toFixed(2)}</td>
-                          <td className="p-4 font-mono font-bold text-gray-900">₹{summary.dueAmount.toFixed(2)}</td>
+                          <td className="p-4 font-mono font-medium text-gray-600">₹{(summary.totalAmount / 100).toFixed(2)}</td>
+                          <td className="p-4 font-mono font-bold text-gray-900">₹{(summary.dueAmount / 100).toFixed(2)}</td>
                           <td className="p-4 text-sm text-gray-600">
                             {summary.dueDate ? new Date(summary.dueDate).toLocaleDateString() : '-'}
                           </td>
@@ -262,9 +262,9 @@ export default function Fees() {
                           </td>
                           <td className="p-4 font-mono font-bold text-gray-700">
                             {fee.type === 'Payment' ? (
-                              <span className="text-emerald-600">+₹{fee.amount.toFixed(2)}</span>
+                              <span className="text-emerald-600">+₹{(fee.amount / 100).toFixed(2)}</span>
                             ) : (
-                              <span className="text-gray-900">₹{fee.amount.toFixed(2)}</span>
+                              <span className="text-gray-900">₹{(fee.amount / 100).toFixed(2)}</span>
                             )}
                           </td>
                           <td className="p-4">
@@ -386,7 +386,7 @@ export default function Fees() {
                         <option value="">Select Invoice...</option>
                         {outstandingInvoices.map(inv => (
                           <option key={inv.id} value={inv.id}>
-                            {inv.invoiceNumber} ({monthNames[inv.month - 1]} {inv.year}) - ₹{inv.amount.toFixed(2)}
+                            {inv.invoiceNumber} ({monthNames[inv.month - 1]} {inv.year}) - ₹{(inv.amount / 100).toFixed(2)}
                           </option>
                         ))}
                       </select>

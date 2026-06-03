@@ -351,7 +351,7 @@ model FeeStructureItems {
   feeStructureId  String
   feeStructure    FeeStructure @relation(fields: [feeStructureId], references: [id])
   name            String
-  amount          Float
+  amount          Int
 }
 
 model FeeInvoice {
@@ -362,7 +362,7 @@ model FeeInvoice {
   student       User     @relation("FeeInvoiceStudent", fields: [studentId], references: [id])
   month         Int
   year          Int
-  totalAmount   Float
+  totalAmount   Int
   dueDate       DateTime?
   remarks       String?
   createdBy     String?
@@ -381,7 +381,7 @@ model Payment {
   schoolId      String
   invoiceId     String
   invoice       FeeInvoice @relation(fields: [invoiceId], references: [id])
-  amount        Float
+  amount        Int
   paymentMode   String?
   referenceNo   String?
   remarks       String?
@@ -406,4 +406,23 @@ model BugReport {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ImportJob {
+  id                 String    @id @default(uuid())
+  schoolId           String
+  type               String
+  status             String
+  totalRows          Int       @default(0)
+  matchedRows        Int       @default(0)
+  ambiguousRows      Int       @default(0)
+  unmatchedRows      Int       @default(0)
+  resolvedRows       Int       @default(0)
+  spreadsheetData    Json?
+  matchingData       Json?
+  previewData        Json?
+  resolvedOverrides  Json?
+  uploadedFileMeta   Json?
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
 }

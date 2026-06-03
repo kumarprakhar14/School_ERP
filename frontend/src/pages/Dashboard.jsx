@@ -131,7 +131,16 @@ export default function Dashboard() {
         api.get('/dashboard/stats').catch(() => ({ data: null }))
       ]);
       setNotices(noticeRes.data || []);
-      if (statsRes.data) setStats(statsRes.data);
+      if (statsRes.data) {
+        const data = statsRes.data;
+        if (typeof data.feesCollected === 'number') data.feesCollected /= 100;
+        if (typeof data.pendingFees === 'number') data.pendingFees /= 100;
+        if (data.financialSnapshot) {
+          if (typeof data.financialSnapshot.feesCollected === 'number') data.financialSnapshot.feesCollected /= 100;
+          if (typeof data.financialSnapshot.pendingFees === 'number') data.financialSnapshot.pendingFees /= 100;
+        }
+        setStats(data);
+      }
     } catch (error) {
       console.error(error);
     } finally {

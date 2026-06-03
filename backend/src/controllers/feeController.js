@@ -25,7 +25,7 @@ const createInvoice = async (req, res, next) => {
         invoiceNumber,
         schoolId,
         studentId,
-        totalAmount: parseFloat(amount),
+        totalAmount: Math.round(parseFloat(amount) * 100),
         month: parseInt(month),
         year: parseInt(year),
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -56,7 +56,7 @@ const recordPayment = async (req, res, next) => {
       data: {
         schoolId,
         invoiceId,
-        amount: parseFloat(amount),
+        amount: Math.round(parseFloat(amount) * 100),
         paymentMode: paymentMode || null,
         referenceNo: referenceNo || null,
         remarks,

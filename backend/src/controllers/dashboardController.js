@@ -158,7 +158,7 @@ const getDashboardStats = async (req, res, next) => {
 
       let feeCollectionRating = "No fee records yet";
       if (totalFees > 0) {
-        feeCollectionRating = `✓ ₹${feesCollected.toLocaleString('en-IN')} collected (${collectionRate}%)`;
+        feeCollectionRating = `✓ ₹${(feesCollected / 100).toLocaleString('en-IN')} collected (${collectionRate}%)`;
       }
 
       let teacherActivityRating = "No teachers registered";

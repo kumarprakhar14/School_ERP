@@ -128,7 +128,7 @@ const importStudents = async (schoolId, fileBuffer) => {
       }
     }, {
       maxWait: 10000,
-      timeout: 120000 // 120 seconds
+      timeout: 180000 // 120 seconds
     });
     
     return { success: true, count: validRows.length };
@@ -210,7 +210,7 @@ const importTeachers = async (schoolId, fileBuffer) => {
         include: { sections: true }
       });
 
-      let academicYear = await tx.academicYear.findFirst({ where: { schoolId, status: 'ACTIVE' } });
+      let academicYear = await tx.academicYear.findFirst({ where: { schoolId, isCurrent: true } });
       if (!academicYear && validRows.some(r => r.pendingSections.length > 0)) {
         academicYear = await tx.academicYear.create({
           data: {
@@ -218,7 +218,7 @@ const importTeachers = async (schoolId, fileBuffer) => {
             name: 'Default Year',
             startDate: new Date(),
             endDate: new Date(),
-            status: 'ACTIVE'
+            isCurrent: true
           }
         });
       }
@@ -277,129 +277,7 @@ const importTeachers = async (schoolId, fileBuffer) => {
   }
 };
 
-const importFees = async (schoolId, fileBuffer) => {
-  const data = parseExcel(fileBuffer);
-  const errors = [];
-  const validRows = [];
-  
-  if (data.length === 0) {
-    return { success: false, errors: [{ row: 0, field: 'File', error: 'File is empty' }], report: buildErrorReport([{ row: 0, field: 'File', error: 'File is empty' }]) };
-  }
-
-  // Pre-fetch all students in this school
-  const students = await prisma.user.findMany({
-    where: { schoolId, role: 'STUDENT' },
-    include: { studentProfile: { include: { section: { include: { class: true } } } } }
-  });
-
-  const validStatuses = ['PENDING', 'PAID', 'OVERDUE'];
-
-  data.forEach((row, index) => {
-    const rowNum = index + 2;
-    const studentName = String(row['Student Name'] || '').trim();
-    const className = String(row['Class Name'] || '').trim();
-    
-    const amountStr = row['Fee Amount'];
-    const amount = parseFloat(amountStr);
-    
-    const month = parseInt(row['Month'], 10);
-    const year = parseInt(row['Year'], 10);
-    const status = String(row['Status'] || 'PENDING').trim().toUpperCase();
-    const paymentMode = String(row['Payment Mode'] || '').trim() || null;
-    const referenceNo = String(row['Reference No'] || '').trim() || null;
-    const remarks = String(row['Remarks'] || '').trim() || null;
-
-    let matchedStudentId = null;
-
-    if (!studentName || !className) {
-      errors.push({ row: rowNum, field: 'Student Name / Class Name', error: 'Both Student Name and Class Name are required to identify the student' });
-    } else {
-      // Find matching students
-      const matches = students.filter(s => 
-        s.name.toLowerCase() === studentName.toLowerCase() && 
-        s.studentProfile?.section?.class?.name?.toLowerCase() === className.toLowerCase()
-      );
-
-      if (matches.length === 0) {
-        errors.push({ row: rowNum, field: 'Student Match', error: `Could not find student "${studentName}" in class "${className}"` });
-      } else if (matches.length > 1) {
-        errors.push({ row: rowNum, field: 'Student Match', error: `Found multiple students named "${studentName}" in class "${className}". Cannot reliably map fee record.` });
-      } else {
-        matchedStudentId = matches[0].id;
-      }
-    }
-
-    if (isNaN(amount) || amount < 0) errors.push({ row: rowNum, field: 'Fee Amount', error: 'Must be a valid positive number' });
-    if (isNaN(month) || month < 1 || month > 12) errors.push({ row: rowNum, field: 'Month', error: 'Must be between 1 and 12' });
-    if (isNaN(year) || year < 2000 || year > 2100) errors.push({ row: rowNum, field: 'Year', error: 'Must be a valid year' });
-    if (!validStatuses.includes(status)) errors.push({ row: rowNum, field: 'Status', error: 'Must be PENDING, PAID, or OVERDUE' });
-
-    if (matchedStudentId && errors.filter(e => e.row === rowNum).length === 0) {
-      validRows.push({
-        studentId: matchedStudentId,
-        amount,
-        month,
-        year,
-        status,
-        paymentMode,
-        referenceNo,
-        remarks,
-        paidAt: status === 'PAID' ? new Date() : null
-      });
-    }
-  });
-
-  if (errors.length > 0) {
-    return { success: false, errors, report: buildErrorReport(errors) };
-  }
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      for (const row of validRows) {
-        const invoiceNumber = `INV-${row.year}-${row.month}-${crypto.randomUUID().substring(0, 8).toUpperCase()}`;
-
-        const invoice = await tx.feeInvoice.create({
-          data: {
-            invoiceNumber,
-            schoolId,
-            studentId: row.studentId,
-            totalAmount: row.amount,
-            month: row.month,
-            year: row.year,
-            dueDate: new Date(row.year, row.month - 1, 10),
-            remarks: row.remarks,
-          }
-        });
-
-        if (row.status === 'PAID') {
-          await tx.payment.create({
-            data: {
-              schoolId,
-              invoiceId: invoice.id,
-              amount: row.amount,
-              paymentMode: row.paymentMode,
-              referenceNo: row.referenceNo,
-              remarks: row.remarks,
-              paidAt: row.paidAt || new Date()
-            }
-          });
-        }
-      }
-    }, {
-      maxWait: 10000,
-      timeout: 120000 // 120 seconds
-    });
-    return { success: true, count: validRows.length };
-  } catch (error) {
-    return { 
-      success: false, 
-      errors: [{ row: 'All', field: 'Database', error: error.message }],
-      report: buildErrorReport([{ row: 'All', field: 'Database', error: error.message }])
-    };
-  }
-};
 
 export { importStudents,
-  importTeachers,
-  importFees
+  importTeachers
  };
