@@ -3,6 +3,24 @@ import { Bell, Search, User, LogOut, ChevronDown, Settings as SettingsIcon, Menu
 import useAuthStore from '../../store/authStore';
 import { useNavigate, Link } from 'react-router-dom';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import useDebounce from '../../hooks/useDebounce';
+import api from '../../lib/api';
+
+const routeMapper = (type, id, role) => {
+  switch (type) {
+    case 'school': return `/super-admin/schools/${id}`;
+    case 'student': 
+    case 'teacher':
+    case 'admin':
+    case 'accounts':
+      return role === 'ADMIN' ? `/admin/users/${id}` : '#'; // Fallback if other roles lack a public profile view
+    case 'notice': return '/'; // The dashboard holds the notice board
+    case 'assignment': return '/assignments';
+    case 'invoice': return '/fees';
+    case 'payment': return '/fees';
+    default: return '/';
+  }
+};
 
 export default function Navbar({ toggleSidebar }) {
   const { user, logout } = useAuthStore();
@@ -11,8 +29,20 @@ export default function Navbar({ toggleSidebar }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [flatResults, setFlatResults] = useState([]); // Flattened array for keyboard nav
+
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
   const notifRef = useRef();
   const profileRef = useRef();
+  const searchContainerRef = useRef();
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -21,6 +51,9 @@ export default function Navbar({ toggleSidebar }) {
       }
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setShowProfileMenu(false);
+      }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowSearchResults(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -32,6 +65,78 @@ export default function Navbar({ toggleSidebar }) {
     navigate('/login');
   };
 
+  // Handle Search API Calls
+  useEffect(() => {
+    if (debouncedQuery.length < 3) {
+      setSearchResults(null);
+      setFlatResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const fetchSearch = async () => {
+      setIsSearching(true);
+      setShowSearchResults(true);
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      try {
+        const response = await api.get(`/search?q=${encodeURIComponent(debouncedQuery)}`, {
+          signal: abortControllerRef.current.signal
+        });
+        setSearchResults(response.data);
+        
+        // Flatten results for keyboard navigation
+        const flat = [];
+        Object.values(response.data).forEach(arr => {
+          flat.push(...arr);
+        });
+        setFlatResults(flat);
+        setSelectedIndex(-1);
+      } catch (error) {
+        if (error.name !== 'CanceledError') {
+          console.error('Search error:', error);
+          setSearchResults({});
+          setFlatResults([]);
+        }
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    fetchSearch();
+  }, [debouncedQuery]);
+
+  const handleKeyDown = (e) => {
+    if (!showSearchResults || flatResults.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev < flatResults.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && flatResults[selectedIndex]) {
+        handleSelectResult(flatResults[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSearchResults(false);
+    }
+  };
+
+  const handleSelectResult = (item) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    setSearchResults(null);
+    setFlatResults([]);
+    navigate(routeMapper(item.type, item.id, user?.role));
+  };
+
   return (
     <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
       <div className="flex items-center flex-1 max-w-xl">
@@ -41,15 +146,73 @@ export default function Navbar({ toggleSidebar }) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="relative group flex-1">
+        <div className="relative group flex-1" ref={searchContainerRef}>
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <Search className={`h-4 w-4 transition-colors ${isSearching ? 'text-blue-500 animate-pulse' : 'text-gray-400 group-focus-within:text-blue-500'}`} />
           </div>
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (e.target.value.length >= 3) setShowSearchResults(true);
+            }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              if (searchQuery.length >= 3) setShowSearchResults(true);
+            }}
             className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50/50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all duration-300 sm:text-sm"
-            placeholder="Search students, classes, or notices..."
+            placeholder="Search by names, ERP Id or notices..."
           />
+
+          {showSearchResults && searchQuery.length >= 3 && (
+            <div className="absolute mt-2 w-full max-w-2xl bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[70vh]">
+              {isSearching && !searchResults ? (
+                <div className="p-4 text-center text-sm text-gray-500">Searching...</div>
+              ) : flatResults.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500">No results found for "{searchQuery}"</div>
+              ) : (
+                <div className="overflow-y-auto p-2 space-y-4">
+                  {Object.entries(searchResults).map(([category, items]) => {
+                    if (!items || items.length === 0) return null;
+                    return (
+                      <div key={category}>
+                        <h3 className="px-3 mb-1 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                          {category}
+                        </h3>
+                        <ul className="space-y-1">
+                          {items.map((item) => {
+                            const globalIndex = flatResults.findIndex(r => r.id === item.id && r.type === item.type);
+                            const isSelected = selectedIndex === globalIndex;
+                            return (
+                              <li key={`${item.type}-${item.id}`}>
+                                <button
+                                  onClick={() => handleSelectResult(item)}
+                                  onMouseEnter={() => setSelectedIndex(globalIndex)}
+                                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex flex-col ${
+                                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                                    {item.title}
+                                  </span>
+                                  {item.subtitle && (
+                                    <span className={`text-xs ${isSelected ? 'text-blue-500' : 'text-gray-500'}`}>
+                                      {item.subtitle}
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       

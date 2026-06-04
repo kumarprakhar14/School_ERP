@@ -17,6 +17,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import timetableRoutes from './routes/timetable.routes.js';
 import importRoutes from './routes/import.routes.js';
 import bugRoutes from './routes/bug.routes.js';
+import searchRoutes from './routes/search.routes.js';
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/bugs', bugRoutes);
+app.use('/api/search', searchRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

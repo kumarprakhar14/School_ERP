@@ -114,6 +114,8 @@ model User {
   reportedBugs    BugReport[]
 
   @@unique([schoolId, erpId]) // Unique per school
+  @@index([schoolId, name])
+  @@index([schoolId, role])
 }
 
 // -----------------------------------------------------------------------------
@@ -247,6 +249,7 @@ model Attendance {
 
   @@unique([sectionId, studentId, date])
   @@index([sectionId])
+  @@index([sectionId, date])
 }
 
 model Assignment {
@@ -268,6 +271,8 @@ model Assignment {
   submissions AssignmentSubmission[]
 
   @@index([sectionId])
+  @@index([schoolId, title])
+  @@index([dueDate])
 }
 
 model AssignmentSubmission {
@@ -332,6 +337,9 @@ model Notice {
   author        User?      @relation(fields: [createdBy], references: [id])
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+
+  @@index([schoolId, title])
+  @@index([schoolId, createdAt])
 }
 
 
@@ -374,6 +382,8 @@ model FeeInvoice {
 
   @@index([studentId])
   @@index([schoolId])
+  @@index([schoolId, invoiceNumber])
+  @@index([schoolId, month, year])
 }
 
 model Payment {
@@ -392,6 +402,7 @@ model Payment {
 
   @@index([invoiceId])
   @@index([schoolId])
+  @@index([schoolId, referenceNo])
 }
 
 model BugReport {
@@ -425,4 +436,14 @@ model ImportJob {
   uploadedFileMeta   Json?
   startedAt          DateTime  @default(now())
   completedAt        DateTime?
+}
+
+model SearchLog {
+  id        String   @id @default(uuid())
+  query     String
+  role      UserRole
+  schoolId  String?
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
 }
