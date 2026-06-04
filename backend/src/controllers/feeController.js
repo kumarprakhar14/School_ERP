@@ -160,7 +160,7 @@ const getTransactionHistory = async (req, res, next) => {
     const invoices = await prisma.feeInvoice.findMany({
       where: whereClause,
       include: {
-        student: { select: { name: true, erpId: true, studentProfile: { include: { section: { include: { class: true } } } } } },
+        student: { select: { id: true, name: true, erpId: true, studentProfile: { include: { section: { include: { class: true } } } } } },
         creator: { select: { name: true } },
         payments: true
       },

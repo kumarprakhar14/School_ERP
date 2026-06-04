@@ -94,13 +94,15 @@ export default function Fees() {
     (f.invoiceNumber && f.invoiceNumber.toLowerCase().includes(searchHistory.toLowerCase()))
   );
 
-  // Derive outstanding invoices for the selected student in the payment form
-  const selectedStudentInvoices = feeHistory.filter(h => h.type === 'Invoice' && h.student.id === paymentForm.studentId);
+  const selectedStudentInvoices = feeHistory.filter(h => h.type === 'Invoice' && h.student?.id === paymentForm.studentId);
   const outstandingInvoices = selectedStudentInvoices.filter(inv => {
-    const summaryItem = feeSummary.find(s => s.student.id === inv.student.id);
-    return summaryItem && summaryItem.dueAmount > 0;
-    // Note: A more precise logic would match payments to this specific invoice, 
-    // but filtering by pending/partially paid from history is also an option.
+    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber);
+    const totalPaidForInvoice = paymentsForInvoice.reduce((sum, p) => sum + p.amount, 0);
+    return totalPaidForInvoice < inv.amount;
+  }).map(inv => {
+    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber);
+    const totalPaidForInvoice = paymentsForInvoice.reduce((sum, p) => sum + p.amount, 0);
+    return { ...inv, outstandingAmount: inv.amount - totalPaidForInvoice };
   });
 
   return (
@@ -386,7 +388,7 @@ export default function Fees() {
                         <option value="">Select Invoice...</option>
                         {outstandingInvoices.map(inv => (
                           <option key={inv.id} value={inv.id}>
-                            {inv.invoiceNumber} ({monthNames[inv.month - 1]} {inv.year}) - ₹{(inv.amount / 100).toFixed(2)}
+                            {inv.invoiceNumber} ({monthNames[inv.month - 1]} {inv.year}) - Due: ₹{(inv.outstandingAmount / 100).toFixed(2)}
                           </option>
                         ))}
                       </select>
