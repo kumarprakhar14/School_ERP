@@ -17,6 +17,7 @@ const roleNavItems = {
     { icon: FileText, label: 'Data Import', path: '/admin/import' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: Calendar, label: 'Time Table', path: '/timetable' },
+    { icon: FileText, label: 'Fees', path: '/fees' },
     { icon: Settings, label: 'School Settings', path: '/admin/settings' },
   ],
   TEACHER: [
