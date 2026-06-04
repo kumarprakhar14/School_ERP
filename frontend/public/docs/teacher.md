@@ -1,33 +1,94 @@
 # Teacher Guide
 
-The Teacher role provides tools for managing classrooms, students, and academic progress.
+As a Teacher, the application gives you the tools you need to manage attendance, post assignments, publish announcements, and keep track of your teaching schedule — all in one place. You only see data that is relevant to the classes and sections you are assigned to.
 
-## Class Management
+---
 
-Manage the classes and sections assigned to you.
+## Your Sidebar at a Glance
 
-### Attendance
-Record daily attendance for your students quickly and easily. View attendance history and identify trends.
+| Sidebar Item | What it does |
+|---|---|
+| **Dashboard** | Notice board, quick shortcuts, and a form to post announcements |
+| **Attendance** | Mark daily attendance for your assigned classes |
+| **Time Table** | View your personal teaching schedule |
+| **Academics** | See the classes and sections you are assigned to |
+| **Assignments** | Create assignments for your sections and view student submissions |
 
-### Timetable
-View your daily and weekly class schedule, including subjects and room assignments.
+---
+
+## Dashboard
+
+When you open the Dashboard, you will see:
+
+- **Notice Board** — All active announcements published for your school, visible to you and your students.
+- **Teacher Shortcuts** — Quick-access buttons to jump directly to Mark Attendance or Post Assignment.
+- **Post an Announcement** — A simple form to publish a notice. Fill in a title, write the message, and optionally choose who should see it (Everyone, Students Only, Teachers Only, or Accounts Only). Click "Publish Notice" and it will appear on everyone's dashboard immediately.
+
+---
+
+## Attendance
+
+This is where you mark and manage daily student attendance for your classes.
+
+### How to mark attendance
+
+1. Open **Attendance** from the sidebar.
+2. You will see a dropdown showing your **assigned sections for today**. The sections you teach (based on the timetable for the current day) are listed here automatically. If you are also a class teacher for a section, it will appear with a "Class Teacher" label.
+3. Select the section you want to mark attendance for.
+4. The date is set to today by default. You can change it to mark attendance for a past date.
+5. Click **Fetch List**. The list of students in that section will appear.
+6. For each student, choose **Present** or **Absent**. You can also click "Mark All Present" or "Mark All Absent" at the top to set everyone at once.
+
+### Saving attendance
+
+After marking, you have two options:
+
+- **Save Temp** — Saves your work temporarily. You can still come back and make changes. The attendance is not finalized yet. A reminder message will prompt you to lock it before leaving.
+- **Lock Attendance** — Saves the attendance and locks it. Once locked, it cannot be accidentally overwritten. You can still unlock it if you need to make corrections.
+
+Once the attendance is locked:
+- **Unlock** — Unlocks it so you can make changes.
+- **Final Save** — Permanently finalizes the attendance. After final save, the record is locked permanently and cannot be edited.
+
+> You will be warned if you try to leave the page with unsaved changes.
+
+---
+
+## Time Table
+
+The Time Table page shows your personal weekly schedule — every class you are assigned to teach, on which day, during which period, and in which section.
+
+You can view the full week at a glance. This helps you quickly check what classes you have for the day or the week ahead. The timetable is built and managed by the school Admin — you can only view it here.
+
+---
 
 ## Academics
 
-Manage the learning process and assessments.
+The Academics page shows all the classes and sections that are assigned to you. You can see how many students are enrolled in each of your sections.
 
-### Assignments
-Create, distribute, and grade assignments. Students can submit their work online.
+This page is useful to get a quick overview of your student distribution without going through each class individually.
 
-### Examinations
-Enter marks for exams and tests. The system automatically calculates grades based on the school's grading policy.
+> Note: Adding, editing, or deleting classes and sections is handled by the school Admin. Teachers can only view this information.
 
-## Communication
+---
 
-Interact with students and parents.
+## Assignments
 
-### Messaging
-Send direct messages to students or parents regarding academic progress or behavioral issues.
+This is where you create and manage assignments for your students.
 
-### Notice Board
-Post announcements and resources for your specific classes.
+### Creating an assignment
+
+1. Click **New Assignment**.
+2. Fill in the assignment details:
+   - **Title** — A clear name for the assignment (e.g., "Chapter 5 Practice Problems").
+   - **Description** — Instructions for the students.
+   - **Section** — Choose which section the assignment is for.
+   - **Due Date** — The deadline for submission.
+   - **File** *(optional)* — Attach a file such as a PDF question paper or reference document.
+3. Click **Create**. The assignment will immediately appear for students in that section.
+
+### Viewing submissions
+
+Click on any assignment to see a list of all student submissions. You can see which students have submitted their work and download their files. Students who haven't submitted yet will not appear in the list.
+
+> You can only create and view assignments for sections you are assigned to.
