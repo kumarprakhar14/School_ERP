@@ -5,6 +5,7 @@ import useAuthStore from '../store/authStore';
 import { toast } from 'sonner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ResponsiveTable from '../components/ui/ResponsiveTable';
+import EntityCombobox from '../components/ui/EntityCombobox';
 import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, Edit2, Trash2 } from 'lucide-react';
 
 export default function Fees() {
@@ -209,6 +210,54 @@ export default function Fees() {
     const totalPaidForInvoice = paymentsForInvoice.reduce((sum, p) => sum + p.amount, 0);
     return { ...inv, outstandingAmount: inv.amount - totalPaidForInvoice };
   });
+
+  const renderStudentDetailsCard = (selectedStudentId) => {
+    if (!selectedStudentId) return null;
+    const s = students.find(x => x.id === selectedStudentId);
+    if (!s) return null;
+    const summary = feeSummary.find(x => x.student.id === selectedStudentId);
+    
+    return (
+      <div className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-2 shadow-inner">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Class</span>
+          <span className="text-sm font-medium text-gray-900">{s.classDetails}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Admission No</span>
+          <span className="text-sm font-mono text-gray-900">{s.erpId}</span>
+        </div>
+        <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-1">
+          <span className="text-sm font-medium text-gray-700">Outstanding Fees</span>
+          <span className={`text-sm font-mono font-bold ${summary?.dueAmount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+            ₹{((summary?.dueAmount || 0) / 100).toFixed(2)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderComboboxItem = (s) => {
+    const summary = feeSummary.find(x => x.student.id === s.id);
+    const dueAmount = summary?.dueAmount || 0;
+    
+    return (
+      <div className="flex flex-col w-full pr-2">
+        <div className="flex justify-between items-center">
+          <span className="font-bold text-gray-900">{s.name}</span>
+          {dueAmount > 0 ? (
+            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">Due: ₹{(dueAmount / 100).toFixed(2)}</span>
+          ) : (
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">No Dues</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs font-mono text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200">{s.erpId}</span>
+          {s.classDetails && <span className="text-xs text-gray-500">{s.classDetails}</span>}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -573,10 +622,21 @@ export default function Fees() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="col-span-1 sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                      <select disabled={isEditing} required value={invoiceForm.studentId} onChange={e => setInvoiceForm({...invoiceForm, studentId: e.target.value})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400">
-                        <option value="">Select Student...</option>
-                        {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.erpId})</option>)}
-                      </select>
+                      <EntityCombobox
+                        options={students}
+                        value={invoiceForm.studentId}
+                        onChange={(val) => setInvoiceForm({...invoiceForm, studentId: val})}
+                        disabled={isEditing}
+                        placeholder="Select Student..."
+                        searchPlaceholder="Search by name or ERP ID..."
+                        getDisplayValue={(s) => `${s.name} (${s.erpId})`}
+                        filterFn={(options, query) => options.filter(s => 
+                          s.name.toLowerCase().includes(query.toLowerCase()) || 
+                          s.erpId.toLowerCase().includes(query.toLowerCase())
+                        )}
+                        renderItem={renderComboboxItem}
+                      />
+                      {renderStudentDetailsCard(invoiceForm.studentId)}
                     </div>
                     
                     <div>
@@ -619,10 +679,21 @@ export default function Fees() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="col-span-1 sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                      <select disabled={isEditing} required value={paymentForm.studentId} onChange={e => setPaymentForm({...paymentForm, studentId: e.target.value, invoiceId: ''})} className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400">
-                        <option value="">Select Student...</option>
-                        {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.erpId})</option>)}
-                      </select>
+                      <EntityCombobox
+                        options={students}
+                        value={paymentForm.studentId}
+                        onChange={(val) => setPaymentForm({...paymentForm, studentId: val, invoiceId: ''})}
+                        disabled={isEditing}
+                        placeholder="Select Student..."
+                        searchPlaceholder="Search by name or ERP ID..."
+                        getDisplayValue={(s) => `${s.name} (${s.erpId})`}
+                        filterFn={(options, query) => options.filter(s => 
+                          s.name.toLowerCase().includes(query.toLowerCase()) || 
+                          s.erpId.toLowerCase().includes(query.toLowerCase())
+                        )}
+                        renderItem={renderComboboxItem}
+                      />
+                      {renderStudentDetailsCard(paymentForm.studentId)}
                     </div>
 
                     <div className="col-span-1 sm:col-span-2">
