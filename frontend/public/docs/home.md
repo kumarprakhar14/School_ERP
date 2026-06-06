@@ -1,14 +1,14 @@
-# Welcome to the School ERP User Guide
+# Welcome to the SchoolChakra User Guide
 
-School ERP is an all-in-one school management platform that helps administrators, teachers, students, and accounts staff manage their daily school operations from a single place — with no paperwork and no confusion.
+SchoolChakra is an all-in-one school management platform that helps administrators, teachers, students, and accounts staff manage their daily school operations from a single place — with no paperwork and no confusion.
 
 This guide covers everything you need to know to use the application confidently, from your very first login to day-to-day operations. Pick the section from the left that matches your role to get started.
 
 ---
 
-## What is School ERP?
+## What is SchoolChakra?
 
-School ERP is a role-based platform. This means that what you see and what you can do in the application depends entirely on your role. There are five roles in the system:
+SchoolChakra is a role-based platform. This means that what you see and what you can do in the application depends entirely on your role. There are five roles in the system:
 
 - **Super Admin** — The platform owner who manages all schools registered on the system.
 - **Admin** — The school administrator who runs day-to-day operations of a specific school.

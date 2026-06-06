@@ -1,10 +1,10 @@
-# School ERP — Backend API Reference
+# SchoolChakra — Backend API Reference
 
 > **Version:** 1.0  
 > **Base URL:** `http://localhost:<PORT>/api`  
 > **Last Updated:** June 2026
 
-This document is the **single source of truth** for all backend API endpoints of the School ERP system. It is intended for backend testers, new engineers onboarding the codebase, and engineers migrating from/to this system.
+This document is the **single source of truth** for all backend API endpoints of the SchoolChakra system. It is intended for backend testers, new engineers onboarding the codebase, and engineers migrating from/to this system.
 
 ---
 
@@ -154,7 +154,7 @@ The global error handler translates all errors into structured responses. Intern
 ```json
 {
   "status": "OK",
-  "message": "School ERP API is running"
+  "message": "SchoolChakra API is running"
 }
 ```
 

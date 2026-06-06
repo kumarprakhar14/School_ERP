@@ -33,7 +33,7 @@ if (config.nodeEnv==="production") {
 
 // Basic health check route
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'School ERP API is running' });
+  res.status(200).json({ status: 'OK', message: 'SchoolChakra API is running' });
 });
 
 // Import and use routes here

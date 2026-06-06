@@ -1,4 +1,4 @@
-# 🏫 School ERP Platform
+# 🏫 SchoolChakra Platform
 
 A modern, multi-tenant SaaS application for managing multiple schools, their students, teachers, academics, and finances.
 

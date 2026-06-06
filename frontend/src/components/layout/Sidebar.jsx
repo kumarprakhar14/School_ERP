@@ -68,7 +68,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               </div>
             )}
             <span className="ml-3 font-semibold text-gray-800 text-sm tracking-tight truncate max-w-[140px]" title={user?.schoolName}>
-              {user?.schoolName || 'School ERP'}
+              {user?.schoolName || 'SchoolChakra'}
             </span>
           </>
         )}

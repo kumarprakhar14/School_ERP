@@ -1,6 +1,6 @@
 # Super Admin Guide
 
-The Super Admin is the platform-level owner of School ERP. You are responsible for registering schools on the platform, managing their subscription, and overseeing the health of the entire system. You are not tied to any single school — you see everything.
+The Super Admin is the platform-level owner of SchoolChakra. You are responsible for registering schools on the platform, managing their subscription, and overseeing the health of the entire system. You are not tied to any single school — you see everything.
 
 When you log in, you land on the **Super Admin Dashboard** which gives you a bird's-eye view of all schools registered on the platform.
 

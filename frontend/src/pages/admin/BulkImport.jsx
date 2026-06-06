@@ -107,7 +107,7 @@ export default function BulkImport() {
           Bulk Data Import
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          Onboard new data into the ERP by uploading Excel (.xlsx) or CSV files. Follow the exact template structures to avoid validation errors.
+          Onboard new data into SchoolChakra by uploading Excel (.xlsx) or CSV files. Follow the exact template structures to avoid validation errors.
         </p>
       </div>
 
