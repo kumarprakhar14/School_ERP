@@ -6,6 +6,7 @@ import {
   DollarSign, AlertCircle, TrendingUp, CreditCard, Clock, 
   CheckCircle, ChevronRight, FileText, UploadCloud, Bell, Activity, Plus
 } from 'lucide-react';
+import ResponsiveTable from '../components/ui/ResponsiveTable';
 
 function CollectionTrendChart({ data }) {
   if (!data || data.length === 0) return null;
@@ -243,40 +244,71 @@ export default function AccountsDashboard() {
               </button>
             </div>
             {data.pendingInvoices.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50/50 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      <th className="px-6 py-4">Student</th>
-                      <th className="px-6 py-4">Invoice Amount</th>
-                      <th className="px-6 py-4">Outstanding</th>
-                      <th className="px-6 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {data.pendingInvoices.map(inv => (
-                      <tr key={inv.id} className="hover:bg-gray-50/30 transition-colors">
-                        <td className="px-6 py-4">
+              <div className="border-t border-gray-50">
+                <ResponsiveTable
+                  data={data.pendingInvoices}
+                  keyExtractor={(item) => item.id}
+                  emptyMessage="No pending invoices at the moment."
+                  emptyIcon={FileText}
+                  columns={[
+                    {
+                      header: 'Student',
+                      render: (inv) => (
+                        <div>
                           <p className="font-bold text-gray-900 text-sm">{inv.studentName}</p>
                           <p className="text-xs text-gray-500 font-mono mt-0.5">{inv.erpId}</p>
-                        </td>
-                        <td className="px-6 py-4 font-mono font-medium text-gray-600 text-sm">
+                        </div>
+                      )
+                    },
+                    {
+                      header: 'Invoice Amount',
+                      render: (inv) => (
+                        <span className="font-mono font-medium text-gray-600 text-sm">
                           {formatMoney(inv.totalAmount)}
-                        </td>
-                        <td className="px-6 py-4 font-mono font-bold text-gray-900 text-sm">
+                        </span>
+                      )
+                    },
+                    {
+                      header: 'Outstanding',
+                      render: (inv) => (
+                        <span className="font-mono font-bold text-gray-900 text-sm">
                           {formatMoney(inv.outstandingAmount)}
-                        </td>
-                        <td className="px-6 py-4">
+                        </span>
+                      )
+                    },
+                    {
+                      header: 'Status',
+                      render: (inv) => (
+                        inv.isOverdue ? (
+                          <span className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] font-bold rounded-md border border-red-100 inline-flex items-center">OVERDUE</span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-100 inline-flex items-center">PENDING</span>
+                        )
+                      )
+                    }
+                  ]}
+                  renderMobileCard={(inv) => (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                      <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                        <div>
+                          <h3 className="font-bold text-gray-900">{inv.studentName}</h3>
+                          <p className="text-xs text-gray-500 font-mono">ID: {inv.erpId}</p>
+                        </div>
+                        <div>
                           {inv.isOverdue ? (
                             <span className="px-2.5 py-1 bg-red-50 text-red-700 text-[10px] font-bold rounded-md border border-red-100 inline-flex items-center">OVERDUE</span>
                           ) : (
                             <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-100 inline-flex items-center">PENDING</span>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-gray-500 text-xs block">Invoice Amount</span><span className="font-mono font-medium text-gray-600">{formatMoney(inv.totalAmount)}</span></div>
+                        <div><span className="text-gray-500 text-xs block">Outstanding</span><span className="font-mono font-bold text-gray-900">{formatMoney(inv.outstandingAmount)}</span></div>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500 text-sm">No pending invoices at the moment.</div>

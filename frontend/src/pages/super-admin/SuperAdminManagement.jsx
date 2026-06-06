@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Shield, User, X, Trash2, Key, Star, ShieldAlert } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import useAuthStore from '../../store/authStore';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function SuperAdminManagement() {
   const [admins, setAdmins] = useState([]);
@@ -119,46 +120,55 @@ export default function SuperAdminManagement() {
               <span className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></span>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-500">
-                  <th className="py-4 px-6 font-medium">Administrator</th>
-                  <th className="py-4 px-6 font-medium">Status</th>
-                  <th className="py-4 px-6 font-medium">Contact</th>
-                  <th className="py-4 px-6 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {admins.map(admin => {
-                  const isMe = admin.id === currentUser.id;
-                  const amIPrimary = currentUser.isPrimary;
-
-                  return (
-                    <tr key={admin.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="flex items-center">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 font-bold text-sm ${admin.isPrimary ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                            {admin.name.charAt(0)}
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-900 block">{admin.name} {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(You)</span>}</span>
-                            <span className="text-xs text-gray-500 font-mono mt-0.5 block">{admin.erpId}</span>
-                          </div>
+            <ResponsiveTable
+              data={admins}
+              keyExtractor={(admin) => admin.id}
+              emptyMessage="No administrators found."
+              emptyIcon={ShieldAlert}
+              columns={[
+                {
+                  header: 'Administrator',
+                  render: (admin) => {
+                    const isMe = admin.id === currentUser.id;
+                    return (
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 font-bold text-sm ${admin.isPrimary ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                          {admin.name.charAt(0)}
                         </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        {admin.isPrimary ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                            <Star className="w-3 h-3 mr-1 fill-amber-500" /> Primary
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                            Regular
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600">{admin.contactDetails || '-'}</td>
-                      <td className="py-4 px-6 text-right space-x-2">
+                        <div>
+                          <span className="font-medium text-gray-900 block">{admin.name} {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(You)</span>}</span>
+                          <span className="text-xs text-gray-500 font-mono mt-0.5 block">{admin.erpId}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                },
+                {
+                  header: 'Status',
+                  render: (admin) => (
+                    admin.isPrimary ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                        <Star className="w-3 h-3 mr-1 fill-amber-500" /> Primary
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        Regular
+                      </span>
+                    )
+                  )
+                },
+                {
+                  header: 'Contact',
+                  render: (admin) => <span className="text-gray-600">{admin.contactDetails || '-'}</span>
+                },
+                {
+                  header: 'Actions',
+                  align: 'right',
+                  render: (admin) => {
+                    const isMe = admin.id === currentUser.id;
+                    const amIPrimary = currentUser.isPrimary;
+                    return (
+                      <div className="space-x-2">
                         {amIPrimary && !admin.isPrimary && (
                           <button 
                             onClick={() => { setSelectedAdmin(admin); setShowPrimaryConfirm(true); }}
@@ -176,12 +186,68 @@ export default function SuperAdminManagement() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    );
+                  }
+                }
+              ]}
+              renderMobileCard={(admin) => {
+                const isMe = admin.id === currentUser.id;
+                const amIPrimary = currentUser.isPrimary;
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                    <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 font-bold text-sm ${admin.isPrimary ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                          {admin.name.charAt(0)}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900 block">{admin.name} {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(You)</span>}</span>
+                          <span className="text-xs text-gray-500 font-mono mt-0.5 block">{admin.erpId}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {amIPrimary && !admin.isPrimary && (
+                          <button 
+                            onClick={() => { setSelectedAdmin(admin); setShowPrimaryConfirm(true); }}
+                            className="text-xs px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200 font-medium"
+                          >
+                            Make Primary
+                          </button>
+                        )}
+                        {!admin.isPrimary && (
+                          <button 
+                            onClick={() => { setSelectedAdmin(admin); setShowDeleteConfirm(true); }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title={isMe ? "Delete My Account" : "Delete Admin"}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs block mb-1">Status</span>
+                        {admin.isPrimary ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            <Star className="w-3 h-3 mr-1 fill-amber-500" /> Primary
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+                            Regular
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs block">Contact</span>
+                        <span className="text-gray-600">{admin.contactDetails || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
           )}
         </div>
       </div>

@@ -21,7 +21,8 @@ export default function ResponsiveTable({
   renderMobileCard,
   keyExtractor,
   emptyMessage = 'No records found.',
-  emptyIcon: EmptyIcon
+  emptyIcon: EmptyIcon,
+  onRowClick
 }) {
   return (
     <>
@@ -45,7 +46,11 @@ export default function ResponsiveTable({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {data.map((item, rowIndex) => (
-                <tr key={keyExtractor(item)} className="hover:bg-gray-50/30 transition-colors group">
+                <tr 
+                  key={keyExtractor(item)} 
+                  className={`hover:bg-gray-50/30 transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={() => onRowClick && onRowClick(item)}
+                >
                   {columns.map((col, idx) => {
                     const isSticky = idx === 0;
                     const alignClass = col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left';
@@ -81,7 +86,11 @@ export default function ResponsiveTable({
       <div className="grid md:hidden grid-cols-1 gap-4">
         {data.length > 0 ? (
           data.map((item) => (
-            <div key={keyExtractor(item)}>
+            <div 
+              key={keyExtractor(item)}
+              onClick={() => onRowClick && onRowClick(item)}
+              className={onRowClick ? 'cursor-pointer' : ''}
+            >
               {renderMobileCard(item)}
             </div>
           ))

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import { Building2, Calendar, Users, Edit2, Save, Shield, User, X, Trash2, Key } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function SchoolDetail() {
   const { id } = useParams();
@@ -324,62 +325,108 @@ export default function SchoolDetail() {
           </button>
         </div>
         
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-white border-b border-gray-100 text-gray-500">
-                <th className="py-3 px-6 font-medium">Admin Details</th>
-                <th className="py-3 px-6 font-medium">ERP ID</th>
-                <th className="py-3 px-6 font-medium">Contact</th>
-                <th className="py-3 px-6 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {admins.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="py-8 text-center text-gray-500">No administrators found for this school.</td>
-                </tr>
-              ) : (
-                admins.map(admin => (
-                  <tr key={admin.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3 px-6">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center mr-3 font-semibold text-xs">
-                          {admin.name.charAt(0)}
-                        </div>
-                        <span className="font-medium text-gray-900">{admin.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-6 text-gray-600 font-mono text-xs">{admin.erpId}</td>
-                    <td className="py-3 px-6 text-gray-600">{admin.contactDetails || '-'}</td>
-                    <td className="py-3 px-6 text-right space-x-2">
-                      <button 
-                        onClick={() => {
-                          setSelectedAdmin(admin);
-                          setAdminFormData({ name: admin.name, contactDetails: admin.contactDetails || '', password: '' });
-                          setShowEditAdminModal(true);
-                        }}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Edit Admin"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setSelectedAdmin(admin);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete Admin"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="border-t border-gray-100">
+          <ResponsiveTable
+            data={admins}
+            keyExtractor={(admin) => admin.id}
+            emptyMessage="No administrators found for this school."
+            emptyIcon={Shield}
+            columns={[
+              {
+                header: 'Admin Details',
+                render: (admin) => (
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center mr-3 font-semibold text-xs">
+                      {admin.name.charAt(0)}
+                    </div>
+                    <span className="font-medium text-gray-900">{admin.name}</span>
+                  </div>
+                )
+              },
+              {
+                header: 'ERP ID',
+                render: (admin) => <span className="text-gray-600 font-mono text-xs">{admin.erpId}</span>
+              },
+              {
+                header: 'Contact',
+                render: (admin) => <span className="text-gray-600">{admin.contactDetails || '-'}</span>
+              },
+              {
+                header: 'Actions',
+                align: 'right',
+                render: (admin) => (
+                  <div className="space-x-2">
+                    <button 
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setAdminFormData({ name: admin.name, contactDetails: admin.contactDetails || '', password: '' });
+                        setShowEditAdminModal(true);
+                      }}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Edit Admin"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Delete Admin"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+            renderMobileCard={(admin) => (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center mr-3 font-semibold text-xs">
+                      {admin.name.charAt(0)}
+                    </div>
+                    <span className="font-medium text-gray-900">{admin.name}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setAdminFormData({ name: admin.name, contactDetails: admin.contactDetails || '', password: '' });
+                        setShowEditAdminModal(true);
+                      }}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="Edit Admin"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Delete Admin"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500 text-xs block">ERP ID</span>
+                    <span className="text-gray-600 font-mono text-xs">{admin.erpId}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs block">Contact</span>
+                    <span className="text-gray-600">{admin.contactDetails || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
         </div>
       </div>
 

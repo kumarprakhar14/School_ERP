@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { toast } from 'sonner';
 import { Plus, Building2, Calendar, Users, X, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function SchoolsManagement() {
   const navigate = useNavigate();
@@ -77,85 +78,119 @@ export default function SchoolsManagement() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-100">
-                  <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">School Name</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Users</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {schools.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-gray-500">No schools found. Add a school to get started.</td>
-                  </tr>
-                ) : (
-                  schools.map(school => {
-                    const isActive = new Date(school.validUntil) > new Date();
-                    return (
-                      <tr 
-                        key={school.id} 
-                        className="hover:bg-gray-50/80 transition-colors cursor-pointer group"
-                        onClick={() => navigate(`/super-admin/schools/${school.id}`)}
-                      >
-                        <td className="py-4 px-6">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 border border-blue-100 shrink-0">
-                              <Building2 className="w-5 h-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 truncate">{school.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{school.settings?.description || 'No description'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">{school.code}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center text-gray-600 font-medium text-sm">
-                            <Users className="w-4 h-4 mr-1.5 text-blue-500" />
-                            <span>{school._count?.users || 0}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex flex-col gap-1 items-start">
-                            <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium border ${
-                              isActive 
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {isActive ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                              {isActive ? 'Valid Sub' : 'Expired Sub'}
-                            </div>
-                            
-                            {school.isArchived ? (
-                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</div>
-                            ) : school.status === 'INACTIVE' ? (
-                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</div>
-                            ) : (
-                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <button 
-                            className="p-1.5 text-gray-400 group-hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <ChevronRight className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            data={schools}
+            keyExtractor={(school) => school.id}
+            emptyMessage="No schools found. Add a school to get started."
+            emptyIcon={Building2}
+            onRowClick={(school) => navigate(`/super-admin/schools/${school.id}`)}
+            columns={[
+              {
+                header: 'School Name',
+                render: (school) => (
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 border border-blue-100 shrink-0">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{school.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{school.settings?.description || 'No description'}</p>
+                    </div>
+                  </div>
+                )
+              },
+              {
+                header: 'Code',
+                render: (school) => (
+                  <span className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">{school.code}</span>
+                )
+              },
+              {
+                header: 'Users',
+                render: (school) => (
+                  <div className="flex items-center text-gray-600 font-medium text-sm">
+                    <Users className="w-4 h-4 mr-1.5 text-blue-500" />
+                    <span>{school._count?.users || 0}</span>
+                  </div>
+                )
+              },
+              {
+                header: 'Status',
+                render: (school) => {
+                  const isActive = new Date(school.validUntil) > new Date();
+                  return (
+                    <div className="flex flex-col gap-1 items-start">
+                      <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+                        isActive 
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                      }`}>
+                        {isActive ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                        {isActive ? 'Valid Sub' : 'Expired Sub'}
+                      </div>
+                      
+                      {school.isArchived ? (
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200 uppercase tracking-wider">Archived</div>
+                      ) : school.status === 'INACTIVE' ? (
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">Inactive</div>
+                      ) : (
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</div>
+                      )}
+                    </div>
+                  );
+                }
+              },
+              {
+                header: 'Action',
+                align: 'right',
+                render: () => (
+                  <button className="p-1.5 text-gray-400 group-hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )
+              }
+            ]}
+            renderMobileCard={(school) => {
+              const isActive = new Date(school.validUntil) > new Date();
+              return (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                  <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">{school.name}</h3>
+                        <p className="text-xs text-gray-500 font-mono">Code: {school.code}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500 text-xs block">Users</span>
+                      <div className="flex items-center text-gray-600 font-medium mt-0.5">
+                        <Users className="w-3.5 h-3.5 mr-1 text-blue-500" />
+                        <span>{school._count?.users || 0}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-xs block mb-1">Status</span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium border ${
+                          isActive ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          {isActive ? 'Valid Sub' : 'Expired Sub'}
+                        </div>
+                        {!school.isArchived && school.status === 'ACTIVE' && (
+                          <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-100 uppercase tracking-wider">Active</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
+          />
         </div>
       )}
 
