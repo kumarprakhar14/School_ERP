@@ -115,8 +115,12 @@ const getFeeSummary = async (req, res, next) => {
 
       const dueAmount = totalAmount - totalPaid;
       
-      let status = 'PAID';
-      if (dueAmount > 0) {
+      let status;
+      if (student.feeInvoices.length === 0) {
+        status = 'NO_FEES';
+      } else if (dueAmount <= 0) {
+        status = 'PAID';
+      } else {
         if (totalPaid > 0) status = 'PARTIALLY_PAID';
         else status = 'PENDING';
 
@@ -175,6 +179,7 @@ const getTransactionHistory = async (req, res, next) => {
         invoiceNumber: inv.invoiceNumber,
         amount: inv.totalAmount,
         date: inv.createdAt,
+        dueDate: inv.dueDate,
         remarks: inv.remarks,
         month: inv.month,
         year: inv.year,
@@ -204,4 +209,87 @@ const getTransactionHistory = async (req, res, next) => {
   }
 };
 
-export { createInvoice, recordPayment, getFeeSummary, getTransactionHistory };
+const updateInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount, month, year, remarks, dueDate } = req.body;
+    const schoolId = req.user.schoolId;
+
+    const invoice = await prisma.feeInvoice.findFirst({ where: { id, schoolId } });
+    if (!invoice) throw new NotFoundError('Invoice not found');
+
+    const updated = await prisma.feeInvoice.update({
+      where: { id },
+      data: {
+        totalAmount: Math.round(parseFloat(amount) * 100),
+        month: parseInt(month),
+        year: parseInt(year),
+        dueDate: dueDate ? new Date(dueDate) : null,
+        remarks
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schoolId = req.user.schoolId;
+
+    const invoice = await prisma.feeInvoice.findFirst({ where: { id, schoolId } });
+    if (!invoice) throw new NotFoundError('Invoice not found');
+
+    await prisma.$transaction([
+      prisma.payment.deleteMany({ where: { invoiceId: id } }),
+      prisma.feeInvoice.delete({ where: { id } })
+    ]);
+
+    res.json({ message: 'Invoice and associated payments deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updatePayment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount, paymentMode, referenceNo, remarks } = req.body;
+    const schoolId = req.user.schoolId;
+
+    const payment = await prisma.payment.findFirst({ where: { id, schoolId } });
+    if (!payment) throw new NotFoundError('Payment not found');
+
+    const updated = await prisma.payment.update({
+      where: { id },
+      data: {
+        amount: Math.round(parseFloat(amount) * 100),
+        paymentMode: paymentMode || null,
+        referenceNo: referenceNo || null,
+        remarks
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deletePayment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schoolId = req.user.schoolId;
+
+    const payment = await prisma.payment.findFirst({ where: { id, schoolId } });
+    if (!payment) throw new NotFoundError('Payment not found');
+
+    await prisma.payment.delete({ where: { id } });
+    res.json({ message: 'Payment deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createInvoice, recordPayment, getFeeSummary, getTransactionHistory, updateInvoice, deleteInvoice, updatePayment, deletePayment };

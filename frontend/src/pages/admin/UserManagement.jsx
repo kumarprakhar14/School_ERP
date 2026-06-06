@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { UserPlus, Users as UsersIcon, User, X, Star } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, User, X, Star, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../store/authStore';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function UserManagement() {
   const { user: currentUser } = useAuthStore();
@@ -14,6 +15,12 @@ export default function UserManagement() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.erpId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -151,20 +158,37 @@ export default function UserManagement() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-2 bg-gray-50/50">
-          {['', 'ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTS'].map((role) => (
-            <button
-              key={role}
-              onClick={() => setFilter(role)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                filter === role 
-                  ? 'bg-white shadow-sm border border-gray-200 text-gray-900' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {role || 'ALL'}
-            </button>
-          ))}
+        <div className="p-4 border-b border-gray-100 flex flex-col xl:flex-row gap-3 bg-gray-50/50 justify-between items-start xl:items-center">
+          <div className="relative w-full xl:w-72 shrink-0">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search user or ERP ID..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { val: 'ADMIN', label: 'ADMIN', active: 'bg-purple-100 text-purple-700 border-purple-200' },
+              { val: 'TEACHER', label: 'TEACHER', active: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+              { val: 'STUDENT', label: 'STUDENT', active: 'bg-blue-100 text-blue-700 border-blue-200' },
+              { val: 'ACCOUNTS', label: 'ACCOUNTS', active: 'bg-amber-100 text-amber-700 border-amber-200' }
+            ].map(opt => (
+              <button
+                key={opt.val}
+                onClick={() => setFilter(filter === opt.val ? '' : opt.val)}
+                className={`flex items-center px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                  filter === opt.val 
+                    ? opt.active + ' shadow-sm' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:text-gray-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
         
         {loading ? (
@@ -172,97 +196,171 @@ export default function UserManagement() {
             <span className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
-                  <th className="p-4 font-semibold">User</th>
-                  <th className="p-4 font-semibold">ERP ID</th>
-                  <th className="p-4 font-semibold">Role</th>
-                  <th className="p-4 font-semibold">Details</th>
-                  <th className="p-4 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {users.map(user => (
-                  <tr 
-                    key={user.id} 
-                    className="hover:bg-gray-50/50 transition-colors group"
-                  >
-                    <td className="p-4 cursor-pointer" onClick={() => navigate(`/admin/users/${user.id}`)}>
-                      <div className="flex items-center">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 mr-3">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <span className="font-semibold text-gray-900">{user.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm text-gray-600 font-mono bg-gray-50/50 rounded-lg inline-block mt-2 mb-2 ml-2">{user.erpId}</td>
-                    <td className="p-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${getRoleColor(user.role)}`}>
-                          {user.role}
-                        </span>
+          <ResponsiveTable
+            data={filteredUsers}
+            keyExtractor={(user) => user.id}
+            emptyMessage="No users found matching your search."
+            emptyIcon={Search}
+            columns={[
+              {
+                header: 'User',
+                render: (user) => (
+                  <div className="flex items-center cursor-pointer" onClick={() => navigate(`/admin/users/${user.id}`)}>
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 mr-3 shrink-0">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <span className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">{user.name}</span>
+                  </div>
+                )
+              },
+              {
+                header: 'ERP ID',
+                render: (user) => <span className="text-sm text-gray-600 font-mono bg-gray-50/50 rounded-lg inline-block px-2 py-1 border border-gray-100">{user.erpId}</span>
+              },
+              {
+                header: 'Role',
+                render: (user) => (
+                  <div className="flex flex-col gap-1 items-start">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border shadow-sm ${getRoleColor(user.role)}`}>
+                      {user.role}
+                    </span>
+                    {user.isArchived ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">Archived</span>
+                    ) : !user.isActive ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">Disabled</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">Active</span>
+                    )}
+                  </div>
+                )
+              },
+              {
+                header: 'Details',
+                render: (user) => (
+                  <span className="text-sm text-gray-500">
+                    {user.role === 'TEACHER' && user.teacherProfile?.designation}
+                    {user.role === 'STUDENT' && user.studentProfile && 'Student Profile'}
+                    {user.role === 'ACCOUNTS' && 'Accounts Staff'}
+                    {user.role === 'ADMIN' && 'Administrator'}
+                  </span>
+                )
+              },
+              {
+                header: 'Actions',
+                align: 'right',
+                render: (user) => (
+                  <div className="flex justify-end gap-2 items-center">
+                    {user.role === 'ADMIN' && user.isPrimary ? (
+                      <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold border border-yellow-200">
+                        <Star className="w-3 h-3 mr-1 fill-current" />
+                        Primary
+                      </span>
+                    ) : null}
+                    {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
+                        className="text-blue-600 hover:text-blue-900 bg-blue-50 px-2 py-1.5 rounded-lg text-xs font-medium border border-blue-100 transition-colors"
+                      >
+                        Make Primary
+                      </button>
+                    )}
+                    {!user.isPrimary && (
+                      <div className="flex gap-1 ml-2">
                         {user.isArchived ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">Archived</span>
-                        ) : !user.isActive ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">Disabled</span>
+                          <button onClick={(e) => handleLifecycleAction(e, user.id, 'restore')} className="px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">Restore</button>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">Active</span>
+                          <button onClick={(e) => handleLifecycleAction(e, user.id, 'archive')} className="px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">Archive</button>
+                        )}
+                        
+                        {!user.isArchived && (
+                          user.isActive ? (
+                            <button onClick={(e) => handleLifecycleAction(e, user.id, 'disable')} className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors">Disable</button>
+                          ) : (
+                            <button onClick={(e) => handleLifecycleAction(e, user.id, 'enable')} className="px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs font-medium transition-colors">Enable</button>
+                          )
                         )}
                       </div>
-                    </td>
-                    <td className="p-4 text-sm text-gray-500">
-                      {user.role === 'TEACHER' && user.teacherProfile?.designation}
-                      {user.role === 'STUDENT' && user.studentProfile && 'Student Profile'}
-                      {user.role === 'ACCOUNTS' && 'Accounts Staff'}
-                      {user.role === 'ADMIN' && 'Administrator'}
-                    </td>
-                    <td className="p-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2 items-center">
-                        {user.role === 'ADMIN' && user.isPrimary ? (
-                          <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
-                            <Star className="w-3 h-3 mr-1 fill-current" />
-                            Primary
-                          </span>
-                        ) : null}
-                        {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
-                            className="text-blue-600 hover:text-blue-900 bg-blue-50 px-2 py-1 rounded text-xs font-medium border border-blue-100"
-                          >
-                            Make Primary
-                          </button>
-                        )}
-                        {!user.isPrimary && (
-                          <div className="flex gap-1 ml-2">
-                            {user.isArchived ? (
-                              <button onClick={(e) => handleLifecycleAction(e, user.id, 'restore')} className="px-2 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs">Restore</button>
-                            ) : (
-                              <button onClick={(e) => handleLifecycleAction(e, user.id, 'archive')} className="px-2 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-xs">Archive</button>
-                            )}
-                            
-                            {!user.isArchived && (
-                              user.isActive ? (
-                                <button onClick={(e) => handleLifecycleAction(e, user.id, 'disable')} className="px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs">Disable</button>
-                              ) : (
-                                <button onClick={(e) => handleLifecycleAction(e, user.id, 'enable')} className="px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded text-xs">Enable</button>
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan="4" className="p-8 text-center text-gray-500">No users found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                    )}
+                  </div>
+                )
+              }
+            ]}
+            renderMobileCard={(user) => (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3 cursor-pointer hover:border-blue-200 transition-colors" onClick={() => navigate(`/admin/users/${user.id}`)}>
+                <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 flex items-center justify-center text-gray-600 mr-3 shrink-0">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col items-start gap-1">
+                      <h3 className="font-bold text-gray-900 leading-none">{user.name}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getRoleColor(user.role)}`}>
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    {user.isArchived ? (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">Archived</span>
+                    ) : !user.isActive ? (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">Disabled</span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-100">Active</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100/50">
+                  <div><span className="text-gray-500 text-xs block">ERP ID</span><span className="font-mono text-gray-700 font-medium">{user.erpId}</span></div>
+                  <div>
+                    <span className="text-gray-500 text-xs block">Details</span>
+                    <span className="text-gray-700">
+                      {user.role === 'TEACHER' ? (user.teacherProfile?.designation || '-') : 
+                       user.role === 'STUDENT' ? 'Student Profile' : 
+                       user.role === 'ACCOUNTS' ? 'Accounts Staff' : 
+                       user.role === 'ADMIN' ? 'Administrator' : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2" onClick={e => e.stopPropagation()}>
+                  {user.role === 'ADMIN' && user.isPrimary ? (
+                    <span className="inline-flex items-center px-2 py-1.5 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-semibold w-full justify-center border border-yellow-200">
+                      <Star className="w-3.5 h-3.5 mr-1 fill-current" />
+                      Primary Admin
+                    </span>
+                  ) : null}
+                  
+                  {user.role === 'ADMIN' && !user.isPrimary && amIPrimary && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedAdminForPrimary(user); setShowPrimaryConfirm(true); }}
+                      className="flex-1 text-center text-blue-600 hover:bg-blue-50 bg-blue-50/50 px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-100 transition-colors"
+                    >
+                      Make Primary
+                    </button>
+                  )}
+                  
+                  {!user.isPrimary && (
+                    <div className="flex gap-2 w-full">
+                      {user.isArchived ? (
+                        <button onClick={(e) => handleLifecycleAction(e, user.id, 'restore')} className="flex-1 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">Restore</button>
+                      ) : (
+                        <button onClick={(e) => handleLifecycleAction(e, user.id, 'archive')} className="flex-1 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">Archive</button>
+                      )}
+                      
+                      {!user.isArchived && (
+                        user.isActive ? (
+                          <button onClick={(e) => handleLifecycleAction(e, user.id, 'disable')} className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors">Disable</button>
+                        ) : (
+                          <button onClick={(e) => handleLifecycleAction(e, user.id, 'enable')} className="flex-1 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs font-medium transition-colors">Enable</button>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          />
         )}
       </div>
 
