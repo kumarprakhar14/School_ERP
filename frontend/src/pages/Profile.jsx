@@ -82,31 +82,33 @@ export default function Profile() {
     }
   };
 
-  const handleSaveField = async (field) => {
-    if (formData[field] === user[field] && field !== 'password') {
-      setEditingField(null);
-      return;
-    }
-
-    if (field === 'password' && !formData.password) {
-      setEditingField(null);
-      return;
-    }
-
+  const handleUpdate = async () => {
     setIsSubmitting(true);
     try {
-      const payload = { [field]: formData[field] };
+      const payload = {};
+      if (formData.name !== user.name) payload.name = formData.name;
+      if (formData.contactDetails !== user.contactDetails) payload.contactDetails = formData.contactDetails;
+      if (formData.password) payload.password = formData.password;
+
+      if (Object.keys(payload).length === 0) {
+        toast.info("No changes to update");
+        setIsSubmitting(false);
+        return;
+      }
+
       await api.put(`/users/${user.id}`, payload);
-      toast.success(`${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`);
-      
-      if (field === 'password') setFormData({ ...formData, password: '' });
-      setEditingField(null);
+      toast.success('Profile updated successfully');
+      setFormData({ ...formData, password: '' });
       fetchProfile();
     } catch (error) {
-      toast.error(error.response?.data?.message || `Failed to update ${field}`);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleInlineEditSubmit = () => {
+    setEditingField(null);
   };
 
   const handleDeleteAccount = async () => {
@@ -126,61 +128,46 @@ export default function Profile() {
     const isEditing = editingField === fieldKey;
 
     return (
-      <div className={`flex items-center justify-between text-gray-700 bg-gray-50 rounded-2xl p-4 border ${isEditing ? 'border-blue-300 ring-2 ring-blue-50' : 'border-gray-100'} transition-all`}>
-        <div className="flex items-center w-full">
-          {icon && <div className="mr-3 text-gray-400">{icon}</div>}
-          <div className="flex-1">
-            <p className="text-xs text-gray-500 mb-1">{label}</p>
-            {isEditing ? (
-              <div className="flex w-full">
-                <input
-                  ref={editInputRef}
-                  type={type}
-                  name={fieldKey}
-                  value={formData[fieldKey]}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveField(fieldKey);
-                    if (e.key === 'Escape') {
-                      setFormData({...formData, [fieldKey]: user[fieldKey] || ''});
-                      setEditingField(null);
-                    }
-                  }}
-                  className="w-full bg-white border border-blue-200 text-gray-800 text-sm rounded px-2 py-1 focus:outline-none focus:border-blue-500"
-                  placeholder={`Enter ${label.toLowerCase()}`}
-                  autoComplete="off"
-                />
-              </div>
-            ) : (
-              <p className="font-medium text-gray-800">
-                {fieldKey === 'password' ? '••••••••' : (value || 'Not provided')}
-              </p>
-            )}
-          </div>
+      <div className={`flex items-center text-gray-700 bg-gray-50 rounded-2xl p-4 border border-gray-100 group transition-all hover:bg-gray-100`}>
+        {icon && <div className="mr-3 text-gray-400">{icon}</div>}
+        <div className="flex-1">
+          <p className="text-xs text-gray-500 mb-1">{label}</p>
+          {isEditing ? (
+            <div className="flex items-center">
+              <input
+                ref={editInputRef}
+                type={type}
+                name={fieldKey}
+                value={formData[fieldKey]}
+                onChange={handleInputChange}
+                onBlur={handleInlineEditSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleInlineEditSubmit();
+                  if (e.key === 'Escape') {
+                    setFormData({...formData, [fieldKey]: user[fieldKey] || ''});
+                    setEditingField(null);
+                  }
+                }}
+                className="w-full bg-white border border-blue-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={`Enter ${label.toLowerCase()}`}
+                autoComplete="off"
+              />
+            </div>
+          ) : (
+            <div className="font-medium flex items-center justify-between">
+              <span>{fieldKey === 'password' && !formData.password ? '••••••••' : (fieldKey === 'password' ? '••••••••' : (formData[fieldKey] || value || 'Not provided'))}</span>
+              {isEditable && isAdmin && (
+                <button 
+                  onClick={() => setEditingField(fieldKey)}
+                  className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                  title="Edit"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
-
-        {isEditable && isAdmin && (
-          <div className="ml-4">
-            {isEditing ? (
-              <button 
-                onClick={() => handleSaveField(fieldKey)}
-                disabled={isSubmitting}
-                className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-                title="Save"
-              >
-                <Save className="w-4 h-4" />
-              </button>
-            ) : (
-              <button 
-                onClick={() => setEditingField(fieldKey)}
-                className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                title="Edit"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        )}
       </div>
     );
   };
@@ -206,7 +193,7 @@ export default function Profile() {
               </div>
               
               {isAdmin && (
-                <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 duration-200">
+                <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors z-10 border-2 border-white">
                   <Camera className="w-5 h-5" />
                   <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isSubmitting} />
                 </label>
@@ -310,6 +297,23 @@ export default function Profile() {
               </div>
             </div>
           </div>
+          
+          {isAdmin && (
+            <div className="mt-12 flex justify-end items-center pt-6 border-t border-gray-100">
+              <button 
+                onClick={handleUpdate}
+                disabled={isSubmitting}
+                className="flex items-center px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-2"></span>
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Update Profile
+              </button>
+            </div>
+          )}
           
           {isAdmin && !user.isPrimary && (
             <div className="mt-8 pt-6 border-t border-red-100">

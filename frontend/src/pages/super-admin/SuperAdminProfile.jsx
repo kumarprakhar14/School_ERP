@@ -149,7 +149,7 @@ export default function SuperAdminProfile() {
               <span>{value || placeholder}</span>
               <button 
                 onClick={() => setEditingField(field)}
-                className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
@@ -226,7 +226,7 @@ export default function SuperAdminProfile() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mr-3">{formData.name || 'Not provided'}</h1>
                 <button 
                   onClick={() => setEditingField('name')}
-                  className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                  className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
                 >
                   <Edit2 className="w-5 h-5" />
                 </button>

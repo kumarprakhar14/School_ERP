@@ -185,7 +185,7 @@ export default function AdminUserProfile() {
               <span>{value || 'Not provided'}</span>
               <button 
                 onClick={() => setEditingField(field)}
-                className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
@@ -264,7 +264,7 @@ export default function AdminUserProfile() {
                 )}
                 <button 
                   onClick={() => setEditingField('name')}
-                  className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                  className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
                 >
                   <Edit2 className="w-5 h-5" />
                 </button>
@@ -321,7 +321,7 @@ export default function AdminUserProfile() {
                             <p className="text-xs text-gray-500 mb-1">Assigned Sections</p>
                             <button 
                               onClick={() => setEditingField(editingField === 'sections' ? null : 'sections')}
-                              className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                              className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -375,7 +375,7 @@ export default function AdminUserProfile() {
                           <p className="text-xs text-gray-500 mb-1">Class & Section</p>
                           <button 
                             onClick={() => setEditingField(editingField === 'studentClass' ? null : 'studentClass')}
-                            className="opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
+                            className="text-blue-500 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-all"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
