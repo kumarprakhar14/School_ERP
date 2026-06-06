@@ -58,7 +58,17 @@ export default function Fees() {
       
       if (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') {
         const studentsRes = await api.get('/users?role=STUDENT');
-        setStudents(studentsRes.data);
+        const formattedStudents = studentsRes.data.map(student => {
+          const section = student.studentProfile?.section;
+          const className = section?.class?.name || '';
+          const sectionName = section?.name || '';
+          
+          return {
+            ...student,
+            classDetails: section ? `${className}${sectionName}`.trim() : ''
+          };
+        });
+        setStudents(formattedStudents);
       }
     } catch (error) {
       console.error(error);
