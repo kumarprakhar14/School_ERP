@@ -52,12 +52,13 @@ export default function Sidebar({ isOpen, setIsOpen }) {
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-transparent">
         <div className="flex items-center">
         {user?.role === 'SUPER_ADMIN' ? (
-          <>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/30">
-              E
-            </div>
-            <span className="ml-3 font-semibold text-gray-800 text-lg tracking-tight">Edu<span className="text-blue-600">Core</span></span>
-          </>
+          <div className="flex items-center justify-start">
+          <img 
+            src="/Logo_primary-removebg.png" 
+            alt="SchoolChakra"
+            className="h-4 w-auto object-contain shrink min-w-0"
+          />
+          </div>
         ) : (
           <>
             {user?.schoolSettings?.logoUrl ? (
