@@ -1,4 +1,5 @@
 import prisma from '../utils/db.js';
+import { notifySchoolByRoles } from '../services/notificationService.js';
 
 const createNotice = async (req, res, next) => {
   try {
@@ -16,6 +17,15 @@ const createNotice = async (req, res, next) => {
     });
 
     res.status(201).json(notice);
+
+    // Fire-and-forget: Push notification to users matching target roles
+    const roles = targetRoles.length > 0 ? targetRoles : ['STUDENT', 'TEACHER', 'ADMIN', 'ACCOUNTS'];
+    notifySchoolByRoles(schoolId, roles, {
+      title: '📢 New Notice Published',
+      body: 'A new notice has been published. Tap to read.',
+      url: '/',
+      category: 'notices',
+    }).catch(err => console.error('[Push] Notice notify failed:', err));
   } catch (error) {
     next(error);
   }

@@ -4,6 +4,7 @@ import cors from 'cors';
 import corsOptions from './config/cors.js';
 import morgan from 'morgan';
 import cronJob from './utils/cron.js';
+import { initializeWebPush } from './services/notificationService.js';
 
 import authRoutes from './routes/auth.routes.js';
 import schoolRoutes from './routes/school.routes.js';
@@ -18,6 +19,7 @@ import timetableRoutes from './routes/timetable.routes.js';
 import importRoutes from './routes/import.routes.js';
 import bugRoutes from './routes/bug.routes.js';
 import searchRoutes from './routes/search.routes.js';
+import pushNotificationRoutes from './routes/pushNotification.routes.js';
 
 const app = express();
 
@@ -31,10 +33,14 @@ if (config.nodeEnv==="production") {
     cronJob.start();
 }
 
+// Initialize web-push VAPID credentials
+initializeWebPush();
+
 // Basic health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'SchoolChakra API is running' });
 });
+
 
 // Import and use routes here
 app.use('/api/auth', authRoutes);
@@ -50,6 +56,7 @@ app.use('/api/timetable', timetableRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/bugs', bugRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/notifications', pushNotificationRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

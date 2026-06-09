@@ -8,6 +8,7 @@ import {
   Database, AlertCircle, CalendarCheck, ArrowUpRight, DollarSign, ListTodo, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PushNotification from '../components/PushNotification';
 
 // Custom Animated SVG Attendance Trend Area Chart
 function AttendanceTrendChart({ data }) {
@@ -506,6 +507,7 @@ export default function Dashboard() {
             <p className="text-gray-500 text-xs sm:text-sm font-semibold mt-1">
               Welcome back to <span className="text-blue-600 font-bold">{user?.schoolName || 'Demo School'}</span>.
             </p>
+            <PushNotification />
           </div>
           <div className="text-left shrink-0">
             <div className="text-sm font-bold text-gray-800">{getCurrentDateText()}</div>
@@ -1010,6 +1012,9 @@ export default function Dashboard() {
           </span>
           <h1 className="text-2xl font-bold mt-2.5 mb-1">{getGreeting()}, {user?.name}!</h1>
           <p className="text-blue-100 opacity-90 text-xs sm:text-sm font-semibold">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
+          <div className="text-gray-900">
+            <PushNotification />
+          </div>
         </div>
       </div>
 

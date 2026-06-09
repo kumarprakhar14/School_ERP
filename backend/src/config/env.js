@@ -28,4 +28,9 @@ export const config = {
     },
     nodeEnv: requireEnv("NODE_ENV", "development"),
     apiUrl: requireEnv("API_URL", "http://localhost:5000/api/health"),
+    vapid: {
+        publicKey: requireEnv("VAPID_PUBLIC_KEY"),
+        privateKey: requireEnv("VAPID_PRIVATE_KEY"),
+        subject: requireEnv("VAPID_SUBJECT", "mailto:info@contact.kumarprakhar.online"),
+    },
 };

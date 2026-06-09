@@ -1,5 +1,6 @@
 import prisma from '../utils/db.js';
 import { AppError, ForbiddenError } from '../errors/index.js';
+import { notifySection } from '../services/notificationService.js';
 
 const createAssignment = async (req, res, next) => {
   try {
@@ -26,6 +27,14 @@ const createAssignment = async (req, res, next) => {
     });
 
     res.status(201).json(assignment);
+
+    // Fire-and-forget: Push notification to students in this section
+    notifySection(sectionId, {
+      title: '📝 New Assignment',
+      body: 'A new assignment has been posted. Tap to view details.',
+      url: '/assignments',
+      category: 'assignments',
+    }).catch(err => console.error('[Push] Assignment notify failed:', err));
   } catch (error) {
     next(error);
   }

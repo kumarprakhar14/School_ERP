@@ -112,6 +112,8 @@ model User {
   attendances     Attendance[]
   submissions     AssignmentSubmission[]
   reportedBugs    BugReport[]
+  pushSubscriptions       PushSubscription[]
+  notificationPreferences Json?
 
   @@unique([schoolId, erpId]) // Unique per school
   @@index([schoolId, name])
@@ -446,4 +448,35 @@ model SearchLog {
   createdAt DateTime @default(now())
 
   @@index([schoolId])
+}
+
+// -----------------------------------------------------------------------------
+// PUSH NOTIFICATIONS
+// -----------------------------------------------------------------------------
+
+model PushSubscription {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId     String?
+  endpoint     String   @unique
+  subscription Json
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([schoolId])
+}
+
+model NotificationLog {
+  id         String   @id @default(uuid())
+  schoolId   String?
+  title      String
+  body       String
+  targetType String
+  targetId   String?
+  sentCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([createdAt])
 }
