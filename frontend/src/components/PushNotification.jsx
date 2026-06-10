@@ -1,107 +1,145 @@
-import { useState } from 'react';
-import { Bell, BellOff, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, BellOff, X } from 'lucide-react';
 import { toast } from 'sonner';
 import usePushNotification from '../hooks/usePushNotification';
 
 /**
- * Push Notification Opt-In Card
+ * Push Notification Permission UI
  * 
- * Shows an informative card explaining what notifications the user will receive.
- * Only displayed when the user hasn't subscribed yet and hasn't dismissed the card.
- * After enabling: shows a compact "Notifications enabled" state with a disable option.
- * 
- * Does NOT auto-subscribe — requires explicit user click.
+ * Full-width, dismissible banner rendered at the top of the dashboard.
+ * Matches existing SchoolChakra design system.
  */
 export default function PushNotification() {
-  const { isSupported, isSubscribed, permission, isLoading, subscribe, unsubscribe } = usePushNotification();
-  const [isDismissed, setIsDismissed] = useState(false);
+  const { isSupported, isSubscribed, permission, isLoading, subscribe } = usePushNotification();
+  const [shouldShow, setShouldShow] = useState(false);
 
-  // Don't render if:
-  // - Browser doesn't support push
-  // - Permission was permanently denied
-  // - User dismissed the card (session only)
-  if (!isSupported || (permission === 'denied' && !isSubscribed)) return null;
-  if (isDismissed && !isSubscribed) return null;
+  useEffect(() => {
+    if (!isSupported) return;
+
+    if (permission === 'granted' || isSubscribed) {
+      setShouldShow(false);
+      return;
+    }
+
+    if (permission === 'denied') {
+      setShouldShow(true);
+      return;
+    }
+
+    if (permission === 'default') {
+      const dismissStateStr = localStorage.getItem('notificationBannerDismissState');
+      if (!dismissStateStr) {
+        setShouldShow(true);
+        return;
+      }
+
+      try {
+        const dismissState = JSON.parse(dismissStateStr);
+        const { count, lastDismissedAt } = dismissState;
+        const daysSinceDismiss = (Date.now() - lastDismissedAt) / (1000 * 60 * 60 * 24);
+
+        if (count === 1 && daysSinceDismiss >= 7) {
+          setShouldShow(true);
+        } else if (count === 2 && daysSinceDismiss >= 30) {
+          setShouldShow(true);
+        } else if (count >= 3) {
+          setShouldShow(false);
+        } else {
+          setShouldShow(false);
+        }
+      } catch (e) {
+        localStorage.removeItem('notificationBannerDismissState');
+        setShouldShow(true);
+      }
+    }
+  }, [isSupported, isSubscribed, permission]);
+
+  if (!shouldShow) return null;
+
+  const handleDismiss = () => {
+    setShouldShow(false);
+    
+    if (permission === 'default') {
+      const dismissStateStr = localStorage.getItem('notificationBannerDismissState');
+      let count = 1;
+      if (dismissStateStr) {
+        try {
+          const dismissState = JSON.parse(dismissStateStr);
+          count = dismissState.count + 1;
+        } catch (e) {}
+      }
+      localStorage.setItem('notificationBannerDismissState', JSON.stringify({
+        count,
+        lastDismissedAt: Date.now()
+      }));
+    }
+  };
 
   const handleEnable = async () => {
     const result = await subscribe();
     if (result.success) {
       toast.success('Notifications enabled successfully!');
+      setShouldShow(false);
     } else {
       toast.error(result.message || 'Failed to enable notifications.');
     }
   };
 
-  const handleDisable = async () => {
-    const result = await unsubscribe();
-    if (result.success) {
-      toast.success('Notifications disabled.');
-    } else {
-      toast.error(result.message || 'Failed to disable notifications.');
-    }
-  };
-
-  // Compact enabled state
-  if (isSubscribed) {
+  // State 3: Denied
+  if (permission === 'denied') {
     return (
-      <div className="flex items-center gap-2 mt-2">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <Check className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="text-xs font-bold text-emerald-700">Notifications On</span>
+      <div className="w-full bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm">
+        <div className="flex items-center gap-2.5 text-red-800 flex-1">
+          <BellOff className="w-4 h-4 shrink-0 text-red-500" />
+          <p className="font-medium">
+            <span className="font-bold mr-1">Notifications are blocked in your browser.</span>
+            <span className="text-red-700/80">Enable notifications from your browser settings to receive school updates.</span>
+          </p>
         </div>
-        <button
-          onClick={handleDisable}
-          disabled={isLoading}
-          className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1"
-          title="Disable notifications"
-        >
-          <BellOff className="w-3 h-3" />
-          Disable
-        </button>
+        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+          <button
+            onClick={() => window.open('https://support.google.com/chrome/answer/3220216', '_blank')}
+            className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors bg-white px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50"
+          >
+            How to Enable
+          </button>
+          <button
+            onClick={() => setShouldShow(false)}
+            className="text-red-400 hover:text-red-700 transition-colors p-1"
+            title="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Full opt-in card
+  // State 1: Default (Opt-In Banner)
   return (
-    <div className="mt-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4 relative">
-      <button
-        onClick={() => setIsDismissed(true)}
-        className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600 transition-colors"
-        title="Dismiss"
-      >
-        <X className="w-4 h-4" />
-      </button>
-
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-          <Bell className="w-4.5 h-4.5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-bold text-gray-900">Stay Updated</h4>
-          <ul className="mt-1.5 space-y-0.5 text-xs text-gray-600">
-            <li className="flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-blue-400 shrink-0"></span>
-              New notices & announcements
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-indigo-400 shrink-0"></span>
-              Assignment updates
-            </li>
-            <li className="flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0"></span>
-              Fee reminders
-            </li>
-          </ul>
-          <button
-            onClick={handleEnable}
-            disabled={isLoading}
-            className="mt-3 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center gap-1.5 shadow-sm"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            {isLoading ? 'Enabling...' : 'Enable Notifications'}
-          </button>
-        </div>
+    <div className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm shadow-sm">
+      <div className="flex items-center gap-2.5 text-gray-900 flex-1">
+        <Bell className="w-4 h-4 text-blue-600 shrink-0" />
+        <p>
+          <span className="font-bold mr-1">Browser Notifications</span>
+          <span className="text-gray-500 font-medium">Get notices, assignments, attendance updates and fee reminders instantly.</span>
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+        <button
+          onClick={handleEnable}
+          disabled={isLoading}
+          className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors text-xs disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          {isLoading ? 'Enabling...' : 'Enable Notifications'}
+        </button>
+        <button
+          onClick={handleDismiss}
+          className="text-gray-400 hover:text-gray-700 transition-colors p-1"
+          title="Dismiss"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );

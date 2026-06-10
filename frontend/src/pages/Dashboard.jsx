@@ -500,6 +500,9 @@ export default function Dashboard() {
 
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
+        {/* SECTION 0: Push Notification Banner */}
+        <PushNotification />
+
         {/* SECTION 1: Welcome Banner */}
         <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -507,7 +510,6 @@ export default function Dashboard() {
             <p className="text-gray-500 text-xs sm:text-sm font-semibold mt-1">
               Welcome back to <span className="text-blue-600 font-bold">{user?.schoolName || 'Demo School'}</span>.
             </p>
-            <PushNotification />
           </div>
           <div className="text-left shrink-0">
             <div className="text-sm font-bold text-gray-800">{getCurrentDateText()}</div>
@@ -1003,6 +1005,9 @@ export default function Dashboard() {
   // Fallback / Preserved Views for STUDENT and TEACHER
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      {/* SECTION 0: Push Notification Banner */}
+      <PushNotification />
+
       {/* Welcome Banner (General) */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-600/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
@@ -1012,9 +1017,6 @@ export default function Dashboard() {
           </span>
           <h1 className="text-2xl font-bold mt-2.5 mb-1">{getGreeting()}, {user?.name}!</h1>
           <p className="text-blue-100 opacity-90 text-xs sm:text-sm font-semibold">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
-          <div className="text-gray-900">
-            <PushNotification />
-          </div>
         </div>
       </div>
 
