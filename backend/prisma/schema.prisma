@@ -114,6 +114,7 @@ model User {
   reportedBugs    BugReport[]
   pushSubscriptions       PushSubscription[]
   notificationPreferences Json?
+  userNotifications       UserNotification[]
 
   @@unique([schoolId, erpId]) // Unique per school
   @@index([schoolId, name])
@@ -477,6 +478,22 @@ model NotificationLog {
   sentCount  Int      @default(0)
   createdAt  DateTime @default(now())
 
+  userNotifications UserNotification[]
+
   @@index([schoolId])
   @@index([createdAt])
+}
+
+model UserNotification {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationLogId String
+  notificationLog   NotificationLog @relation(fields: [notificationLogId], references: [id], onDelete: Cascade)
+  isRead            Boolean         @default(false)
+  readAt            DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([userId])
+  @@index([userId, isRead])
 }

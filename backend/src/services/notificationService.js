@@ -92,7 +92,7 @@ const notifyUser = async (userId, payload) => {
   });
 
   const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(null, payload.title, payload.body, 'USER', userId, sentCount);
+  await _logNotification(null, payload.title, payload.body, 'USER', userId, sentCount, [userId]);
 };
 
 /**
@@ -119,7 +119,7 @@ const notifySchoolByRoles = async (schoolId, roles, payload) => {
   });
 
   const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'ROLE', roles.join(','), sentCount);
+  await _logNotification(schoolId, payload.title, payload.body, 'ROLE', roles.join(','), sentCount, eligibleUserIds);
 };
 
 /**
@@ -150,7 +150,7 @@ const notifySection = async (sectionId, payload) => {
   });
 
   const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'SECTION', sectionId, sentCount);
+  await _logNotification(schoolId, payload.title, payload.body, 'SECTION', sectionId, sentCount, eligibleUserIds);
 };
 
 /**
@@ -159,12 +159,23 @@ const notifySection = async (sectionId, payload) => {
  * @param {Object} payload - { title, body, url, category }
  */
 const notifySchool = async (schoolId, payload) => {
+  const users = await prisma.user.findMany({
+    where: { schoolId, isActive: true, isArchived: false },
+    select: { id: true, notificationPreferences: true },
+  });
+
+  const eligibleUserIds = users
+    .filter(u => _checkPreferenceSync(u.notificationPreferences, payload.category))
+    .map(u => u.id);
+
+  if (eligibleUserIds.length === 0) return;
+
   const subscriptions = await prisma.pushSubscription.findMany({
-    where: { schoolId },
+    where: { schoolId, userId: { in: eligibleUserIds } },
   });
 
   const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'SCHOOL', schoolId, sentCount);
+  await _logNotification(schoolId, payload.title, payload.body, 'SCHOOL', schoolId, sentCount, eligibleUserIds);
 };
 
 // ---------------------------------------------------------------------------
@@ -216,13 +227,24 @@ const _sendToSubscriptions = async (subscriptions, payload) => {
 };
 
 /**
- * Log a sent notification for audit trail.
+ * Log a sent notification for audit trail and create in-app UserNotifications.
  */
-const _logNotification = async (schoolId, title, body, targetType, targetId, sentCount) => {
+const _logNotification = async (schoolId, title, body, targetType, targetId, sentCount, userIds = []) => {
   try {
-    await prisma.notificationLog.create({
+    const notificationLog = await prisma.notificationLog.create({
       data: { schoolId, title, body, targetType, targetId, sentCount },
     });
+
+    if (userIds.length > 0) {
+      const userNotifs = userIds.map(userId => ({
+        userId,
+        notificationLogId: notificationLog.id,
+      }));
+
+      await prisma.userNotification.createMany({
+        data: userNotifs,
+      });
+    }
   } catch (err) {
     // Logging failure should never crash the app
     console.error('[Push] Failed to log notification:', err.message);

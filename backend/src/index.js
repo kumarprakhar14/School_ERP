@@ -20,6 +20,7 @@ import importRoutes from './routes/import.routes.js';
 import bugRoutes from './routes/bug.routes.js';
 import searchRoutes from './routes/search.routes.js';
 import pushNotificationRoutes from './routes/pushNotification.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
 
 const app = express();
 
@@ -56,7 +57,8 @@ app.use('/api/timetable', timetableRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/bugs', bugRoutes);
 app.use('/api/search', searchRoutes);
-app.use('/api/notifications', pushNotificationRoutes);
+app.use('/api/push', pushNotificationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

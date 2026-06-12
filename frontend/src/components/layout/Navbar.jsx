@@ -6,10 +6,28 @@ import ConfirmDialog from '../ui/ConfirmDialog';
 import useDebounce from '../../hooks/useDebounce';
 import api from '../../lib/api';
 
+const getRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const diffInSeconds = Math.floor((new Date() - date) / 1000);
+  if (diffInSeconds < 60) return 'Just now';
+
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return rtf.format(-diffInMinutes, 'minute');
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return rtf.format(-diffInHours, 'hour');
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return rtf.format(-diffInDays, 'day');
+
+  return date.toLocaleDateString();
+};
+
 const routeMapper = (type, id, role) => {
   switch (type) {
     case 'school': return `/super-admin/schools/${id}`;
-    case 'student': 
+    case 'student':
     case 'teacher':
     case 'admin':
     case 'accounts':
@@ -28,7 +46,12 @@ export default function Navbar({ toggleSidebar }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
+
+  // Notification state
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [pushPermission, setPushPermission] = useState('default');
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -57,8 +80,43 @@ export default function Navbar({ toggleSidebar }) {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+
+    // Initial setups
+    if ('Notification' in window) {
+      setPushPermission(Notification.permission);
+    }
+    fetchNotifications();
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications?limit=5');
+      setNotifications(res.data.notifications);
+      setUnreadCount(res.data.unreadCount);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    }
+  };
+
+  const handleNotificationClick = async () => {
+    const nextState = !showNotifications;
+    setShowNotifications(nextState);
+
+    if (nextState && unreadCount > 0) {
+      try {
+        const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
+        if (unreadIds.length > 0) {
+          await api.put('/notifications/read', { ids: unreadIds });
+          setUnreadCount(prev => Math.max(0, prev - unreadIds.length));
+          setNotifications(prev => prev.map(n => unreadIds.includes(n.id) ? { ...n, isRead: true } : n));
+        }
+      } catch (err) {
+        console.error('Failed to mark as read', err);
+      }
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -88,7 +146,7 @@ export default function Navbar({ toggleSidebar }) {
           signal: abortControllerRef.current.signal
         });
         setSearchResults(response.data);
-        
+
         // Flatten results for keyboard navigation
         const flat = [];
         Object.values(response.data).forEach(arr => {
@@ -140,7 +198,7 @@ export default function Navbar({ toggleSidebar }) {
   return (
     <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
       <div className="flex items-center flex-1 max-w-xl">
-        <button 
+        <button
           onClick={toggleSidebar}
           className="mr-3 md:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 transition-colors"
         >
@@ -189,9 +247,8 @@ export default function Navbar({ toggleSidebar }) {
                                 <button
                                   onClick={() => handleSelectResult(item)}
                                   onMouseEnter={() => setSelectedIndex(globalIndex)}
-                                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex flex-col ${
-                                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
-                                  }`}
+                                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex flex-col ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                    }`}
                                 >
                                   <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
                                     {item.title}
@@ -215,33 +272,91 @@ export default function Navbar({ toggleSidebar }) {
           )}
         </div>
       </div>
-      
+
       <div className="ml-4 flex items-center space-x-4">
         <div className="relative" ref={notifRef}>
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
+          <button
+            onClick={handleNotificationClick}
             className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 focus:outline-none"
           >
-            <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 block h-4 min-w-[16px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 border-2 border-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
             <Bell className="h-5 w-5" />
           </button>
-          
+
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="px-4 py-2 border-b border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+                <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="text-xs text-blue-600 font-semibold">{unreadCount} unread</span>
+                )}
               </div>
-              <div className="p-4 text-center text-sm text-gray-500 flex flex-col items-center">
-                <Bell className="h-8 w-8 text-gray-300 mb-2" />
-                <p>No new notifications right now.</p>
+
+              <div className="max-h-[350px] overflow-y-auto overscroll-contain">
+                {/* Push Permission Prompt */}
+                {pushPermission === 'default' && (
+                  <div className="px-4 py-3 bg-blue-50/50 border-b border-blue-100 flex flex-col items-start gap-2">
+                    <p className="text-xs text-blue-800 leading-snug">
+                      Enable browser notifications to receive notices and reminders instantly.
+                    </p>
+                    <button
+                      onClick={() => Notification.requestPermission().then(p => setPushPermission(p))}
+                      className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      Enable Notifications
+                    </button>
+                  </div>
+                )}
+                {pushPermission === 'denied' && (
+                  <div className="px-4 py-2.5 bg-amber-50/50 border-b border-amber-100">
+                    <p className="text-xs text-amber-800 leading-snug font-medium flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 block"></span>
+                      Browser notifications disabled.
+                    </p>
+                  </div>
+                )}
+
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-gray-500 flex flex-col items-center">
+                    <Bell className="h-8 w-8 text-gray-200 mb-2" />
+                    <p>No notifications yet.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {notifications.map((n) => (
+                      <div key={n.id} className={`px-4 py-3 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-blue-50/20' : ''}`}>
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <h4 className={`text-sm font-semibold leading-snug line-clamp-1 ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
+                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-1.5">{n.body}</p>
+                        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{getRelativeTime(n.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-100 p-2">
+                <Link
+                  to="/notifications"
+                  onClick={() => setShowNotifications(false)}
+                  className="block w-full text-center py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                >
+                  View All Notifications →
+                </Link>
               </div>
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-4 border-l border-gray-200 pl-4">
           <div className="relative" ref={profileRef}>
-            <button 
+            <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center p-1 pr-2 rounded-full hover:bg-gray-50 transition-colors border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
@@ -279,6 +394,14 @@ export default function Navbar({ toggleSidebar }) {
                     School Settings
                   </Link>
                 )}
+                <Link
+                  to="/notifications"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Bell className="h-4 w-4 mr-2 text-gray-400" />
+                  Notification History
+                </Link>
                 <div className="border-t border-gray-100 my-1"></div>
                 <button
                   onClick={() => {

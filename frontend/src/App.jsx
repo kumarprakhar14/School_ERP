@@ -24,6 +24,7 @@ import Assignments from './pages/Assignments';
 import Fees from './pages/Fees';
 import Profile from './pages/Profile';
 import TimeTable from './pages/TimeTable';
+import Notifications from './pages/Notifications';
 
 function DashboardRouter() {
   const user = useAuthStore(state => state.user);
@@ -114,6 +115,7 @@ function App() {
             <Route path="fees" element={<Fees />} />
             <Route path="timetable" element={<TimeTable />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="notifications" element={<Notifications />} />
           </Route>
         </Route>
         
