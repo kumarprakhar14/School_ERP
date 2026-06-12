@@ -7,6 +7,7 @@ import {
   CheckCircle, ChevronRight, FileText, UploadCloud, Bell, Activity, Plus
 } from 'lucide-react';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
+import PushNotification from '../../components/PushNotification';
 
 function CollectionTrendChart({ data }) {
   if (!data || data.length === 0) return null;
@@ -94,6 +95,9 @@ export default function AccountsDashboard() {
 
   return (
     <div className="space-y-6 pb-12 max-w-5xl mx-auto">
+      {/* SECTION 0: Push Notification Banner */}
+      <PushNotification />
+
       {/* 1. Welcome Banner */}
       <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
