@@ -17,8 +17,7 @@ import UserManagement from './pages/admin/UserManagement';
 import AdminUserProfile from './pages/admin/AdminUserProfile';
 import BulkImport from './pages/admin/BulkImport';
 
-import Dashboard from './pages/Dashboard';
-import AccountsDashboard from './pages/AccountsDashboard';
+import Dashboard from './pages/dashboard';
 import Academics from './pages/Academics';
 import Attendance from './pages/Attendance';
 import Assignments from './pages/Assignments';
@@ -33,8 +32,6 @@ function DashboardRouter() {
   
   if (user.role === 'SUPER_ADMIN') {
     return <Navigate to="/super-admin" replace />;
-  } else if (user.role === 'ACCOUNTS') {
-    return <AccountsDashboard />;
   } else {
     return <Dashboard />;
   }

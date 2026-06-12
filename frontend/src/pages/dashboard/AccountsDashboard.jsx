@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../lib/api';
-import useAuthStore from '../store/authStore';
+import api from '../../lib/api';
+import useAuthStore from '../../store/authStore';
 import { 
   DollarSign, AlertCircle, TrendingUp, CreditCard, Clock, 
   CheckCircle, ChevronRight, FileText, UploadCloud, Bell, Activity, Plus
 } from 'lucide-react';
-import ResponsiveTable from '../components/ui/ResponsiveTable';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 function CollectionTrendChart({ data }) {
   if (!data || data.length === 0) return null;
