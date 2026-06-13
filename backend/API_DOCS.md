@@ -26,7 +26,7 @@ This document is the **single source of truth** for all backend API endpoints of
 14. [Category: Bulk Import](#14-category-bulk-import)
 15. [Category: Bug Reports](#15-category-bug-reports)
 16. [Category: Dashboard](#16-category-dashboard)
-17. [Category: Push Notifications](#17-category-push-notifications)
+17. [Category: Push Notifications & In-App Notification Center](#17-category-push-notifications--in-app-notification-center)
 18. [Appendix: Data Models & Enums](#18-appendix-data-models--enums)
 
 ---
@@ -2589,13 +2589,17 @@ For an established school, the full stats are returned:
 
 ---
 
-## 17. Category: Push Notifications
+## 17. Category: Push Notifications & In-App Notification Center
 
 Base path: `/api/notifications`
 
 > All routes are protected by `authMiddleware` and `schoolValidityMiddleware`. The user must be authenticated and belong to an active school.
 
-This category handles Web Push notification subscriptions. The frontend registers a Service Worker, obtains a push subscription from the browser's Push API, and sends it to the backend for storage. The backend uses VAPID keys and the `web-push` library to deliver encrypted push messages to subscribed browsers.
+This category covers two distinct subsystems:
+
+1. **Web Push Subscriptions** — the browser-side push subscription lifecycle (subscribe / unsubscribe). The frontend registers a Service Worker, obtains a push subscription from the browser's Push API, and sends it to the backend for storage. The backend uses VAPID keys and the `web-push` library to deliver encrypted push messages to subscribed browsers.
+
+2. **In-App Notification Center** — a persistent, reliable notification feed stored in the database. Every notification event (notice published, assignment posted, invoice created, payment recorded) writes a `NotificationLog` record and a `UserNotification` row per recipient. This works independently of web push — users who have not enabled browser notifications still receive all notifications in the in-app center. Each notification carries `entityType` and `entityId` which the frontend uses to resolve the click-through URL.
 
 ---
 
@@ -2680,6 +2684,127 @@ This category handles Web Push notification subscriptions. The frontend register
 
 ---
 
+### `GET /api/notifications`
+
+**Purpose:** Returns a paginated list of in-app notifications for the authenticated user, ordered newest-first. Also returns the total unread count. This is the primary data source for the notification bell dropdown and the Notification Center page.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated user (`ADMIN`, `TEACHER`, `STUDENT`, `ACCOUNTS`)
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `page` | `integer` | ❌ | Page number. Defaults to `1`. |
+| `limit` | `integer` | ❌ | Results per page. Defaults to `20`. Use `5` for the navbar bell dropdown. |
+
+**Example Requests:**
+```
+GET /api/notifications?limit=5           — navbar bell dropdown (latest 5)
+GET /api/notifications?page=1&limit=20  — full notification center page
+```
+
+**Success Response `200 OK`:**
+```json
+{
+  "notifications": [
+    {
+      "id": "uuid-of-user-notification",
+      "title": "📢 New Notice Published",
+      "body": "A new notice has been published. Tap to read.",
+      "entityType": "notice",
+      "entityId": "uuid-of-notice",
+      "isRead": false,
+      "createdAt": "2026-06-14T06:00:00.000Z"
+    },
+    {
+      "id": "uuid-of-user-notification-2",
+      "title": "💰 New Fee Invoice",
+      "body": "A new fee invoice has been generated. Tap to view.",
+      "entityType": "invoice",
+      "entityId": "uuid-of-invoice",
+      "isRead": true,
+      "createdAt": "2026-06-13T10:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 42,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 3
+  },
+  "unreadCount": 7
+}
+```
+
+> **Note on `entityType` / `entityId`:** These fields identify the source entity that triggered the notification. The frontend uses these to resolve the click-through URL. Old notifications created before this feature was deployed will have `null` for both fields and fall back to the `/notifications` history page on click.
+>
+> | `entityType` | Source Event | Frontend Route |
+> |---|---|---|
+> | `"notice"` | A notice was published | `/` (dashboard notice board) |
+> | `"assignment"` | An assignment was posted | `/assignments` |
+> | `"invoice"` | A fee invoice was created | `/fees` |
+> | `"payment"` | A payment was recorded | `/fees` |
+> | `null` | Unknown / legacy | `/notifications` |
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `401` | No or invalid auth token | `"Authentication required"` |
+| `403` | School expired or inactive | School validity error |
+
+---
+
+### `PUT /api/notifications/read`
+
+**Purpose:** Marks one or more of the authenticated user's notifications as read. If no `ids` array is provided, **all** unread notifications for the user are marked as read. If a specific list of `ids` is provided, only those notifications are updated.
+
+This endpoint is called in three scenarios on the frontend:
+1. **Bell icon opened** — the visible dropdown items' IDs are sent to mark them read.
+2. **Individual notification clicked** — that single notification's ID is sent.
+3. **"Mark all as read" button** — called with an empty body to mark everything.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated user (`ADMIN`, `TEACHER`, `STUDENT`, `ACCOUNTS`)
+
+**Request Body (optional):**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ids` | `string[] (UUID[])` | ❌ | IDs of `UserNotification` records to mark as read. If omitted or empty array, all unread notifications for this user are marked read. |
+
+**Example — mark specific notifications read:**
+```json
+{
+  "ids": ["uuid-notif-1", "uuid-notif-2"]
+}
+```
+
+**Example — mark all as read:**
+```json
+{}
+```
+
+**Success Response `200 OK`:**
+```json
+{
+  "message": "Notifications marked as read",
+  "count": 3
+}
+```
+
+> **Note:** `count` reflects the number of records that were actually updated (i.e., were previously unread). If all notifications were already read, `count` will be `0`.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `401` | No or invalid auth token | `"Authentication required"` |
+| `403` | School expired or inactive | School validity error |
+
+---
+
 ## 18. Appendix: Data Models & Enums
 
 ### Enums
@@ -2748,6 +2873,9 @@ School
   └── AcademicYear[] (1:N) → TeacherAssignment[]
 
 NotificationLog[] — standalone audit table, optionally scoped to a schoolId
+  ├── entityType String?  — identifies the source entity (e.g., "notice", "assignment", "invoice", "payment"); null for legacy records
+  ├── entityId   String?  — UUID of the referenced entity; null for legacy records
+  └── UserNotification[] (1:N) — per-user read-status pivot records
 ```
 
 ---
