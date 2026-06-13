@@ -20,12 +20,16 @@ const createNotice = async (req, res, next) => {
 
     // Fire-and-forget: Push notification to users matching target roles
     const roles = targetRoles.length > 0 ? targetRoles : ['STUDENT', 'TEACHER', 'ADMIN', 'ACCOUNTS'];
-    notifySchoolByRoles(schoolId, roles, {
-      title: '📢 New Notice Published',
-      body: 'A new notice has been published. Tap to read.',
-      url: '/',
-      category: 'notices',
-    }).catch(err => console.error('[Push] Notice notify failed:', err));
+    notifySchoolByRoles(
+      schoolId,
+      roles,
+      {
+        title: '📢 New Notice Published',
+        body: 'A new notice has been published. Tap to read.',
+        category: 'notices',
+      },
+      { entityType: 'notice', entityId: notice.id }
+    ).catch(err => console.error('[Push] Notice notify failed:', err));
   } catch (error) {
     next(error);
   }

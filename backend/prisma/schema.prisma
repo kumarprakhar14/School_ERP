@@ -473,6 +473,8 @@ model NotificationLog {
   schoolId   String?
   title      String
   body       String
+  entityType String?  // e.g., "notice", "assignment", "invoice", "payment"
+  entityId   String?  // UUID of the referenced entity
   targetType String
   targetId   String?
   sentCount  Int      @default(0)

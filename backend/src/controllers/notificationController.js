@@ -33,6 +33,8 @@ export const getNotifications = async (req, res, next) => {
         id: n.id,
         title: n.notificationLog.title,
         body: n.notificationLog.body,
+        entityType: n.notificationLog.entityType,
+        entityId: n.notificationLog.entityId,
         isRead: n.isRead,
         createdAt: n.createdAt,
       })),

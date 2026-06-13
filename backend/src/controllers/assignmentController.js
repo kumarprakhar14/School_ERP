@@ -29,12 +29,15 @@ const createAssignment = async (req, res, next) => {
     res.status(201).json(assignment);
 
     // Fire-and-forget: Push notification to students in this section
-    notifySection(sectionId, {
-      title: '📝 New Assignment',
-      body: 'A new assignment has been posted. Tap to view details.',
-      url: '/assignments',
-      category: 'assignments',
-    }).catch(err => console.error('[Push] Assignment notify failed:', err));
+    notifySection(
+      sectionId,
+      {
+        title: '📝 New Assignment',
+        body: 'A new assignment has been posted. Tap to view details.',
+        category: 'assignments',
+      },
+      { entityType: 'assignment', entityId: assignment.id }
+    ).catch(err => console.error('[Push] Assignment notify failed:', err));
   } catch (error) {
     next(error);
   }

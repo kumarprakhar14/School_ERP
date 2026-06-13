@@ -38,12 +38,15 @@ const createInvoice = async (req, res, next) => {
     res.status(201).json(invoice);
 
     // Fire-and-forget: Push notification to the student
-    notifyUser(studentId, {
-      title: '💰 New Fee Invoice',
-      body: 'A new fee invoice has been generated. Tap to view.',
-      url: '/fees',
-      category: 'fees',
-    }).catch(err => console.error('[Push] Fee notify failed:', err));
+    notifyUser(
+      studentId,
+      {
+        title: '💰 New Fee Invoice',
+        body: 'A new fee invoice has been generated. Tap to view.',
+        category: 'fees',
+      },
+      { entityType: 'invoice', entityId: invoice.id }
+    ).catch(err => console.error('[Push] Invoice notify failed:', err));
   } catch (error) {
     next(error);
   }
@@ -75,6 +78,17 @@ const recordPayment = async (req, res, next) => {
     });
 
     res.status(201).json(payment);
+
+    // Fire-and-forget: Push notification to the student about payment confirmation
+    notifyUser(
+      invoice.studentId,
+      {
+        title: '✅ Payment Recorded',
+        body: 'A payment has been recorded for your fee invoice. Tap to view.',
+        category: 'fees',
+      },
+      { entityType: 'payment', entityId: payment.id }
+    ).catch(err => console.error('[Push] Payment notify failed:', err));
   } catch (error) {
     next(error);
   }

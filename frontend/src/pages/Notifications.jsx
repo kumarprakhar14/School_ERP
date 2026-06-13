@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Bell, Clock, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { resolveNotificationRoute } from '../lib/resolveNotificationRoute';
+import useAuthStore from '../store/authStore';
 
 const groupNotifications = (notifications) => {
   const groups = {
@@ -35,6 +37,7 @@ const groupNotifications = (notifications) => {
 };
 
 export default function Notifications() {
+  const { user } = useAuthStore();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -134,32 +137,51 @@ export default function Notifications() {
                     <h3 className="text-xs font-black uppercase tracking-wider text-gray-500">{label}</h3>
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {items.map(n => (
-                      <div key={n.id} className={`p-6 transition-colors hover:bg-gray-50/50 flex gap-4 items-start ${!n.isRead ? 'bg-blue-50/10' : ''}`}>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!n.isRead ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                          <Bell className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start gap-4">
-                            <h4 className={`text-base font-bold mb-1 leading-snug ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>
-                              {n.title}
-                            </h4>
-                            <div className="flex items-center shrink-0 text-xs font-semibold text-gray-400 whitespace-nowrap">
-                              <Clock className="w-3.5 h-3.5 mr-1" />
-                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
+                    {items.map(n => {
+                      const route = resolveNotificationRoute(n.entityType, n.entityId, user?.role);
+                      return (
+                        <Link
+                          key={n.id}
+                          to={route}
+                          onClick={async () => {
+                            if (!n.isRead) {
+                              try {
+                                await api.put('/notifications/read', { ids: [n.id] });
+                                setNotifications(prev =>
+                                  prev.map(x => x.id === n.id ? { ...x, isRead: true } : x)
+                                );
+                              } catch (err) {
+                                console.error('Failed to mark notification as read', err);
+                              }
+                            }
+                          }}
+                          className={`p-6 transition-colors hover:bg-gray-50/50 flex gap-4 items-start ${!n.isRead ? 'bg-blue-50/10' : ''}`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${!n.isRead ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                            <Bell className="w-5 h-5" />
                           </div>
-                          <p className={`text-sm leading-relaxed ${!n.isRead ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
-                            {n.body}
-                          </p>
-                          {!n.isRead && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 mt-2">
-                              NEW
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-4">
+                              <h4 className={`text-base font-bold mb-1 leading-snug ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {n.title}
+                              </h4>
+                              <div className="flex items-center shrink-0 text-xs font-semibold text-gray-400 whitespace-nowrap">
+                                <Clock className="w-3.5 h-3.5 mr-1" />
+                                {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                            <p className={`text-sm leading-relaxed ${!n.isRead ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
+                              {n.body}
+                            </p>
+                            {!n.isRead && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 mt-2">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               );

@@ -4,14 +4,25 @@ import prisma from '../utils/db.js';
 
 /**
  * Push Notification Service
- * 
+ *
  * Central service for all push notification operations.
  * No controller should call web-push directly — always use this service.
- * 
+ *
  * Notification categories (for user preferences):
  *   - notices
  *   - assignments
  *   - fees
+ *
+ * Entity routing:
+ *   Controllers pass { entityType, entityId } when triggering a notification.
+ *   The service resolves this into a URL for the web push payload, and
+ *   persists entityType + entityId in NotificationLog for in-app click routing.
+ *
+ *   Supported entityType values:
+ *     "notice"      → /
+ *     "assignment"  → /assignments
+ *     "invoice"     → /fees
+ *     "payment"     → /fees
  */
 
 // Default preferences when user has no overrides (all enabled)
@@ -19,6 +30,25 @@ const DEFAULT_PREFERENCES = {
   notices: true,
   assignments: true,
   fees: true,
+};
+
+/**
+ * Resolve a frontend route from an entity type and id.
+ * This is the single source of truth for entity → URL mapping on the backend.
+ * Used exclusively to build the web push click URL.
+ *
+ * @param {string|undefined} entityType
+ * @param {string|undefined} entityId
+ * @returns {string} absolute path
+ */
+const resolveEntityUrl = (entityType, entityId) => {
+  switch (entityType) {
+    case 'notice':      return '/';
+    case 'assignment':  return '/assignments';
+    case 'invoice':     return '/fees';
+    case 'payment':     return '/fees';
+    default:            return '/notifications';
+  }
 };
 
 /**
@@ -79,9 +109,10 @@ const removeSubscription = async (userId, endpoint) => {
 /**
  * Send a push notification to a specific user (all their devices).
  * @param {string} userId
- * @param {Object} payload - { title, body, url, category }
+ * @param {Object} payload       - { title, body, category }
+ * @param {Object} [entity]      - { entityType, entityId }
  */
-const notifyUser = async (userId, payload) => {
+const notifyUser = async (userId, payload, entity = {}) => {
   if (payload.category) {
     const shouldSend = await _checkPreference(userId, payload.category);
     if (!shouldSend) return;
@@ -91,17 +122,18 @@ const notifyUser = async (userId, payload) => {
     where: { userId },
   });
 
-  const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(null, payload.title, payload.body, 'USER', userId, sentCount, [userId]);
+  const sentCount = await _sendToSubscriptions(subscriptions, payload, entity);
+  await _logNotification(null, payload.title, payload.body, 'USER', userId, sentCount, [userId], entity);
 };
 
 /**
  * Send a push notification to all users in a school matching given roles.
- * @param {string} schoolId
- * @param {string[]} roles - Array of UserRole values
- * @param {Object} payload - { title, body, url, category }
+ * @param {string}   schoolId
+ * @param {string[]} roles    - Array of UserRole values
+ * @param {Object}   payload  - { title, body, category }
+ * @param {Object}   [entity] - { entityType, entityId }
  */
-const notifySchoolByRoles = async (schoolId, roles, payload) => {
+const notifySchoolByRoles = async (schoolId, roles, payload, entity = {}) => {
   const users = await prisma.user.findMany({
     where: { schoolId, role: { in: roles }, isActive: true, isArchived: false },
     select: { id: true, notificationPreferences: true },
@@ -118,16 +150,17 @@ const notifySchoolByRoles = async (schoolId, roles, payload) => {
     where: { userId: { in: eligibleUserIds }, schoolId },
   });
 
-  const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'ROLE', roles.join(','), sentCount, eligibleUserIds);
+  const sentCount = await _sendToSubscriptions(subscriptions, payload, entity);
+  await _logNotification(schoolId, payload.title, payload.body, 'ROLE', roles.join(','), sentCount, eligibleUserIds, entity);
 };
 
 /**
  * Send a push notification to all students in a specific section.
  * @param {string} sectionId
- * @param {Object} payload - { title, body, url, category }
+ * @param {Object} payload   - { title, body, category }
+ * @param {Object} [entity]  - { entityType, entityId }
  */
-const notifySection = async (sectionId, payload) => {
+const notifySection = async (sectionId, payload, entity = {}) => {
   const studentProfiles = await prisma.studentProfile.findMany({
     where: { sectionId },
     select: {
@@ -149,16 +182,17 @@ const notifySection = async (sectionId, payload) => {
     where: { userId: { in: eligibleUserIds } },
   });
 
-  const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'SECTION', sectionId, sentCount, eligibleUserIds);
+  const sentCount = await _sendToSubscriptions(subscriptions, payload, entity);
+  await _logNotification(schoolId, payload.title, payload.body, 'SECTION', sectionId, sentCount, eligibleUserIds, entity);
 };
 
 /**
  * Send a push notification to everyone in a school.
  * @param {string} schoolId
- * @param {Object} payload - { title, body, url, category }
+ * @param {Object} payload   - { title, body, category }
+ * @param {Object} [entity]  - { entityType, entityId }
  */
-const notifySchool = async (schoolId, payload) => {
+const notifySchool = async (schoolId, payload, entity = {}) => {
   const users = await prisma.user.findMany({
     where: { schoolId, isActive: true, isArchived: false },
     select: { id: true, notificationPreferences: true },
@@ -174,8 +208,8 @@ const notifySchool = async (schoolId, payload) => {
     where: { schoolId, userId: { in: eligibleUserIds } },
   });
 
-  const sentCount = await _sendToSubscriptions(subscriptions, payload);
-  await _logNotification(schoolId, payload.title, payload.body, 'SCHOOL', schoolId, sentCount, eligibleUserIds);
+  const sentCount = await _sendToSubscriptions(subscriptions, payload, entity);
+  await _logNotification(schoolId, payload.title, payload.body, 'SCHOOL', schoolId, sentCount, eligibleUserIds, entity);
 };
 
 // ---------------------------------------------------------------------------
@@ -184,23 +218,26 @@ const notifySchool = async (schoolId, payload) => {
 
 /**
  * Send push notifications to a list of subscription records.
+ * The click URL is resolved from entityType/entityId — no hardcoded url in payload.
  * Auto-cleans expired/invalid subscriptions (410 Gone, 404 Not Found).
  * @returns {number} Number of successfully sent notifications
  */
-const _sendToSubscriptions = async (subscriptions, payload) => {
+const _sendToSubscriptions = async (subscriptions, payload, entity = {}) => {
   if (subscriptions.length === 0) return 0;
+
+  const resolvedUrl = resolveEntityUrl(entity.entityType, entity.entityId);
 
   const notificationPayload = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    url: payload.url || '/',
+    url: resolvedUrl,
     icon: '/web-app-manifest-192x192.png',
   });
 
   let sentCount = 0;
   const staleEndpoints = [];
 
-  const results = await Promise.allSettled(
+  await Promise.allSettled(
     subscriptions.map(sub =>
       webpush.sendNotification(sub.subscription, notificationPayload)
         .then(() => { sentCount++; })
@@ -228,21 +265,29 @@ const _sendToSubscriptions = async (subscriptions, payload) => {
 
 /**
  * Log a sent notification for audit trail and create in-app UserNotifications.
+ * entityType + entityId are persisted for frontend click-routing.
  */
-const _logNotification = async (schoolId, title, body, targetType, targetId, sentCount, userIds = []) => {
+const _logNotification = async (schoolId, title, body, targetType, targetId, sentCount, userIds = [], entity = {}) => {
   try {
     const notificationLog = await prisma.notificationLog.create({
-      data: { schoolId, title, body, targetType, targetId, sentCount },
+      data: {
+        schoolId,
+        title,
+        body,
+        entityType: entity.entityType ?? null,
+        entityId: entity.entityId ?? null,
+        targetType,
+        targetId,
+        sentCount,
+      },
     });
 
     if (userIds.length > 0) {
-      const userNotifs = userIds.map(userId => ({
-        userId,
-        notificationLogId: notificationLog.id,
-      }));
-
       await prisma.userNotification.createMany({
-        data: userNotifs,
+        data: userIds.map(userId => ({
+          userId,
+          notificationLogId: notificationLog.id,
+        })),
       });
     }
   } catch (err) {

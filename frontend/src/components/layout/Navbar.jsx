@@ -5,6 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import useDebounce from '../../hooks/useDebounce';
 import api from '../../lib/api';
+import { resolveNotificationRoute } from '../../lib/resolveNotificationRoute';
 
 const getRelativeTime = (dateString) => {
   const date = new Date(dateString);
@@ -327,16 +328,37 @@ export default function Navbar({ toggleSidebar }) {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-50">
-                    {notifications.map((n) => (
-                      <div key={n.id} className={`px-4 py-3 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-blue-50/20' : ''}`}>
-                        <div className="flex justify-between items-start gap-2 mb-1">
-                          <h4 className={`text-sm font-semibold leading-snug line-clamp-1 ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
-                          {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-1.5">{n.body}</p>
-                        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{getRelativeTime(n.createdAt)}</span>
-                      </div>
-                    ))}
+                    {notifications.map((n) => {
+                      const route = resolveNotificationRoute(n.entityType, n.entityId, user?.role);
+                      return (
+                        <Link
+                          key={n.id}
+                          to={route}
+                          onClick={async () => {
+                            setShowNotifications(false);
+                            if (!n.isRead) {
+                              try {
+                                await api.put('/notifications/read', { ids: [n.id] });
+                                setUnreadCount(prev => Math.max(0, prev - 1));
+                                setNotifications(prev =>
+                                  prev.map(x => x.id === n.id ? { ...x, isRead: true } : x)
+                                );
+                              } catch (err) {
+                                console.error('Failed to mark notification as read', err);
+                              }
+                            }
+                          }}
+                          className={`block px-4 py-3 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-blue-50/20' : ''}`}
+                        >
+                          <div className="flex justify-between items-start gap-2 mb-1">
+                            <h4 className={`text-sm font-semibold leading-snug line-clamp-1 ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
+                            {!n.isRead && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                          </div>
+                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-1.5">{n.body}</p>
+                          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{getRelativeTime(n.createdAt)}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
