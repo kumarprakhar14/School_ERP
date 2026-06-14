@@ -134,14 +134,14 @@ export default function TimeTable() {
   };
 
   const handleDeleteClick = (id) => {
-    setItemToDelete(id);
+    setDeleteTarget(id);
     setShowDeleteConfirm(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!itemToDelete) return;
+    if (!deleteTarget) return;
     try {
-      await api.delete(`/timetable/${itemToDelete}`);
+      await api.delete(`/timetable/${deleteTarget}`);
       toast.success('Entry deleted successfully');
       fetchTimetable(selectedClassId, selectedSectionId);
     } catch (error) {
@@ -149,7 +149,7 @@ export default function TimeTable() {
       toast.error('Failed to delete entry');
     } finally {
       setShowDeleteConfirm(false);
-      setItemToDelete(null);
+      setDeleteTarget(null);
     }
   };
 
