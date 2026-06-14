@@ -11,6 +11,11 @@ export default function Academics() {
   const [timetable, setTimetable] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Section Expansion State
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [sectionStudents, setSectionStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
   // Modals
   const [showClassModal, setShowClassModal] = useState(false);
   const [showSectionModal, setShowSectionModal] = useState(null); // stores classId
@@ -50,6 +55,24 @@ export default function Academics() {
       console.error('Failed to fetch classes', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSectionClick = async (sectionId) => {
+    if (expandedSection === sectionId) {
+      setExpandedSection(null);
+      return;
+    }
+    setExpandedSection(sectionId);
+    setLoadingStudents(true);
+    try {
+      const res = await api.get(`/classes/sections/${sectionId}/students`);
+      setSectionStudents(res.data);
+    } catch (error) {
+      console.error('Failed to fetch students', error);
+      toast.error('Failed to load students');
+    } finally {
+      setLoadingStudents(false);
     }
   };
 
@@ -199,7 +222,7 @@ export default function Academics() {
           })()}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
           {classes.filter(cls => {
             if (user?.role === 'TEACHER') {
               return cls.sections?.some(sec => sec.teacherAssignments?.some(ta => ta.teacher?.user?.id === user?.id));
@@ -229,26 +252,57 @@ export default function Academics() {
                     }
                     return true;
                   }).map(sec => (
-                    <div key={sec.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm mr-3">
-                          {sec.name}
-                        </div>
-                        <span className="text-sm font-medium text-gray-700">Section {sec.name}</span>
-                      </div>
-                      <div className="flex items-center text-gray-400 text-xs font-medium space-x-3">
-                        <span className="flex items-center"><Users className="w-3.5 h-3.5 mr-1" />{sec._count?.students || 0}</span>
-                        {user?.role === 'ADMIN' && (
-                          <div className="flex items-center space-x-1">
-                            <button onClick={() => { setSectionName(sec.name); setShowEditSectionModal(sec); }} className="p-1 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors" title="Edit Section">
-                              <BookOpen className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDeleteClick(sec.id)} className="p-1 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Delete Section">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                    <div key={sec.id} className="flex flex-col rounded-xl border border-gray-100 hover:border-blue-200 transition-colors overflow-hidden">
+                      <div 
+                        className={`flex items-center justify-between p-3 cursor-pointer ${expandedSection === sec.id ? 'bg-blue-50/30' : 'hover:bg-blue-50/30'}`}
+                        onClick={() => handleSectionClick(sec.id)}
+                      >
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm mr-3">
+                            {sec.name}
                           </div>
-                        )}
+                          <span className="text-sm font-medium text-gray-700">Section {sec.name}</span>
+                        </div>
+                        <div className="flex items-center text-gray-400 text-xs font-medium space-x-3">
+                          <span className="flex items-center"><Users className="w-3.5 h-3.5 mr-1" />{sec._count?.students || 0}</span>
+                          {user?.role === 'ADMIN' && (
+                            <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+                              <button onClick={() => { setSectionName(sec.name); setShowEditSectionModal(sec); }} className="p-1 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors" title="Edit Section">
+                                <BookOpen className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteClick(sec.id)} className="p-1 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Delete Section">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      
+                      {expandedSection === sec.id && (
+                        <div className="bg-gray-50/50 p-3 border-t border-gray-100">
+                          {loadingStudents ? (
+                            <div className="flex justify-center py-4">
+                              <span className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+                            </div>
+                          ) : sectionStudents.length === 0 ? (
+                            <p className="text-sm text-gray-500 italic text-center py-2">No students in this section.</p>
+                          ) : (
+                            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                              {sectionStudents.map(student => (
+                                <div key={student.id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm hover:shadow transition-shadow">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                      {student.user.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-800">{student.user.name}</span>
+                                  </div>
+                                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md">{student.user.erpId}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
