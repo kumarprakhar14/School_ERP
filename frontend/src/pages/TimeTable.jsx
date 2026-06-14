@@ -400,7 +400,7 @@ export default function TimeTable() {
               </colgroup>
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100">
-                  <th className="p-4 font-semibold text-gray-500 text-sm border-r border-gray-100 text-center">
+                  <th className="p-4 font-semibold text-gray-500 text-sm border-r border-gray-100 text-center sticky left-0 z-10 bg-gray-50">
                     <div className="flex items-center justify-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
                       Period
@@ -417,7 +417,7 @@ export default function TimeTable() {
                 {periods.map(period => (
                   <tr key={period.id} className="group/row">
                     {/* Period label cell */}
-                    <td className="p-4 border-r border-gray-100 text-center relative group/period bg-gray-50/30">
+                    <td className="p-4 border-r border-gray-100 text-center relative group/period bg-white sticky left-0 z-10">
                       <div className="font-semibold text-gray-800 text-sm">{period.name}</div>
                       <div className="text-xs text-gray-500 mt-1">{period.startTime} - {period.endTime}</div>
                       {isAdmin && (
