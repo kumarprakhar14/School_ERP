@@ -197,7 +197,7 @@ export default function Navbar({ toggleSidebar }) {
   };
 
   return (
-    <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 shadow-sm">
+    <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20 md:z-[60] shadow-sm">
       <div className="flex items-center flex-1 max-w-xl">
         <button
           onClick={toggleSidebar}
@@ -289,7 +289,7 @@ export default function Navbar({ toggleSidebar }) {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
+            <div className="fixed inset-x-4 top-[72px] sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-gray-100 py-1 z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
                 <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
                 {unreadCount > 0 && (

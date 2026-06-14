@@ -15,7 +15,7 @@ export default function Layout() {
         />
       )}
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
+      <div className="flex-1 flex flex-col relative min-w-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02] pointer-events-none"></div>
         <Navbar toggleSidebar={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 md:p-6 z-10">
