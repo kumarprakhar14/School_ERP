@@ -126,7 +126,11 @@ const getFeeSummary = async (req, res, next) => {
       student.feeInvoices.forEach(inv => {
         totalAmount += inv.totalAmount;
         let invoicePaid = 0;
-        inv.payments.forEach(p => invoicePaid += p.amount);
+        inv.payments.forEach(p => {
+          if (p.status === 'SUCCESS' || !p.status) {
+            invoicePaid += p.amount;
+          }
+        });
         totalPaid += invoicePaid;
 
         if (invoicePaid < inv.totalAmount) {
@@ -218,7 +222,10 @@ const getTransactionHistory = async (req, res, next) => {
           date: pay.paidAt,
           paymentMode: pay.paymentMode,
           referenceNo: pay.referenceNo,
+          utr: pay.utr,
+          screenshotUrl: pay.screenshotUrl,
           remarks: pay.remarks,
+          status: pay.status,
           student: inv.student,
         });
       });

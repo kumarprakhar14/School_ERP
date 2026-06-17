@@ -1,6 +1,5 @@
-import React from 'react';
 import { 
-  UserPlus, UserCheck, Bell, DollarSign, CalendarCheck, Database, Activity 
+  UserPlus, UserCheck, Bell, DollarSign, CalendarCheck, Database, Activity, Clock, XCircle 
 } from 'lucide-react';
 
 /**
@@ -37,7 +36,12 @@ export const getActivityIcon = (type) => {
     case 'NOTICE_PUBLISHED':
       return <Bell className="w-4 h-4 text-purple-600" />;
     case 'FEE_PAID':
+    case 'PAYMENT_RECEIVED':
       return <DollarSign className="w-4 h-4 text-indigo-600" />;
+    case 'PAYMENT_PENDING':
+      return <Clock className="w-4 h-4 text-amber-600" />;
+    case 'PAYMENT_REJECTED':
+      return <XCircle className="w-4 h-4 text-red-600" />;
     case 'ATTENDANCE_SUBMITTED':
       return <CalendarCheck className="w-4 h-4 text-sky-600" />;
     case 'IMPORT_COMPLETED':
@@ -61,7 +65,12 @@ export const getActivityBg = (type) => {
     case 'NOTICE_PUBLISHED':
       return 'bg-purple-50 border-purple-100';
     case 'FEE_PAID':
+    case 'PAYMENT_RECEIVED':
       return 'bg-indigo-50 border-indigo-100';
+    case 'PAYMENT_PENDING':
+      return 'bg-amber-50 border-amber-100';
+    case 'PAYMENT_REJECTED':
+      return 'bg-red-50 border-red-100';
     case 'ATTENDANCE_SUBMITTED':
       return 'bg-sky-50 border-sky-100';
     case 'IMPORT_COMPLETED':

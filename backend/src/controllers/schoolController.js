@@ -138,11 +138,11 @@ const getSchoolSettings = async (req, res, next) => {
 // ADMIN: Update current school settings
 const updateSchoolSettings = async (req, res, next) => {
   try {
-    const { themeColor, description, logoUrl } = req.body;
+    const { themeColor, description, logoUrl, merchantName, upiId } = req.body;
     const settings = await prisma.schoolSettings.upsert({
       where: { schoolId: req.user.schoolId },
-      update: { themeColor, description, logoUrl },
-      create: { schoolId: req.user.schoolId, themeColor, description, logoUrl }
+      update: { themeColor, description, logoUrl, merchantName, upiId },
+      create: { schoolId: req.user.schoolId, themeColor, description, logoUrl, merchantName, upiId }
     });
     res.json(settings);
   } catch (error) {

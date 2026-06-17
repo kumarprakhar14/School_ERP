@@ -4,7 +4,7 @@ import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
-  const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: '' });
+  const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: '', merchantName: '', upiId: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +110,29 @@ export default function Settings() {
               className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow shadow-sm placeholder-gray-400"
               placeholder="A brief description of your school..."
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Merchant Name (UPI)</label>
+              <input
+                type="text"
+                value={settings.merchantName || ''}
+                onChange={(e) => setSettings({ ...settings, merchantName: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow shadow-sm placeholder-gray-400"
+                placeholder="e.g., ABC Public School"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">School UPI ID</label>
+              <input
+                type="text"
+                value={settings.upiId || ''}
+                onChange={(e) => setSettings({ ...settings, upiId: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow shadow-sm placeholder-gray-400"
+                placeholder="e.g., abcschool@okaxis"
+              />
+            </div>
           </div>
 
           <div className="pt-4 border-t border-gray-100 flex justify-end">

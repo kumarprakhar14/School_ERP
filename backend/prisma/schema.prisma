@@ -36,6 +36,12 @@ enum FeeStatus {
   OVERDUE
 }
 
+enum PaymentStatus {
+  SUCCESS
+  PENDING_VERIFICATION
+  REJECTED
+}
+
 enum SchoolStatus {
   ACTIVE
   INACTIVE
@@ -79,11 +85,13 @@ model SchoolSettings {
   id          String   @id @default(uuid())
   schoolId    String   @unique
   school      School   @relation(fields: [schoolId], references: [id])
-  logoUrl     String?
-  themeColor  String   @default("#3b82f6") // Tailwind blue-500
-  description String?
-  contactInfo String?
-  updatedAt   DateTime @updatedAt
+  logoUrl      String?
+  themeColor   String   @default("#3b82f6") // Tailwind blue-500
+  description  String?
+  contactInfo  String?
+  merchantName String?
+  upiId        String?
+  updatedAt    DateTime @updatedAt
 }
 
 model User {
@@ -397,11 +405,14 @@ model Payment {
   amount        Int
   paymentMode   String?
   referenceNo   String?
+  utr           String?
+  screenshotUrl String?
   remarks       String?
+  status        PaymentStatus @default(SUCCESS)
   paidAt        DateTime
   receivedBy    String?
-  receiver      User?      @relation("PaymentReceiver", fields: [receivedBy], references: [id])
-  createdAt     DateTime   @default(now())
+  receiver      User?         @relation("PaymentReceiver", fields: [receivedBy], references: [id])
+  createdAt     DateTime      @default(now())
 
   @@index([invoiceId])
   @@index([schoolId])

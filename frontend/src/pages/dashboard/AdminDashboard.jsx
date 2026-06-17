@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-  Bell, Send, User, Clock, BookOpen, Calendar, 
-  FileText, Activity, Check, ArrowRight, UploadCloud, UserPlus, UserCheck, 
+import {
+  Bell, Send, User, Clock, BookOpen, Calendar,
+  FileText, Activity, Check, ArrowRight, UploadCloud, UserPlus, UserCheck,
   AlertCircle, DollarSign, ListTodo, ShieldCheck
 } from 'lucide-react';
 import PushNotification from '../../components/PushNotification';
@@ -10,7 +10,7 @@ import { getGreeting, getCurrentDateText, getActivityIcon, getActivityBg, format
 // Custom Animated SVG Attendance Trend Area Chart
 function AttendanceTrendChart({ data }) {
   const activeDays = data.filter(d => d.rate !== null);
-  
+
   if (activeDays.length === 0) {
     return (
       <div className="bg-gray-50/50 rounded-xl p-8 text-center text-gray-500 border border-gray-100 text-xs font-semibold">
@@ -18,32 +18,32 @@ function AttendanceTrendChart({ data }) {
       </div>
     );
   }
-  
+
   const width = 500;
   const height = 150;
   const padding = 20;
-  
+
   const xMin = padding;
   const xMax = width - padding;
   const yMin = padding;
   const yMax = height - padding;
-  
+
   const points = activeDays.map((d, index) => {
-    const x = activeDays.length > 1 
+    const x = activeDays.length > 1
       ? xMin + (index / (activeDays.length - 1)) * (xMax - xMin)
       : (xMin + xMax) / 2;
     const y = yMax - (d.rate / 100) * (yMax - yMin);
     return { x, y, ...d };
   });
-  
+
   const pathData = points.reduce((acc, p, index) => {
     return acc + (index === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`);
   }, "");
-  
-  const areaPathData = points.length > 0 
+
+  const areaPathData = points.length > 0
     ? `${pathData} L ${points[points.length - 1].x} ${yMax} L ${points[0].x} ${yMax} Z`
     : "";
-    
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -54,46 +54,46 @@ function AttendanceTrendChart({ data }) {
               <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
             </linearGradient>
           </defs>
-          
+
           {/* Grid lines */}
           <line x1={xMin} y1={yMin} x2={xMax} y2={yMin} stroke="#f3f4f6" strokeWidth={1} strokeDasharray="3 3" />
-          <line x1={xMin} y1={(yMin + yMax)/2} x2={xMax} y2={(yMin + yMax)/2} stroke="#f3f4f6" strokeWidth={1} strokeDasharray="3 3" />
+          <line x1={xMin} y1={(yMin + yMax) / 2} x2={xMax} y2={(yMin + yMax) / 2} stroke="#f3f4f6" strokeWidth={1} strokeDasharray="3 3" />
           <line x1={xMin} y1={yMax} x2={xMax} y2={yMax} stroke="#e5e7eb" strokeWidth={1} />
-          
+
           {/* Area Fill */}
           {areaPathData && <path d={areaPathData} fill="url(#attendanceAreaGrad)" className="transition-all duration-700 ease-in-out" />}
-          
+
           {/* Line stroke */}
           {pathData && (
-            <path 
-              d={pathData} 
-              fill="none" 
-              stroke="#3b82f6" 
-              strokeWidth={2.5} 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className="transition-all duration-700 ease-in-out" 
+            <path
+              d={pathData}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition-all duration-700 ease-in-out"
             />
           )}
-          
+
           {/* Interactive dots */}
           {points.map((p, idx) => (
             <g key={idx} className="group/dot cursor-pointer">
-              <circle 
-                cx={p.x} 
-                cy={p.y} 
-                r={4} 
-                fill="#ffffff" 
-                stroke="#3b82f6" 
-                strokeWidth={2} 
-                className="transition-all duration-200 group-hover/dot:r-5 group-hover/dot:fill-blue-600" 
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={4}
+                fill="#ffffff"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                className="transition-all duration-200 group-hover/dot:r-5 group-hover/dot:fill-blue-600"
               />
               <title>{p.date}: {p.rate}%</title>
             </g>
           ))}
         </svg>
       </div>
-      
+
       {/* Date Labels below chart */}
       <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
         {points.map((p, idx) => (
@@ -203,7 +203,7 @@ export default function AdminDashboard({
                     <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{step.desc}</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     if (step.path.startsWith('#')) {
                       const el = document.getElementById(step.path.substring(1));
@@ -211,7 +211,7 @@ export default function AdminDashboard({
                     } else {
                       navigate(step.path);
                     }
-                  }} 
+                  }}
                   className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center gap-1.5 ${step.completed ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}`}
                 >
                   {step.actionLabel} <ArrowRight className="w-3.5 h-3.5" />
@@ -297,8 +297,8 @@ export default function AdminDashboard({
             <div className="mt-3 flex items-baseline gap-0.5">
               <span className="text-base font-bold text-emerald-700">₹</span>
               <span className="text-xl font-black text-emerald-600">
-                {stats.feesCollected >= 100000 
-                  ? `${(stats.feesCollected / 100000).toFixed(2)}L` 
+                {stats.feesCollected >= 100000
+                  ? `${(stats.feesCollected / 100000).toFixed(2)}L`
                   : stats.feesCollected.toLocaleString('en-IN')}
               </span>
             </div>
@@ -314,8 +314,8 @@ export default function AdminDashboard({
             <div className="mt-3 flex items-baseline gap-0.5">
               <span className="text-base font-bold text-amber-700">₹</span>
               <span className="text-xl font-black text-amber-600">
-                {stats.pendingFees >= 100000 
-                  ? `${(stats.pendingFees / 100000).toFixed(2)}L` 
+                {stats.pendingFees >= 100000
+                  ? `${(stats.pendingFees / 100000).toFixed(2)}L`
                   : stats.pendingFees.toLocaleString('en-IN')}
               </span>
             </div>
@@ -383,8 +383,8 @@ export default function AdminDashboard({
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Attendance Awaiting</span>
               <h4 className="text-2xl font-black text-gray-900 mt-1">{stats.actionCenter.attendancePendingCount}</h4>
               <p className="text-xs text-gray-500 mt-1 leading-normal">
-                {stats.actionCenter.attendancePendingCount > 0 
-                  ? `${stats.actionCenter.attendancePendingCount} classes have not yet recorded attendance.` 
+                {stats.actionCenter.attendancePendingCount > 0
+                  ? `${stats.actionCenter.attendancePendingCount} classes have not yet recorded attendance.`
                   : 'All classes completed.'}
               </p>
             </div>
@@ -401,8 +401,8 @@ export default function AdminDashboard({
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Pending Fee Records</span>
               <h4 className="text-2xl font-black text-gray-900 mt-1">{stats.actionCenter.pendingFeeRecordsCount}</h4>
               <p className="text-xs text-gray-500 mt-1 leading-normal">
-                {stats.actionCenter.pendingFeeRecordsCount > 0 
-                  ? `${stats.actionCenter.pendingFeeRecordsCount} student fee invoices are awaiting collection.` 
+                {stats.actionCenter.pendingFeeRecordsCount > 0
+                  ? `${stats.actionCenter.pendingFeeRecordsCount} student fee invoices are awaiting collection.`
                   : 'All fees collected.'}
               </p>
             </div>
@@ -424,14 +424,14 @@ export default function AdminDashboard({
                 {stats.actionCenter.recentNoticesText}
               </p>
             </div>
-            <button 
+            <button
               onClick={() => {
                 const el = document.getElementById('notices-sec');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }} 
+              }}
               className="mt-4 text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-transparent border-0 cursor-pointer p-0"
             >
-            View Notice Board <ArrowRight className="w-3.5 h-3.5" />
+              View Notice Board <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -474,7 +474,7 @@ export default function AdminDashboard({
                     <div className={`absolute -left-[35px] top-0.5 w-6.5 h-6.5 rounded-full border flex items-center justify-center transition-all ${getActivityBg(act.type)}`}>
                       {getActivityIcon(act.type)}
                     </div>
-                    
+
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <p className="text-xs text-gray-700 font-semibold leading-relaxed">
@@ -511,8 +511,8 @@ export default function AdminDashboard({
                         <span className="text-gray-400 font-semibold">{item.studentCount} student{item.studentCount > 1 ? 's' : ''}</span>
                       </div>
                       <div className="w-full h-2 bg-gray-50 border border-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500 rounded-full transition-all duration-500 group-hover:bg-blue-600" 
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-500 group-hover:bg-blue-600"
                           style={{ width: `${(item.studentCount / maxCount) * 100}%` }}
                         />
                       </div>
@@ -556,15 +556,15 @@ export default function AdminDashboard({
                     <div className="text-lg font-black text-amber-600 mt-1">₹{stats.pendingFees.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-bold text-gray-700">
                     <span>Fee Collection Progress</span>
                     <span className="text-emerald-600">{stats.financialSnapshot.collectionRate}%</span>
                   </div>
                   <div className="w-full h-2.5 bg-gray-50 border border-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                       style={{ width: `${stats.financialSnapshot.collectionRate}%` }}
                     />
                   </div>
@@ -575,7 +575,7 @@ export default function AdminDashboard({
 
           {/* Post Notice Quick Access (Collapsible Sidebar Accordion) */}
           <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm transition-all" id="post-notice">
-            <div 
+            <div
               className="flex justify-between items-center cursor-pointer select-none"
               onClick={() => setIsDispatchExpanded(!isDispatchExpanded)}
             >
@@ -588,23 +588,23 @@ export default function AdminDashboard({
             </div>
             {isDispatchExpanded && (
               <form onSubmit={handlePostNotice} className="space-y-3.5 mt-4 transition-all duration-300">
-                <input 
+                <input
                   required
-                  type="text" 
-                  value={title} 
+                  type="text"
+                  value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="Announcement Title" 
+                  placeholder="Announcement Title"
                   className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-gray-50/50"
                 />
-                <textarea 
+                <textarea
                   required
-                  rows="3" 
+                  rows="3"
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder="Write message contents..." 
+                  placeholder="Write message contents..."
                   className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-gray-50/50 resize-none"
                 />
-                <select 
+                <select
                   value={targetRole}
                   onChange={e => setTargetRole(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl p-2.5 text-xs focus:border-indigo-500 outline-none bg-gray-50/50 text-gray-600 font-bold"
@@ -614,8 +614,8 @@ export default function AdminDashboard({
                   <option value="STUDENT">Students Only</option>
                   <option value="ACCOUNTS">Accounts Only</option>
                 </select>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={posting}
                   className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-70 flex items-center justify-center gap-1.5 cursor-pointer border-0"
                 >
@@ -636,7 +636,7 @@ export default function AdminDashboard({
             </h3>
             <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">All Announcements</span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[350px] overflow-y-auto pr-1">
             {notices.map((notice) => (
               <div key={notice.id} className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl hover:border-gray-200 transition-all flex flex-col justify-between">
@@ -653,7 +653,7 @@ export default function AdminDashboard({
                     {notice.content}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center text-[10px] text-gray-400 font-bold pt-3 mt-3 border-t border-gray-100/50">
                   <User className="w-3 h-3 mr-1" />
                   <span className="mr-3">{notice.author?.name}</span>
@@ -683,14 +683,14 @@ export default function AdminDashboard({
             <span className="text-[10px] font-bold text-gray-700 uppercase tracking-wider">Add Teacher</span>
           </button>
           {/* Action 3 */}
-          <button 
+          <button
             onClick={() => {
               setIsDispatchExpanded(true);
               setTimeout(() => {
                 const el = document.getElementById('post-notice');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }, 100);
-            }} 
+            }}
             className="p-4 bg-white border border-gray-100 rounded-2xl hover:border-purple-200 hover:bg-purple-50/10 transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer"
           >
             <div className="w-9 h-9 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform"><Bell className="w-4.5 h-4.5" /></div>

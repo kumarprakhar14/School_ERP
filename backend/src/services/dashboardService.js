@@ -239,7 +239,7 @@ class DashboardService {
       }),
       prisma.payment.findMany({
         where: { schoolId },
-        select: { amount: true, paidAt: true, invoice: { select: { month: true, year: true, student: { select: { name: true, erpId: true } } } } },
+        select: { status: true, amount: true, paidAt: true, invoice: { select: { month: true, year: true, student: { select: { name: true, erpId: true } } } } },
         orderBy: { paidAt: 'desc' },
         take: 15
       }),
@@ -309,10 +309,21 @@ class DashboardService {
 
     const monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     rawPayments.forEach((p, idx) => {
+      let desc = `Fee payment of ₹${(p.amount / 100).toLocaleString('en-IN')} received from student ${p.invoice?.student?.name} (${p.invoice?.student?.erpId}) for ${monthNames[p.invoice?.month]} ${p.invoice?.year}`;
+      let activityType = 'FEE_PAID';
+
+      if (p.status === 'PENDING_VERIFICATION') {
+        desc = `Fee payment of ₹${(p.amount / 100).toLocaleString('en-IN')} verification pending from student ${p.invoice?.student?.name} (${p.invoice?.student?.erpId}) for ${monthNames[p.invoice?.month]} ${p.invoice?.year}`;
+        activityType = 'PAYMENT_PENDING';
+      } else if (p.status === 'REJECTED') {
+        desc = `Fee payment of ₹${(p.amount / 100).toLocaleString('en-IN')} rejected from student ${p.invoice?.student?.name} (${p.invoice?.student?.erpId}) for ${monthNames[p.invoice?.month]} ${p.invoice?.year}`;
+        activityType = 'PAYMENT_REJECTED';
+      }
+
       mergedActivities.push({
         id: `payment-${idx}-${p.paidAt.getTime()}`,
-        type: 'FEE_PAID',
-        description: `Fee payment of ₹${(p.amount / 100).toLocaleString('en-IN')} received from student ${p.invoice?.student?.name} (${p.invoice?.student?.erpId}) for ${monthNames[p.invoice?.month]} ${p.invoice?.year}`,
+        type: activityType,
+        description: desc,
         timestamp: p.paidAt
       });
     });
@@ -515,7 +526,7 @@ class DashboardService {
     const [rawPayments, rawInvoices, rawFeeStructures] = await Promise.all([
       prisma.payment.findMany({
         where: { schoolId },
-        select: { amount: true, paidAt: true, invoice: { select: { invoiceNumber: true, student: { select: { name: true } } } } },
+        select: { status: true, amount: true, paidAt: true, invoice: { select: { invoiceNumber: true, student: { select: { name: true } } } } },
         orderBy: { paidAt: 'desc' },
         take: 15
       }),
@@ -535,10 +546,21 @@ class DashboardService {
 
     const mergedActivities = [];
     rawPayments.forEach(p => {
+      let desc = `Payment of ₹${(p.amount / 100).toLocaleString('en-IN')} received for invoice ${p.invoice?.invoiceNumber} (${p.invoice?.student?.name})`;
+      let activityType = 'PAYMENT_RECEIVED';
+
+      if (p.status === 'PENDING_VERIFICATION') {
+        desc = `Payment of ₹${(p.amount / 100).toLocaleString('en-IN')} verification pending for invoice ${p.invoice?.invoiceNumber} (${p.invoice?.student?.name})`;
+        activityType = 'PAYMENT_PENDING';
+      } else if (p.status === 'REJECTED') {
+        desc = `Payment of ₹${(p.amount / 100).toLocaleString('en-IN')} rejected for invoice ${p.invoice?.invoiceNumber} (${p.invoice?.student?.name})`;
+        activityType = 'PAYMENT_REJECTED';
+      }
+
       mergedActivities.push({
         id: `payment-${p.paidAt.getTime()}`,
-        type: 'PAYMENT_RECEIVED',
-        description: `Payment of ₹${(p.amount / 100).toLocaleString('en-IN')} received for invoice ${p.invoice?.invoiceNumber} (${p.invoice?.student?.name})`,
+        type: activityType,
+        description: desc,
         timestamp: p.paidAt
       });
     });

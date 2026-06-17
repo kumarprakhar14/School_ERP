@@ -45,10 +45,17 @@ class UnauthorizedError extends AppError {
   }
 }
 
+class BadRequestError extends AppError {
+  constructor(message = 'Bad request') {
+    super(message, 400);
+  }
+}
+
 export { AppError,
   ValidationError,
   NotFoundError,
   ForbiddenError,
   ConflictError,
-  UnauthorizedError
+  UnauthorizedError,
+  BadRequestError
  };

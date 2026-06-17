@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
@@ -6,7 +6,9 @@ import { toast } from 'sonner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ResponsiveTable from '../components/ui/ResponsiveTable';
 import EntityCombobox from '../components/ui/EntityCombobox';
-import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, Edit2, Trash2 } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, Plus, X, Search, AlertCircle, FileText, ArrowDownLeft, ArrowUpRight, Edit2, Trash2, QrCode, ShieldCheck } from 'lucide-react';
+import UpiPaymentModal from '../components/UpiPaymentModal';
+import PaymentVerification from '../components/PaymentVerification';
 
 export default function Fees() {
   const { user } = useAuthStore();
@@ -32,6 +34,8 @@ export default function Fees() {
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deleteMessage, setDeleteMessage] = useState('');
   
+  const [selectedInvoiceForUpi, setSelectedInvoiceForUpi] = useState(null);
+
   const [invoiceForm, setInvoiceForm] = useState({
     studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), dueDate: '', remarks: ''
   });
@@ -41,10 +45,6 @@ export default function Fees() {
   });
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-  useEffect(() => {
-    fetchData();
-  }, [user]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -76,6 +76,11 @@ export default function Fees() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const resetForms = () => {
     setInvoiceForm({ studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), dueDate: '', remarks: '' });
@@ -305,6 +310,14 @@ export default function Fees() {
         >
           Transaction History
         </button>
+        {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && (
+          <button
+            onClick={() => setActiveTab('verification')}
+            className={`pb-3 px-4 text-sm font-medium transition-colors border-b-2 flex items-center ${activeTab === 'verification' ? 'border-emerald-500 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+          >
+            <ShieldCheck className="w-4 h-4 mr-1.5" /> Verification
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -536,7 +549,30 @@ export default function Fees() {
                         </button>
                       </div>
                     )
-                  }] : [])
+                  }] : [{
+                    header: 'Actions',
+                    align: 'right',
+                    render: (fee) => {
+                      if (fee.type !== 'Invoice') return null;
+                      const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
+                      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                      if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold">Paid</span>;
+                      
+                      const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
+                      if (pendingPayment) {
+                        return <span className="text-amber-600 text-xs font-bold px-3 py-1.5 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200 w-fit ml-auto"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>;
+                      }
+
+                      return (
+                        <button 
+                          onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                          className="flex items-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors ml-auto"
+                        >
+                          <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                        </button>
+                      );
+                    }
+                  }])
                 ]}
                 renderMobileCard={(fee) => (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
@@ -580,7 +616,7 @@ export default function Fees() {
                         </>
                       )}
                     </div>
-                    {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && (
+                    {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
                       <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
                         <button onClick={() => handleEdit(fee)} className="flex items-center text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
                           <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
@@ -589,13 +625,55 @@ export default function Fees() {
                           <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
                         </button>
                       </div>
+                    ) : (
+                      fee.type === 'Invoice' && (() => {
+                        const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
+                        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                        if (totalPaid >= fee.amount) return <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2"><span className="text-emerald-600 text-xs font-bold px-3 py-1.5">Paid</span></div>;
+                        
+                        const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
+                        if (pendingPayment) {
+                          return (
+                            <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                              <span className="flex items-center text-amber-600 text-xs font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                            <button 
+                              onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                              className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            >
+                              <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                            </button>
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 )}
               />
             </div>
           )}
+
+          {/* TAB C: VERIFICATION */}
+          {activeTab === 'verification' && (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') && (
+            <PaymentVerification />
+          )}
         </>
+      )}
+
+      {selectedInvoiceForUpi && (
+        <UpiPaymentModal 
+          invoiceId={selectedInvoiceForUpi} 
+          onClose={() => setSelectedInvoiceForUpi(null)}
+          onSuccess={() => {
+            setSelectedInvoiceForUpi(null);
+            fetchData();
+          }}
+        />
       )}
 
       {/* ADD TRANSACTION MODAL */}
