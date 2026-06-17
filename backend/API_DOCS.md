@@ -1797,6 +1797,158 @@ Base path: `/api/fees`
 
 ---
 
+### `GET /api/fees/upi/pending`
+
+**Purpose:** Retrieves a list of all UPI payments that are pending verification for the school.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Request:** None
+
+**Success Response `200 OK`:**
+```json
+[
+  {
+    "id": "uuid-of-payment",
+    "schoolId": "uuid-of-school",
+    "invoiceId": "uuid-of-invoice",
+    "amount": 150000,
+    "paymentMode": "UPI",
+    "utr": "123456789012",
+    "screenshotUrl": "https://res.cloudinary.com/...",
+    "status": "PENDING_VERIFICATION",
+    "paidAt": "2026-06-04T10:30:00.000Z",
+    "receivedBy": "uuid-of-accounts-user",
+    "createdAt": "2026-06-04T10:30:00.000Z",
+    "invoice": {
+      "id": "uuid-of-invoice",
+      "student": { "name": "Ravi Kumar", "erpId": "ABC005" }
+    }
+  }
+]
+```
+
+---
+
+### `GET /api/fees/upi/:invoiceId/uri`
+
+**Purpose:** Generates a UPI intent URI (e.g., `upi://pay?...`) for an unpaid invoice, along with amount and merchant details.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated school user
+
+**Path Variables:** `invoiceId` — Invoice UUID
+
+**Success Response `200 OK`:**
+```json
+{
+  "uri": "upi://pay?pa=school@upi&pn=ABC%20Public%20School&am=1500.00&cu=INR&tn=Fee%20Payment...&tr=TXN123456789",
+  "amount": 150000,
+  "upiId": "school@upi",
+  "merchantName": "ABC Public School",
+  "invoiceNumber": "INV-2026-6-A1B2C3D4"
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | UPI ID not configured for school | `"UPI ID is not configured for this school. Please contact administration."` |
+| `400` | Invoice is fully paid | `"Invoice is already paid"` |
+| `404` | Invoice not found in this school | `"Invoice not found"` |
+
+---
+
+### `POST /api/fees/upi/:invoiceId/submit`
+
+**Purpose:** Submits a UPI payment for an invoice with UTR and an optional screenshot. The payment is recorded as `PENDING_VERIFICATION` and a push notification is sent to admins.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated school user  
+**Content-Type:** `multipart/form-data`
+
+**Path Variables:** `invoiceId` — Invoice UUID
+
+**Request Fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `utr` | `string` | ✅ | 12-digit UTR/Reference number from the UPI app |
+| `screenshot` | `file` | ❌ | Screenshot of the successful payment (field name: `screenshot`) |
+
+**Success Response `201 Created`:**
+```json
+{
+  "message": "Payment submitted successfully",
+  "payment": {
+    "id": "uuid-of-payment",
+    "schoolId": "uuid-of-school",
+    "invoiceId": "uuid-of-invoice",
+    "amount": 150000,
+    "paymentMode": "UPI",
+    "utr": "123456789012",
+    "screenshotUrl": "https://res.cloudinary.com/...",
+    "status": "PENDING_VERIFICATION",
+    "paidAt": "2026-06-04T10:30:00.000Z",
+    "receivedBy": "uuid-of-student"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | UTR is missing | `"UTR number is required"` |
+| `400` | Invoice is already paid | `"Invoice is already paid"` |
+| `404` | Invoice not found in this school | `"Invoice not found"` |
+
+---
+
+### `POST /api/fees/upi/:paymentId/verify`
+
+**Purpose:** Approves or rejects a pending UPI payment. Updates the status to `SUCCESS` or `REJECTED` and notifies the student.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Path Variables:** `paymentId` — Payment UUID
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `action` | `string` | ✅ | `"approve"` or `"reject"` |
+
+```json
+{
+  "action": "approve"
+}
+```
+
+**Success Response `200 OK`:**
+```json
+{
+  "message": "Payment approved successfully",
+  "payment": {
+    "id": "uuid-of-payment",
+    "status": "SUCCESS"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | Invalid action | `"Invalid action. Must be approve or reject."` |
+| `400` | Payment is not pending | `"Payment is already SUCCESS"` / `"Payment is already REJECTED"` |
+| `404` | Payment not found in this school | `"Payment not found"` |
+
+---
+
 ## 13. Category: Timetable
 
 Base path: `/api/timetable`
