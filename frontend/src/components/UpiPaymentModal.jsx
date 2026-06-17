@@ -13,6 +13,7 @@ export default function UpiPaymentModal({ invoiceId, onClose, onSuccess }) {
   const [utr, setUtr] = useState('');
   const [screenshot, setScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const fetchUri = async () => {
     try {
@@ -36,6 +37,15 @@ export default function UpiPaymentModal({ invoiceId, onClose, onSuccess }) {
   };
 
   useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      if (/android|ipad|playbook|silk/i.test(userAgent) || /iphone|ipod/i.test(userAgent)) {
+        return true;
+      }
+      // Also check for touch capability + narrow screen as fallback for some tablets
+      return ('ontouchstart' in window) && window.innerWidth <= 768;
+    };
+    setIsMobile(checkMobile());
     fetchUri();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,13 +97,36 @@ export default function UpiPaymentModal({ invoiceId, onClose, onSuccess }) {
           ) : step === 1 && qrData ? (
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-100 w-full text-sm">
-                <p className="font-medium">Scan this QR to pay your fee</p>
+                <p className="font-medium">
+                  {isMobile ? "Pay securely using any UPI app on your device" : "Scan this QR to pay your fee"}
+                </p>
                 <p className="text-xs mt-1">Amount and details are pre-filled.</p>
               </div>
 
-              <div className="p-3 bg-white border-2 border-gray-100 rounded-2xl shadow-sm">
-                {qrImageUrl && <img src={qrImageUrl} alt="UPI QR Code" className="w-48 h-48" />}
-              </div>
+              {isMobile ? (
+                <div className="w-full flex flex-col items-center gap-3">
+                  <a
+                    href={qrData.uri}
+                    className="w-full py-3.5 bg-[#00A15D] hover:bg-[#008f51] text-white rounded-xl shadow-lg shadow-[#00A15D]/20 transition-all font-bold text-base flex justify-center items-center"
+                  >
+                    Pay Now with UPI App
+                  </a>
+                  
+                  <div className="flex items-center w-full gap-3 my-1">
+                    <div className="h-px bg-gray-200 flex-1"></div>
+                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">or scan qr</span>
+                    <div className="h-px bg-gray-200 flex-1"></div>
+                  </div>
+                  
+                  <div className="p-2 bg-white border border-gray-100 rounded-xl shadow-sm inline-block">
+                    {qrImageUrl && <img src={qrImageUrl} alt="UPI QR Code" className="w-28 h-28" />}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-white border-2 border-gray-100 rounded-2xl shadow-sm">
+                  {qrImageUrl && <img src={qrImageUrl} alt="UPI QR Code" className="w-48 h-48" />}
+                </div>
+              )}
 
               <div className="w-full text-left bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100 text-sm">
                 <div className="flex justify-between">
