@@ -8,12 +8,12 @@ import {
   updatePricing,
   deletePricing
 } from '../controllers/plans.controller.js';
-import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
 // Only SUPER_ADMIN can manage plans in Phase I
-router.use(requireAuth, requireRole(['SUPER_ADMIN']));
+router.use(authMiddleware, roleMiddleware(['SUPER_ADMIN']));
 
 router.get('/', getPlans);
 router.post('/', createPlan);

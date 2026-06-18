@@ -5,11 +5,11 @@ import {
   updateFeature,
   deleteFeature
 } from '../controllers/features.controller.js';
-import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+import { authMiddleware, roleMiddleware } from '../middlewares/authMiddleware.js';
 
 const router = Router();
 
-router.use(requireAuth, requireRole(['SUPER_ADMIN']));
+router.use(authMiddleware, roleMiddleware(['SUPER_ADMIN']));
 
 router.get('/', getFeatures);
 router.post('/', createFeature);
