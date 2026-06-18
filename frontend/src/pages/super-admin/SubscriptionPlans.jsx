@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Tag, Loader2, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag, Loader2, Check, X } from 'lucide-react';
 import { planService } from '../../services/api/subscription';
 import { toast } from 'sonner';
 
