@@ -15,6 +15,8 @@ import SuperAdminManagement from './pages/super-admin/SuperAdminManagement';
 import SubscriptionPlans from './pages/super-admin/SubscriptionPlans';
 import FeaturesRegistry from './pages/super-admin/FeaturesRegistry';
 import PlanFeatures from './pages/super-admin/PlanFeatures';
+import SubscriptionCatalog from './pages/super-admin/SubscriptionCatalog';
+import GlobalFeatureFlags from './pages/super-admin/GlobalFeatureFlags';
 import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
 import AdminUserProfile from './pages/admin/AdminUserProfile';
@@ -104,6 +106,8 @@ function App() {
               <Route path="super-admin/plans" element={<SubscriptionPlans />} />
               <Route path="super-admin/features" element={<FeaturesRegistry />} />
               <Route path="super-admin/plans/:planId/features" element={<PlanFeatures />} />
+              <Route path="super-admin/catalog" element={<SubscriptionCatalog />} />
+              <Route path="super-admin/global-flags" element={<GlobalFeatureFlags />} />
             </Route>
             
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>

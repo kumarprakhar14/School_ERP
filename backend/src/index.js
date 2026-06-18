@@ -25,6 +25,9 @@ import plansRoutes from './routes/plans.routes.js';
 import featuresRoutes from './routes/features.routes.js';
 import planFeaturesRoutes from './routes/planFeatures.routes.js';
 import diagnosticsRoutes from './routes/diagnostics.routes.js';
+import schoolSubscriptionRoutes from './routes/schoolSubscription.routes.js';
+import schoolOverrideRoutes from './routes/schoolOverride.routes.js';
+import globalFlagRoutes from './routes/globalFlag.routes.js';
 const app = express();
 
 app.use(cors(corsOptions));
@@ -66,6 +69,9 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/features', featuresRoutes);
 app.use('/api/plan-features', planFeaturesRoutes);
 app.use('/api/diagnostics', diagnosticsRoutes);
+app.use('/api/subscriptions/schools', schoolSubscriptionRoutes);
+app.use('/api/subscriptions/overrides', schoolOverrideRoutes);
+app.use('/api/subscriptions/global-flags', globalFlagRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

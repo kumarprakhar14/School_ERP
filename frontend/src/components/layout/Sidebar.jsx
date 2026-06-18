@@ -10,8 +10,10 @@ const roleNavItems = {
     { icon: Building2, label: 'Schools', path: '/super-admin/schools' },
     { icon: CreditCard, label: 'Plans', path: '/super-admin/plans' },
     { icon: Layers, label: 'Features', path: '/super-admin/features' },
+    { icon: BookOpen, label: 'Catalog', path: '/super-admin/catalog' },
     { icon: Users, label: 'Administrators', path: '/super-admin/managers' },
     { icon: Bug, label: 'Bug Reports', path: '/super-admin/bugs' },
+    { icon: Settings, label: 'Global Flags', path: '/super-admin/global-flags' },
   ],
   ADMIN: [
     { icon: Home, label: 'Dashboard', path: '/' },

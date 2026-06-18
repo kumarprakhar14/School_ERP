@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
-import { Building2, Calendar, Users, Edit2, Save, Shield, User, X, Trash2, Key } from 'lucide-react';
+import { Building2, Calendar, Users, Edit2, Save, Shield, User, X, Trash2, Key, Activity, Settings } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
+import SchoolSubscriptionTab from './school-profile/SchoolSubscriptionTab';
 
 export default function SchoolDetail() {
   const { id } = useParams();
@@ -28,6 +29,9 @@ export default function SchoolDetail() {
   const [showDeleteSchoolConfirm, setShowDeleteSchoolConfirm] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [adminFormData, setAdminFormData] = useState({ name: '', password: '', contactDetails: '' });
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchSchoolData();
@@ -256,8 +260,26 @@ export default function SchoolDetail() {
   return (
     <div className="max-w-5xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8 animate-in fade-in zoom-in duration-300 space-y-6">
       
-      {/* Overview Card */}
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden relative">
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`py-3 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+        >
+          <div className="flex items-center"><Settings className="w-4 h-4 mr-2"/> General Overview</div>
+        </button>
+        <button
+          onClick={() => setActiveTab('subscription')}
+          className={`py-3 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'subscription' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+        >
+          <div className="flex items-center"><Activity className="w-4 h-4 mr-2"/> Subscriptions & Access</div>
+        </button>
+      </div>
+
+      {activeTab === 'overview' ? (
+        <>
+          {/* Overview Card */}
+          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden relative">
         <div className="h-2 bg-gradient-to-r from-blue-600 to-indigo-600 w-full absolute top-0 left-0"></div>
         <div className="p-6 sm:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -487,6 +509,10 @@ export default function SchoolDetail() {
           </button>
         </div>
       </div>
+      </>
+      ) : (
+        <SchoolSubscriptionTab schoolId={id} />
+      )}
 
       {/* MODALS */}
       {showAddAdminModal && createPortal(
