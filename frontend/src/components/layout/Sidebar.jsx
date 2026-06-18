@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X, Bug } from 'lucide-react';
+import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X, Bug, CreditCard, Layers } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import ReportBugModal from '../modals/ReportBugModal';
 
@@ -8,6 +8,8 @@ const roleNavItems = {
   SUPER_ADMIN: [
     { icon: Building2, label: 'Dashboard', path: '/super-admin' },
     { icon: Building2, label: 'Schools', path: '/super-admin/schools' },
+    { icon: CreditCard, label: 'Plans', path: '/super-admin/plans' },
+    { icon: Layers, label: 'Features', path: '/super-admin/features' },
     { icon: Users, label: 'Administrators', path: '/super-admin/managers' },
     { icon: Bug, label: 'Bug Reports', path: '/super-admin/bugs' },
   ],

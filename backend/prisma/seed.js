@@ -20,6 +20,15 @@ async function main() {
   await prisma.schoolSettings?.deleteMany().catch(()=>{});
   await prisma.school?.deleteMany().catch(()=>{});
 
+  // Clear Subscription models
+  await prisma.globalFeatureFlag?.deleteMany().catch(()=>{});
+  await prisma.schoolFeatureOverride?.deleteMany().catch(()=>{});
+  await prisma.schoolSubscription?.deleteMany().catch(()=>{});
+  await prisma.planFeature?.deleteMany().catch(()=>{});
+  await prisma.feature?.deleteMany().catch(()=>{});
+  await prisma.planPricing?.deleteMany().catch(()=>{});
+  await prisma.subscriptionPlan?.deleteMany().catch(()=>{});
+
   const passwordHash = await bcrypt.hash('password123', 10);
 
   // SUPER ADMIN
@@ -68,7 +77,69 @@ async function main() {
   //   });
   // }
 
-  console.log('Seed completed successfully! Generated 5-6 dummy users for each role.');
+  // SUBSCRIPTION PLANS
+  const freePlan = await prisma.subscriptionPlan.create({
+    data: {
+      name: 'Free',
+      description: 'Basic features for small schools.',
+      badge: 'Starter',
+      isDefault: true,
+      displayOrder: 1,
+      pricing: {
+        create: [
+          { interval: 'MONTHLY', price: 0 },
+          { interval: 'YEARLY', price: 0 }
+        ]
+      }
+    }
+  });
+
+  await prisma.subscriptionPlan.create({
+    data: {
+      name: 'Starter',
+      description: 'Essential modules for growing schools.',
+      badge: 'Popular',
+      displayOrder: 2,
+      pricing: {
+        create: [
+          { interval: 'MONTHLY', price: 999 },
+          { interval: 'YEARLY', price: 9999 }
+        ]
+      }
+    }
+  });
+
+  await prisma.subscriptionPlan.create({
+    data: {
+      name: 'Growth',
+      description: 'Advanced modules and analytics.',
+      displayOrder: 3,
+      pricing: {
+        create: [
+          { interval: 'MONTHLY', price: 1999 },
+          { interval: 'YEARLY', price: 19999 }
+        ]
+      }
+    }
+  });
+
+  await prisma.subscriptionPlan.create({
+    data: {
+      name: 'Enterprise',
+      description: 'All features, custom limits, priority support.',
+      badge: 'Best Value',
+      isPublic: false,
+      displayOrder: 4,
+      pricing: {
+        create: [
+          { interval: 'MONTHLY', price: 4999 },
+          { interval: 'YEARLY', price: 49999 }
+        ]
+      }
+    }
+  });
+
+  console.log('Seed completed successfully! Generated dummy users, schools, and subscription plans.');
 }
 
 main()

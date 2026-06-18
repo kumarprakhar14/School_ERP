@@ -47,6 +47,15 @@ enum SchoolStatus {
   INACTIVE
 }
 
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  GRACE_PERIOD
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -79,6 +88,8 @@ model School {
   subjects      Subject[]
   periods       Period[]
   academicYears AcademicYear[]
+  subscriptions SchoolSubscription[]
+  featureOverrides SchoolFeatureOverride[]
 }
 
 model SchoolSettings {
@@ -123,6 +134,9 @@ model User {
   pushSubscriptions       PushSubscription[]
   notificationPreferences Json?
   userNotifications       UserNotification[]
+  activatedSubscriptions  SchoolSubscription[] @relation("SubscriptionActivator")
+  updatedOverrides        SchoolFeatureOverride[] @relation("OverrideUpdater")
+  updatedGlobalFlags      GlobalFeatureFlag[] @relation("GlobalFlagUpdater")
 
   @@unique([schoolId, erpId]) // Unique per school
   @@index([schoolId, name])
@@ -510,3 +524,127 @@ model UserNotification {
   @@index([userId])
   @@index([userId, isRead])
 }
+
+// -----------------------------------------------------------------------------
+// SUBSCRIPTIONS & FEATURES
+// -----------------------------------------------------------------------------
+
+model SubscriptionPlan {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String?
+  badge           String?
+  isDefault       Boolean  @default(false)
+  isPublic        Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pricing         PlanPricing[]
+  features        PlanFeature[]
+  subscriptions   SchoolSubscription[]
+}
+
+model PlanPricing {
+  id                 String           @id @default(uuid())
+  planId             String
+  plan               SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  interval           String           // 'MONTHLY', 'YEARLY', 'QUARTERLY', 'ONCE'
+  price              Float
+  currency           String           @default("INR")
+  isActive           Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  subscriptions      SchoolSubscription[]
+
+  @@unique([planId, interval])
+}
+
+model Feature {
+  id           String   @id @default(uuid())
+  key          String   @unique
+  name         String
+  category     String
+  description  String?
+  icon         String?
+  displayOrder Int      @default(0)
+  isCore       Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  planFeatures    PlanFeature[]
+  schoolOverrides SchoolFeatureOverride[]
+  globalFlags     GlobalFeatureFlag[]
+}
+
+model PlanFeature {
+  id                 String           @id @default(uuid())
+  planId             String
+  plan               SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  featureId          String
+  feature            Feature          @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  isEnabled          Boolean          @default(true)
+  limitValue         Int?             // Numeric limit
+  limitUnit          String?          // e.g. "STUDENTS", "SMS_MONTHLY"
+  metadata           Json?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([planId, featureId])
+}
+
+model SchoolSubscription {
+  id              String             @id @default(uuid())
+  schoolId        String
+  school          School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  planPricingId   String?
+  planPricing     PlanPricing?       @relation(fields: [planPricingId], references: [id])
+  status          SubscriptionStatus @default(ACTIVE)
+  startsAt        DateTime
+  expiresAt       DateTime?
+  trialEndsAt     DateTime?
+  renewalDate     DateTime?
+  activatedById   String?
+  activatedBy     User?              @relation("SubscriptionActivator", fields: [activatedById], references: [id])
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([schoolId])
+}
+
+model SchoolFeatureOverride {
+  id           String          @id @default(uuid())
+  schoolId     String
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  featureId    String
+  feature      Feature         @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  isEnabled    Boolean         @default(true)
+  limitValue   Int?
+  reason       String?
+  expiresAt    DateTime?
+  updatedById  String?
+  updatedBy    User?           @relation("OverrideUpdater", fields: [updatedById], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([schoolId, featureId])
+}
+
+model GlobalFeatureFlag {
+  id           String          @id @default(uuid())
+  featureId    String          @unique
+  feature      Feature         @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  isEnabled    Boolean         @default(true)
+  reason       String?
+  updatedById  String?
+  updatedBy    User?           @relation("GlobalFlagUpdater", fields: [updatedById], references: [id])
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+

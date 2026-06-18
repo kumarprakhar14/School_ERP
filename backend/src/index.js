@@ -21,7 +21,9 @@ import bugRoutes from './routes/bug.routes.js';
 import searchRoutes from './routes/search.routes.js';
 import pushNotificationRoutes from './routes/pushNotification.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
-
+import plansRoutes from './routes/plans.routes.js';
+import featuresRoutes from './routes/features.routes.js';
+import planFeaturesRoutes from './routes/planFeatures.routes.js';
 const app = express();
 
 app.use(cors(corsOptions));
@@ -59,6 +61,9 @@ app.use('/api/bugs', bugRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/push', pushNotificationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/plans', plansRoutes);
+app.use('/api/features', featuresRoutes);
+app.use('/api/plan-features', planFeaturesRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {
