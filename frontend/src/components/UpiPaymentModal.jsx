@@ -134,7 +134,7 @@ export default function UpiPaymentModal({ invoiceId, onClose, onSuccess }) {
                   <span className="font-bold text-gray-900">₹{(qrData.amount / 100).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">School:</span>
+                  <span className="text-gray-500">Merchant:</span>
                   <span className="font-medium text-gray-900">{qrData.merchantName}</span>
                 </div>
                 <div className="flex justify-between">

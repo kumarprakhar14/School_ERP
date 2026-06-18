@@ -465,8 +465,8 @@ export default function Fees() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { val: 'INVOICE', label: 'INVOICES', Icon: ArrowUpRight, active: 'bg-amber-50 text-amber-700 border-amber-200' },
-                    { val: 'PAYMENT', label: 'PAYMENTS', Icon: ArrowDownLeft, active: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+                    { val: 'INVOICE', label: 'INVOICES', Icon: user?.role === 'STUDENT' ? ArrowDownLeft : ArrowUpRight, active: 'bg-amber-50 text-amber-700 border-amber-200' },
+                    { val: 'PAYMENT', label: 'PAYMENTS', Icon: user?.role === 'STUDENT' ? ArrowUpRight : ArrowDownLeft, active: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
                   ].map(opt => (
                     <button
                       key={opt.val}
@@ -496,11 +496,15 @@ export default function Fees() {
                       <div className="flex items-center gap-3">
                         {fee.type === 'Invoice' ? (
                           <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0" title="Invoice (Charge)">
-                            <ArrowUpRight className="w-4 h-4" />
+                            {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                          </div>
+                        ) : fee.status === 'REJECTED' ? (
+                          <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0" title="Payment (Rejected)">
+                            <X className="w-4 h-4" />
                           </div>
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0" title="Payment (Received)">
-                            <ArrowDownLeft className="w-4 h-4" />
+                            {user?.role === 'STUDENT' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                           </div>
                         )}
                         <div>
@@ -513,8 +517,8 @@ export default function Fees() {
                   {
                     header: 'Amount',
                     render: (fee) => (
-                      <span className={`font-mono font-bold ${fee.type === 'Payment' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                        {fee.type === 'Payment' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
+                      <span className={`font-mono font-bold ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
+                        {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
                       </span>
                     )
                   },
@@ -580,11 +584,15 @@ export default function Fees() {
                       <div className="flex items-center gap-3">
                         {fee.type === 'Invoice' ? (
                           <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                            <ArrowUpRight className="w-5 h-5" />
+                            {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                          </div>
+                        ) : fee.status === 'REJECTED' ? (
+                          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                            <X className="w-5 h-5" />
                           </div>
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                            <ArrowDownLeft className="w-5 h-5" />
+                            {user?.role === 'STUDENT' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
                           </div>
                         )}
                         <div>
@@ -593,8 +601,8 @@ export default function Fees() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className={`font-mono font-bold text-lg ${fee.type === 'Payment' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                          {fee.type === 'Payment' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
+                        <span className={`font-mono font-bold text-lg ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
+                          {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
                         </span>
                         <span className="text-xs text-gray-400 font-medium">{new Date(fee.date).toLocaleDateString()}</span>
                       </div>
