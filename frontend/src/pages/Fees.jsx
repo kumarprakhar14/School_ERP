@@ -217,11 +217,11 @@ export default function Fees() {
 
   const selectedStudentInvoices = feeHistory.filter(h => h.type === 'Invoice' && h.student?.id === paymentForm.studentId);
   const outstandingInvoices = selectedStudentInvoices.filter(inv => {
-    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber);
+    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber && h.status !== 'REJECTED');
     const totalPaidForInvoice = paymentsForInvoice.reduce((sum, p) => sum + p.amount, 0);
     return totalPaidForInvoice < inv.amount;
   }).map(inv => {
-    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber);
+    const paymentsForInvoice = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === inv.invoiceNumber && h.status !== 'REJECTED');
     const totalPaidForInvoice = paymentsForInvoice.reduce((sum, p) => sum + p.amount, 0);
     return { ...inv, outstandingAmount: inv.amount - totalPaidForInvoice };
   });
