@@ -24,6 +24,7 @@ import notificationRoutes from './routes/notification.routes.js';
 import plansRoutes from './routes/plans.routes.js';
 import featuresRoutes from './routes/features.routes.js';
 import planFeaturesRoutes from './routes/planFeatures.routes.js';
+import diagnosticsRoutes from './routes/diagnostics.routes.js';
 const app = express();
 
 app.use(cors(corsOptions));
@@ -64,6 +65,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/plans', plansRoutes);
 app.use('/api/features', featuresRoutes);
 app.use('/api/plan-features', planFeaturesRoutes);
+app.use('/api/diagnostics', diagnosticsRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {
