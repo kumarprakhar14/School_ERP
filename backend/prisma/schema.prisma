@@ -90,6 +90,7 @@ model School {
   academicYears AcademicYear[]
   subscriptions SchoolSubscription[]
   featureOverrides SchoolFeatureOverride[]
+  paymentOrders PaymentOrder[]
 }
 
 model SchoolSettings {
@@ -558,6 +559,7 @@ model PlanPricing {
   updatedAt          DateTime         @updatedAt
 
   subscriptions      SchoolSubscription[]
+  paymentOrders      PaymentOrder[]
 
   @@unique([planId, interval])
 }
@@ -615,6 +617,8 @@ model SchoolSubscription {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
+  paymentTransactions PaymentTransaction[]
+
   @@index([schoolId])
 }
 
@@ -648,5 +652,74 @@ model GlobalFeatureFlag {
   updatedBy    User?           @relation("GlobalFlagUpdater", fields: [updatedById], references: [id])
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+}
+
+// --------------------------------------------------------------------------------
+// Phase IVA: Provider-Agnostic Billing Infrastructure
+// --------------------------------------------------------------------------------
+
+enum PaymentOrderPurpose {
+  SUBSCRIPTION_PURCHASE
+  SUBSCRIPTION_RENEWAL
+  SUBSCRIPTION_UPGRADE
+  SUBSCRIPTION_DOWNGRADE
+  MANUAL_PAYMENT
+  ADDON_PURCHASE
+}
+
+enum PaymentOrderStatus {
+  CREATED
+  AWAITING_PAYMENT
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum TransactionStatus {
+  SUCCESS
+  FAILED
+}
+
+model PaymentOrder {
+  id              String             @id @default(uuid())
+  schoolId        String
+  school          School             @relation(fields: [schoolId], references: [id])
+  planPricingId   String
+  planPricing     PlanPricing        @relation(fields: [planPricingId], references: [id])
+  purpose         PaymentOrderPurpose @default(SUBSCRIPTION_PURCHASE)
+  amount          Decimal            @db.Decimal(10, 2)
+  currency        String
+  provider        String?            // e.g., 'DUMMY', 'STRIPE', 'RAZORPAY'
+  providerOrderId String?
+  status          PaymentOrderStatus @default(CREATED)
+  metadata        Json?
+  expiresAt       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  transactions    PaymentTransaction[]
+
+  @@index([schoolId])
+}
+
+model PaymentTransaction {
+  id                      String            @id @default(uuid())
+  paymentOrderId          String
+  paymentOrder            PaymentOrder      @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+  activatedSubscriptionId String?
+  activatedSubscription   SchoolSubscription? @relation(fields: [activatedSubscriptionId], references: [id])
+  provider                String
+  providerPaymentId       String?
+  providerReference       String?
+  amount                  Decimal           @db.Decimal(10, 2)
+  currency                String
+  status                  TransactionStatus
+  rawPayload              Json?
+  paidAt                  DateTime?
+  createdAt               DateTime          @default(now())
+
+  @@index([paymentOrderId])
 }
 

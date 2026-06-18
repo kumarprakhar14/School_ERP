@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, CheckCircle2, AlertCircle, RefreshCw, XCircle, ChevronDown, ChevronRight, Settings } from 'lucide-react';
-import api from '../../../lib/api';
+import api from '../../lib/api';
 import { toast } from 'sonner';
 
 export default function SubscriptionCatalog() {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Shield, AlertTriangle, Play, Pause, XCircle, Settings, Check, X, Calendar, Edit2, Activity, ArrowRight, Loader2, Search } from 'lucide-react';
-import api from '../../../../lib/api';
+import api from '../../../lib/api';
 import { toast } from 'sonner';
 
 export default function SchoolSubscriptionTab({ schoolId }) {

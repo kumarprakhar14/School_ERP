@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
-import { Building2, Calendar, Users, Edit2, Save, Shield, User, X, Trash2, Key, Activity, Settings } from 'lucide-react';
+import { Building2, Calendar, Users, Edit2, Save, Shield, User, X, Trash2, Key, Activity, Settings, CreditCard } from 'lucide-react';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import SchoolSubscriptionTab from './school-profile/SchoolSubscriptionTab';
+import SchoolBillingTab from './school-profile/SchoolBillingTab';
 
 export default function SchoolDetail() {
   const { id } = useParams();
@@ -274,6 +275,12 @@ export default function SchoolDetail() {
         >
           <div className="flex items-center"><Activity className="w-4 h-4 mr-2"/> Subscriptions & Access</div>
         </button>
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`py-3 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'billing' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+        >
+          <div className="flex items-center"><CreditCard className="w-4 h-4 mr-2"/> Billing</div>
+        </button>
       </div>
 
       {activeTab === 'overview' ? (
@@ -510,8 +517,10 @@ export default function SchoolDetail() {
         </div>
       </div>
       </>
-      ) : (
+      ) : activeTab === 'subscription' ? (
         <SchoolSubscriptionTab schoolId={id} />
+      ) : (
+        <SchoolBillingTab schoolId={id} />
       )}
 
       {/* MODALS */}

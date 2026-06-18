@@ -8,7 +8,7 @@ export const getSchoolOverrides = async (req, res) => {
       where: { schoolId },
       include: {
         feature: true,
-        updatedBy: { select: { id: true, name: true, email: true } }
+        updatedBy: { select: { id: true, name: true, erpId: true } }
       },
       orderBy: { createdAt: 'desc' }
     });

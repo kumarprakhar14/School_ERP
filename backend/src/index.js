@@ -28,6 +28,7 @@ import diagnosticsRoutes from './routes/diagnostics.routes.js';
 import schoolSubscriptionRoutes from './routes/schoolSubscription.routes.js';
 import schoolOverrideRoutes from './routes/schoolOverride.routes.js';
 import globalFlagRoutes from './routes/globalFlag.routes.js';
+import billingRoutes from './routes/billing.routes.js';
 const app = express();
 
 app.use(cors(corsOptions));
@@ -72,6 +73,7 @@ app.use('/api/diagnostics', diagnosticsRoutes);
 app.use('/api/subscriptions/schools', schoolSubscriptionRoutes);
 app.use('/api/subscriptions/overrides', schoolOverrideRoutes);
 app.use('/api/subscriptions/global-flags', globalFlagRoutes);
+app.use('/api/billing', billingRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

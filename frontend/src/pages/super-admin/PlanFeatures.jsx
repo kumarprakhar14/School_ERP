@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Edit2, Loader2, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { planService, featureService, planFeatureService } from '../../../services/api/subscription';
+import { planService, featureService, planFeatureService } from '../../services/api/subscription';
 import { toast } from 'sonner';
 
 export default function PlanFeatures() {

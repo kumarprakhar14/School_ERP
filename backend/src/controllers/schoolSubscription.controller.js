@@ -10,7 +10,7 @@ export const getSchoolSubscriptions = async (req, res) => {
         plan: true,
         planPricing: true,
         activatedBy: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, erpId: true }
         }
       },
       orderBy: { createdAt: 'desc' }

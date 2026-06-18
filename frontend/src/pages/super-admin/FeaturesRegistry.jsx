@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Loader2, Shield, X, Filter } from 'lucide-react';
-import { featureService } from '../../../services/api/subscription';
+import { featureService } from '../../services/api/subscription';
 import { toast } from 'sonner';
 
 export default function FeaturesRegistry() {

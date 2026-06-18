@@ -6,7 +6,7 @@ export const getGlobalFlags = async (req, res) => {
     const flags = await prisma.globalFeatureFlag.findMany({
       include: {
         feature: true,
-        updatedBy: { select: { id: true, name: true, email: true } }
+        updatedBy: { select: { id: true, name: true, erpId: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
