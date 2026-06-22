@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
 import prisma from '../utils/db.js';
+import { setContextValue } from '../utils/requestContext.js';
 
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -15,7 +16,7 @@ const authMiddleware = async (req, res, next) => {
     // Verify user is still active in database
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { isActive: true, isArchived: true }
+      select: { isActive: true, isArchived: true, school: { select: { name: true } } }
     });
 
     if (!user) {
@@ -29,6 +30,14 @@ const authMiddleware = async (req, res, next) => {
     }
 
     req.user = decoded; // { userId, role, schoolId }
+
+    setContextValue('userId', decoded.userId);
+    setContextValue('userRole', decoded.role);
+    setContextValue('schoolId', decoded.schoolId);
+    if (user.school?.name) {
+      setContextValue('schoolName', user.school.name);
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });

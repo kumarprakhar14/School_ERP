@@ -29,7 +29,13 @@ import schoolSubscriptionRoutes from './routes/schoolSubscription.routes.js';
 import schoolOverrideRoutes from './routes/schoolOverride.routes.js';
 import globalFlagRoutes from './routes/globalFlag.routes.js';
 import billingRoutes from './routes/billing.routes.js';
+import { requestContextMiddleware } from './middlewares/requestContext.middleware.js';
+import { reportError } from './services/errorReporting.service.js';
+import { getContext } from './utils/requestContext.js';
+
 const app = express();
+
+app.use(requestContextMiddleware);
 
 app.use(cors(corsOptions));
 
@@ -122,6 +128,10 @@ app.use((err, req, res, next) => {
   }
 
   // 4. Unknown / unexpected errors — NEVER leak internals to the client
+  const contextStore = getContext();
+  // Non-blocking fire-and-forget
+  reportError(err, contextStore).catch(() => {});
+
   res.status(500).json({
     message: 'An unexpected server error occurred. Please try again later.'
   });
