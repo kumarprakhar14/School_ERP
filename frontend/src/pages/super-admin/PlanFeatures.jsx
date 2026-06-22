@@ -85,7 +85,10 @@ export default function PlanFeatures() {
     }
     try {
       await planFeatureService.updatePlanFeature(pf.id, {
-        ...pf,
+        planId: pf.planId,
+        featureId: pf.featureId,
+        limitValue: pf.limitValue,
+        limitUnit: pf.limitUnit,
         isEnabled: !pf.isEnabled
       });
       fetchData();

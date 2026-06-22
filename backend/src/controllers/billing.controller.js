@@ -7,12 +7,27 @@ export const createOrder = async (req, res) => {
   try {
     const { schoolId, planPricingId, purpose } = req.body;
 
-    // Verify school and pricing exist
+    // Ownership check: non-SUPER_ADMIN can only create orders for their own school
+    if (req.user.role !== 'SUPER_ADMIN' && req.user.schoolId !== schoolId) {
+      return res.status(403).json({ error: 'You can only create orders for your own school.' });
+    }
+
+    // Verify school exists
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) {
+      return res.status(404).json({ error: 'School not found' });
+    }
+
+    // Verify pricing exists and is active
     const planPricing = await prisma.planPricing.findUnique({
-      where: { id: planPricingId }
+      where: { id: planPricingId },
+      include: { plan: true }
     });
     if (!planPricing) {
       return res.status(404).json({ error: 'Plan pricing not found' });
+    }
+    if (!planPricing.isActive || !planPricing.plan.isActive) {
+      return res.status(400).json({ error: 'Selected pricing or plan is inactive.' });
     }
 
     const order = await billingOrderService.createOrder({
@@ -40,8 +55,20 @@ export const createOrder = async (req, res) => {
 export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await billingOrderService.cancelOrder(id);
-    res.json(order);
+
+    // Fetch order to check ownership
+    const order = await billingOrderService.getOrder(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Ownership check: non-SUPER_ADMIN can only cancel their own school's orders
+    if (req.user.role !== 'SUPER_ADMIN' && req.user.schoolId !== order.schoolId) {
+      return res.status(403).json({ error: 'You can only cancel orders for your own school.' });
+    }
+
+    const cancelled = await billingOrderService.cancelOrder(id);
+    res.json(cancelled);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -55,6 +82,11 @@ export const simulatePayment = async (req, res) => {
     const order = await billingOrderService.getOrder(id);
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Gate: only allow simulation on AWAITING_PAYMENT orders
+    if (order.status !== 'AWAITING_PAYMENT') {
+      return res.status(400).json({ error: `Cannot simulate payment on order in state: ${order.status}. Order must be in AWAITING_PAYMENT state.` });
     }
 
     // 1. Send the simulation payload to DummyProvider

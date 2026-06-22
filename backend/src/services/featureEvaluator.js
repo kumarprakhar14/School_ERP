@@ -45,8 +45,12 @@ export const evaluateAccess = (context, featureKey) => {
 
   // 1. Global Feature Flag Check
   const globalFlag = globalFlags.find(f => f.featureId === systemFeature.id);
-  if (globalFlag && !globalFlag.isEnabled) {
-    return buildResult(false, SOURCE.GLOBAL_FLAG, 'GLOBAL_DISABLED', globalFlag.reason || `Feature '${featureKey}' is globally disabled.`, featureKey);
+  if (globalFlag) {
+    if (!globalFlag.isEnabled) {
+      return buildResult(false, SOURCE.GLOBAL_FLAG, 'GLOBAL_DISABLED', globalFlag.reason || `Feature '${featureKey}' is globally disabled.`, featureKey);
+    } else {
+      return buildResult(true, SOURCE.GLOBAL_FLAG, 'GLOBAL_ENABLED', globalFlag.reason || `Feature '${featureKey}' is globally enabled.`, featureKey);
+    }
   }
 
   // 2. School Feature Override Check

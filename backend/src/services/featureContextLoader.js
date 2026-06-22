@@ -25,12 +25,13 @@ export const loadFeatureContext = async (schoolId) => {
       where: {
         schoolId,
         status: 'ACTIVE',
+        startsAt: { lte: new Date() },
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } }
         ]
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { startsAt: 'desc' },
       include: {
         plan: {
           include: {
@@ -44,6 +45,7 @@ export const loadFeatureContext = async (schoolId) => {
     prisma.schoolFeatureOverride.findMany({
       where: {
         schoolId,
+        isActive: true,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } }
@@ -52,7 +54,9 @@ export const loadFeatureContext = async (schoolId) => {
     }),
 
     // 3. Get global feature flags
-    prisma.globalFeatureFlag.findMany(),
+    prisma.globalFeatureFlag.findMany({
+      where: { isActive: true }
+    }),
 
     // 4. Get the master list of all features
     prisma.feature.findMany({

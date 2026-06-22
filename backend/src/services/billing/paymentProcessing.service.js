@@ -33,8 +33,13 @@ export class PaymentProcessingService {
       return { status: 'IGNORED', reason: 'ALREADY_PAID' };
     }
     
-    if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(order.status)) {
-      throw new Error(`Cannot process payment for order in terminal state: ${order.status}`);
+    if (order.expiresAt && order.expiresAt < new Date()) {
+      await prisma.paymentOrder.update({ where: { id: order.id }, data: { status: 'EXPIRED' } });
+      throw new Error(`PaymentOrder ${paymentOrderId} has expired`);
+    }
+
+    if (order.status !== 'AWAITING_PAYMENT') {
+      throw new Error(`Cannot process payment for order in state: ${order.status}. Only AWAITING_PAYMENT orders can be processed.`);
     }
 
     // 3. Strict Validation
@@ -42,7 +47,7 @@ export class PaymentProcessingService {
     const orderAmount = parseFloat(order.amount.toString());
     const eventAmount = parseFloat(amount.toString());
 
-    if (orderAmount !== eventAmount) {
+    if (Math.abs(orderAmount - eventAmount) > 0.01) {
       throw new Error(`Amount mismatch. Order: ${orderAmount}, Verified: ${eventAmount}`);
     }
 
@@ -92,60 +97,78 @@ export class PaymentProcessingService {
     // d. Create new active subscription
     // e. Link the new subscription to the Transaction
     
+    try {
     return await prisma.$transaction(async (tx) => {
-      // Lock the order (if postgres supports it, but simple check is okay here)
+      // Re-check inside transaction for race safety
       const currentOrder = await tx.paymentOrder.findUnique({ where: { id: order.id } });
       if (currentOrder.status === 'PAID') {
         return { status: 'IGNORED', reason: 'ALREADY_PAID' };
       }
 
-      // Find currently active subscription to expire
-      const activeSub = await tx.schoolSubscription.findFirst({
-        where: {
-          schoolId: order.schoolId,
-          status: 'ACTIVE',
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
-          ]
-        }
-      });
-
       const now = new Date();
-      let expiresAt = null;
+      let newSubId = null;
 
-      // Calculate new expiry based on plan interval if applicable
-      // e.g. Monthly = +1 month, Yearly = +1 year
-      if (order.planPricing.interval === 'MONTHLY') {
-        expiresAt = new Date(now);
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
-      } else if (order.planPricing.interval === 'YEARLY') {
-        expiresAt = new Date(now);
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      }
-
-      if (activeSub) {
-        await tx.schoolSubscription.update({
-          where: { id: activeSub.id },
-          data: {
-            expiresAt: now,
-            status: activeSub.startsAt > now ? 'CANCELLED' : 'EXPIRED'
+      // Only perform subscription replacement for subscription-related purposes
+      if (!['ADDON_PURCHASE', 'MANUAL_PAYMENT'].includes(order.purpose)) {
+        // Find currently active subscription to expire
+        const activeSub = await tx.schoolSubscription.findFirst({
+          where: {
+            schoolId: order.schoolId,
+            status: 'ACTIVE',
+            startsAt: { lte: now },
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gt: now } }
+            ]
           }
         });
-      }
 
-      // Create new subscription
-      const newSub = await tx.schoolSubscription.create({
-        data: {
-          schoolId: order.schoolId,
-          planId: order.planPricing.planId,
-          planPricingId: order.planPricingId,
-          status: 'ACTIVE',
-          startsAt: now,
-          expiresAt,
-          notes: `Activated via PaymentOrder ${order.id}`,
+        let expiresAt = null;
+
+        // Calculate new expiry based on plan interval if applicable
+        if (order.planPricing.interval === 'MONTHLY') {
+          expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        } else if (order.planPricing.interval === 'QUARTERLY') {
+          expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 3);
+        } else if (order.planPricing.interval === 'YEARLY') {
+          expiresAt = new Date(now);
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        } else if (order.planPricing.interval === 'ONCE') {
+          expiresAt = null; // Lifetime
         }
-      });
+
+        if (activeSub) {
+          await tx.schoolSubscription.update({
+            where: { id: activeSub.id },
+            data: {
+              expiresAt: now,
+              status: activeSub.startsAt > now ? 'CANCELLED' : 'EXPIRED'
+            }
+          });
+        }
+
+        // Create new subscription
+        const newSub = await tx.schoolSubscription.create({
+          data: {
+            schoolId: order.schoolId,
+            planId: order.planPricing.planId,
+            planPricingId: order.planPricingId,
+            status: 'ACTIVE',
+            startsAt: now,
+            expiresAt,
+            notes: `Activated via PaymentOrder ${order.id}`,
+          }
+        });
+        newSubId = newSub.id;
+
+        // Bridge: sync School.validUntil with subscription expiry
+        await tx.school.update({
+          where: { id: order.schoolId },
+          data: { validUntil: expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) }
+        });
+      }
 
       // Mark order as PAID
       await tx.paymentOrder.update({
@@ -157,7 +180,7 @@ export class PaymentProcessingService {
       const transaction = await tx.paymentTransaction.create({
         data: {
           paymentOrderId: order.id,
-          activatedSubscriptionId: newSub.id,
+          activatedSubscriptionId: newSubId,
           provider: event.provider,
           providerPaymentId: event.providerPaymentId,
           amount: event.amount,
@@ -171,9 +194,17 @@ export class PaymentProcessingService {
       return {
         status: 'SUCCESS',
         transactionId: transaction.id,
-        subscriptionId: newSub.id
+        subscriptionId: newSubId
       };
     });
+    } catch (error) {
+      // Handle duplicate provider payment ID (concurrent webhook)
+      if (error.code === 'P2002' && error.meta?.target?.includes('provider_providerPaymentId')) {
+        console.warn(`Duplicate payment event detected for provider payment. Ignoring.`);
+        return { status: 'IGNORED', reason: 'DUPLICATE_EVENT' };
+      }
+      throw error;
+    }
   }
 }
 

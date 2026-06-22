@@ -53,7 +53,7 @@ export class BillingOrderService {
     if (!order) throw new Error('Order not found');
     
     // Check state machine
-    if (['PAID', 'SUCCESS', 'CANCELLED', 'EXPIRED'].includes(order.status)) {
+    if (['PAID', 'CANCELLED', 'EXPIRED'].includes(order.status)) {
       throw new Error(`Cannot cancel order in status ${order.status}`);
     }
 

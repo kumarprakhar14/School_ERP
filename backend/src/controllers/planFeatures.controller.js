@@ -20,7 +20,7 @@ export const createPlanFeature = async (req, res) => {
   try {
     const { planId, featureId, isEnabled, limitValue, limitUnit, metadata } = req.body;
     const planFeature = await prisma.planFeature.create({
-      data: { planId, featureId, isEnabled, limitValue: limitValue ? parseInt(limitValue, 10) : null, limitUnit, metadata },
+      data: { planId, featureId, isEnabled, limitValue: limitValue !== null && limitValue !== undefined && limitValue !== '' ? parseInt(limitValue, 10) : null, limitUnit, metadata },
       include: { feature: true }
     });
     res.status(201).json(planFeature);
@@ -36,7 +36,7 @@ export const updatePlanFeature = async (req, res) => {
     const { isEnabled, limitValue, limitUnit, metadata } = req.body;
     const planFeature = await prisma.planFeature.update({
       where: { id },
-      data: { isEnabled, limitValue: limitValue ? parseInt(limitValue, 10) : null, limitUnit, metadata },
+      data: { isEnabled, limitValue: limitValue !== null && limitValue !== undefined && limitValue !== '' ? parseInt(limitValue, 10) : null, limitUnit, metadata },
       include: { feature: true }
     });
     res.json(planFeature);

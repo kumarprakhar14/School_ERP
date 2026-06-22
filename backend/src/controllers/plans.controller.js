@@ -5,6 +5,7 @@ export const getPlans = async (req, res) => {
     const plans = await prisma.subscriptionPlan.findMany({
       include: {
         pricing: true,
+        features: { include: { feature: true } }
       },
       orderBy: {
         displayOrder: 'asc',
@@ -20,6 +21,11 @@ export const getPlans = async (req, res) => {
 export const createPlan = async (req, res) => {
   try {
     const { name, description, badge, isDefault, isPublic, isActive, displayOrder } = req.body;
+    
+    if (isDefault) {
+      await prisma.subscriptionPlan.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+    }
+
     const plan = await prisma.subscriptionPlan.create({
       data: { name, description, badge, isDefault, isPublic, isActive, displayOrder },
       include: { pricing: true }
@@ -35,6 +41,14 @@ export const updatePlan = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, badge, isDefault, isPublic, isActive, displayOrder } = req.body;
+    
+    if (isDefault) {
+      await prisma.subscriptionPlan.updateMany({ 
+        where: { isDefault: true, id: { not: id } }, 
+        data: { isDefault: false } 
+      });
+    }
+
     const plan = await prisma.subscriptionPlan.update({
       where: { id },
       data: { name, description, badge, isDefault, isPublic, isActive, displayOrder },

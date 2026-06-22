@@ -21,23 +21,26 @@ export const getGlobalFlags = async (req, res) => {
 export const createGlobalFlag = async (req, res) => {
   try {
     const { featureId, isEnabled, reason } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
-    // Archive any currently active flag for this feature
-    await prisma.globalFeatureFlag.updateMany({
-      where: { featureId, isActive: true },
-      data: { isActive: false }
-    });
+    const newFlag = await prisma.$transaction(async (tx) => {
+      // Archive any currently active flag for this feature
+      await tx.globalFeatureFlag.updateMany({
+        where: { featureId, isActive: true },
+        data: { isActive: false }
+      });
 
-    const newFlag = await prisma.globalFeatureFlag.create({
-      data: {
-        featureId,
-        isEnabled,
-        reason,
-        updatedById: adminId,
-        isActive: true
-      },
-      include: { feature: true }
+      // Create the new global flag
+      return await tx.globalFeatureFlag.create({
+        data: {
+          featureId,
+          isEnabled,
+          reason,
+          updatedById: adminId,
+          isActive: true
+        },
+        include: { feature: true }
+      });
     });
 
     res.status(201).json(newFlag);
@@ -51,7 +54,7 @@ export const createGlobalFlag = async (req, res) => {
 export const archiveGlobalFlag = async (req, res) => {
   try {
     const { id } = req.params;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
     const updated = await prisma.globalFeatureFlag.update({
       where: { id },

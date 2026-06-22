@@ -18,7 +18,7 @@ export default function SchoolSubscriptionTab({ schoolId }) {
   const [plans, setPlans] = useState([]);
   const [features, setFeatures] = useState([]);
   const [assignForm, setAssignForm] = useState({ planId: '', planPricingId: '', activationMode: 'Immediate', effectiveDate: '', notes: '' });
-  const [overrideForm, setOverrideForm] = useState({ featureId: '', isEnabled: true, limitValue: '', expiresAt: '', reason: '' });
+  const [overrideForm, setOverrideForm] = useState({ featureId: '', isEnabled: true, limitValue: '', limitUnit: '', expiresAt: '', reason: '' });
   const [actionNotes, setActionNotes] = useState('');
 
   const fetchData = async () => {
@@ -336,9 +336,15 @@ export default function SchoolSubscriptionTab({ schoolId }) {
                 <span className="text-sm font-medium text-gray-900">Enable this feature for this school</span>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Custom Limit Value (Optional)</label>
-                <input type="number" value={overrideForm.limitValue} onChange={e => setOverrideForm({...overrideForm, limitValue: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="e.g., 1000"/>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Custom Limit Value</label>
+                  <input type="number" value={overrideForm.limitValue} onChange={e => setOverrideForm({...overrideForm, limitValue: e.target.value})} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="e.g., 1000"/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Limit Unit</label>
+                  <input type="text" value={overrideForm.limitUnit} onChange={e => setOverrideForm({...overrideForm, limitUnit: e.target.value.toUpperCase()})} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="e.g., STUDENTS"/>
+                </div>
               </div>
 
               <div>

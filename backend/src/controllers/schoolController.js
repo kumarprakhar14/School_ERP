@@ -156,6 +156,8 @@ const deleteSchool = async (req, res, next) => {
     const { id } = req.params;
     
     await prisma.$transaction([
+      prisma.paymentTransaction.deleteMany({ where: { paymentOrder: { schoolId: id } } }),
+      prisma.paymentOrder.deleteMany({ where: { schoolId: id } }),
       prisma.assignmentSubmission.deleteMany({ where: { assignment: { schoolId: id } } }),
       prisma.attendance.deleteMany({ where: { class: { schoolId: id } } }),
       prisma.payment.deleteMany({ where: { schoolId: id } }),

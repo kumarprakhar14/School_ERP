@@ -22,12 +22,28 @@ export const getSchoolSubscriptions = async (req, res) => {
   }
 };
 
+/**
+ * Helper: Sync School.validUntil with the latest active subscription's expiresAt.
+ * This bridges the legacy validUntil-based access middleware with the new subscription system.
+ */
+async function syncSchoolValidity(tx, schoolId, expiresAt) {
+  if (expiresAt) {
+    await tx.school.update({
+      where: { id: schoolId },
+      data: { validUntil: expiresAt }
+    });
+  }
+}
+
 // POST /api/subscriptions/schools/:schoolId/assign
 export const assignPlan = async (req, res) => {
   try {
     const { schoolId } = req.params;
     const { planId, planPricingId, effectiveDate, notes } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
+
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) return res.status(404).json({ error: 'School not found' });
 
     // Validate plan and pricing
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
@@ -41,20 +57,25 @@ export const assignPlan = async (req, res) => {
       if (!pricing || !pricing.isActive) {
         return res.status(400).json({ error: 'Invalid or inactive pricing selected.' });
       }
+      if (pricing.planId !== planId) {
+        return res.status(400).json({ error: 'Selected pricing does not belong to the selected plan.' });
+      }
     }
 
     const startsAt = effectiveDate ? new Date(effectiveDate) : new Date();
 
     // Use a transaction to gracefully close any currently active subscription and create the new one
     const result = await prisma.$transaction(async (tx) => {
-      // Find the currently active subscription
+      // Find the currently active, effective subscription
+      const now = new Date();
       const activeSub = await tx.schoolSubscription.findFirst({
         where: {
           schoolId,
           status: 'ACTIVE',
+          startsAt: { lte: now },
           OR: [
             { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
+            { expiresAt: { gt: now } }
           ]
         }
       });
@@ -65,9 +86,24 @@ export const assignPlan = async (req, res) => {
           where: { id: activeSub.id },
           data: {
             expiresAt: startsAt,
-            status: activeSub.startsAt > startsAt ? 'CANCELLED' : 'EXPIRED' // If old sub hasn't even started, just cancel it
+            status: startsAt > now ? 'ACTIVE' : (activeSub.startsAt > startsAt ? 'CANCELLED' : 'EXPIRED')
           }
         });
+      }
+
+      let expiresAt = null;
+      if (pricing) {
+        if (pricing.interval === 'MONTHLY') {
+          expiresAt = new Date(startsAt);
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        } else if (pricing.interval === 'QUARTERLY') {
+          expiresAt = new Date(startsAt);
+          expiresAt.setMonth(expiresAt.getMonth() + 3);
+        } else if (pricing.interval === 'YEARLY') {
+          expiresAt = new Date(startsAt);
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        }
+        // 'ONCE' → expiresAt stays null (lifetime)
       }
 
       // Create new subscription
@@ -78,10 +114,14 @@ export const assignPlan = async (req, res) => {
           planPricingId: pricing?.id || null,
           status: 'ACTIVE',
           startsAt,
+          expiresAt,
           notes,
           activatedById: adminId
         }
       });
+
+      // Bridge: sync School.validUntil with the new subscription expiry
+      await syncSchoolValidity(tx, schoolId, expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
 
       return newSub;
     });
@@ -99,9 +139,21 @@ export const suspendSubscription = async (req, res) => {
     const { schoolId } = req.params;
     const { notes } = req.body;
 
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) return res.status(404).json({ error: 'School not found' });
+
+    const now = new Date();
     const activeSub = await prisma.schoolSubscription.findFirst({
-      where: { schoolId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' }
+      where: {
+        schoolId,
+        status: 'ACTIVE',
+        startsAt: { lte: now },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
+      },
+      orderBy: { startsAt: 'desc' }
     });
 
     if (!activeSub) return res.status(404).json({ error: 'No active subscription found to suspend.' });
@@ -124,17 +176,34 @@ export const reactivateSubscription = async (req, res) => {
     const { schoolId } = req.params;
     const { notes } = req.body;
 
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) return res.status(404).json({ error: 'School not found' });
+
+    const now = new Date();
     const suspendedSub = await prisma.schoolSubscription.findFirst({
-      where: { schoolId, status: 'SUSPENDED' },
+      where: {
+        schoolId,
+        status: 'SUSPENDED',
+        // Only allow reactivation if the subscription hasn't expired
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
+      },
       orderBy: { createdAt: 'desc' }
     });
 
-    if (!suspendedSub) return res.status(404).json({ error: 'No suspended subscription found.' });
+    if (!suspendedSub) return res.status(404).json({ error: 'No suspended subscription found (or subscription has already expired).' });
 
     const updated = await prisma.schoolSubscription.update({
       where: { id: suspendedSub.id },
       data: { status: 'ACTIVE', notes: notes ? `${suspendedSub.notes || ''}\n[Reactivated]: ${notes}` : suspendedSub.notes }
     });
+
+    // Bridge: sync validity back
+    if (suspendedSub.expiresAt) {
+      await prisma.school.update({ where: { id: schoolId }, data: { validUntil: suspendedSub.expiresAt } });
+    }
 
     res.json(updated);
   } catch (error) {
@@ -149,9 +218,21 @@ export const cancelSubscription = async (req, res) => {
     const { schoolId } = req.params;
     const { notes } = req.body;
 
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) return res.status(404).json({ error: 'School not found' });
+
+    const now = new Date();
     const currentSub = await prisma.schoolSubscription.findFirst({
-      where: { schoolId, status: { in: ['ACTIVE', 'SUSPENDED'] } },
-      orderBy: { createdAt: 'desc' }
+      where: {
+        schoolId,
+        status: { in: ['ACTIVE', 'SUSPENDED'] },
+        startsAt: { lte: now },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
+      },
+      orderBy: { startsAt: 'desc' }
     });
 
     if (!currentSub) return res.status(404).json({ error: 'No cancellable subscription found.' });
@@ -160,10 +241,13 @@ export const cancelSubscription = async (req, res) => {
       where: { id: currentSub.id },
       data: { 
         status: 'CANCELLED', 
-        expiresAt: new Date(), 
+        expiresAt: now, 
         notes: notes ? `${currentSub.notes || ''}\n[Cancelled]: ${notes}` : currentSub.notes 
       }
     });
+
+    // Bridge: when cancelling, set validUntil to now to revoke access immediately
+    await prisma.school.update({ where: { id: schoolId }, data: { validUntil: now } });
 
     res.json(updated);
   } catch (error) {
@@ -180,9 +264,27 @@ export const extendSubscription = async (req, res) => {
 
     if (!newExpiryDate) return res.status(400).json({ error: 'newExpiryDate is required.' });
 
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) return res.status(404).json({ error: 'School not found' });
+
+    const now = new Date();
+    const parsedExpiry = new Date(newExpiryDate);
+
+    if (parsedExpiry <= now) {
+      return res.status(400).json({ error: 'New expiry date must be in the future.' });
+    }
+
     const activeSub = await prisma.schoolSubscription.findFirst({
-      where: { schoolId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' }
+      where: {
+        schoolId,
+        status: 'ACTIVE',
+        startsAt: { lte: now },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } }
+        ]
+      },
+      orderBy: { startsAt: 'desc' }
     });
 
     if (!activeSub) return res.status(404).json({ error: 'No active subscription found to extend.' });
@@ -190,10 +292,13 @@ export const extendSubscription = async (req, res) => {
     const updated = await prisma.schoolSubscription.update({
       where: { id: activeSub.id },
       data: { 
-        expiresAt: new Date(newExpiryDate), 
+        expiresAt: parsedExpiry, 
         notes: notes ? `${activeSub.notes || ''}\n[Extended]: ${notes}` : activeSub.notes 
       }
     });
+
+    // Bridge: sync School.validUntil
+    await prisma.school.update({ where: { id: schoolId }, data: { validUntil: parsedExpiry } });
 
     res.json(updated);
   } catch (error) {
@@ -201,3 +306,4 @@ export const extendSubscription = async (req, res) => {
     res.status(500).json({ error: 'Failed to extend subscription' });
   }
 };
+

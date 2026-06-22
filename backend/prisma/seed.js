@@ -7,8 +7,9 @@ async function main() {
   await prisma.timeTableEntry?.deleteMany().catch(()=>{});
   await prisma.assignmentSubmission?.deleteMany().catch(()=>{});
   await prisma.assignment?.deleteMany().catch(()=>{});
+  await prisma.paymentTransaction?.deleteMany().catch(()=>{});
+  await prisma.paymentOrder?.deleteMany().catch(()=>{});
   await prisma.attendance?.deleteMany().catch(()=>{});
-  await prisma.feeRecord?.deleteMany().catch(()=>{});
   await prisma.notice?.deleteMany().catch(()=>{});
   await prisma.subject?.deleteMany().catch(()=>{});
   await prisma.period?.deleteMany().catch(()=>{});

@@ -32,10 +32,61 @@ const attendanceAutoSaveJob = new cron.CronJob("0 0 * * *", async function () {
     }
 });
 
+// Run daily at 1:00 AM to expire outdated subscriptions
+const subscriptionExpiryJob = new cron.CronJob("0 1 * * *", async function () {
+    try {
+        const now = new Date();
+
+        // Find subscriptions that need expiring (to get schoolIds for validity sync)
+        const expiring = await prisma.schoolSubscription.findMany({
+            where: {
+                status: 'ACTIVE',
+                expiresAt: { lt: now }
+            },
+            select: { id: true, schoolId: true, expiresAt: true }
+        });
+
+        if (expiring.length > 0) {
+            // Batch expire all
+            await prisma.schoolSubscription.updateMany({
+                where: { id: { in: expiring.map(s => s.id) } },
+                data: { status: 'EXPIRED' }
+            });
+
+            // Bridge: sync School.validUntil for affected schools
+            // Only update if they don't have another active subscription
+            for (const sub of expiring) {
+                const otherActive = await prisma.schoolSubscription.findFirst({
+                    where: {
+                        schoolId: sub.schoolId,
+                        status: 'ACTIVE',
+                        startsAt: { lte: now },
+                        OR: [
+                            { expiresAt: null },
+                            { expiresAt: { gt: now } }
+                        ]
+                    }
+                });
+                if (!otherActive) {
+                    await prisma.school.update({
+                        where: { id: sub.schoolId },
+                        data: { validUntil: sub.expiresAt }
+                    });
+                }
+            }
+
+            console.log(`Expired ${expiring.length} subscriptions`);
+        }
+    } catch (e) {
+        console.error("Error in subscriptionExpiryJob", e);
+    }
+});
+
 const cronJob = {
     start: () => {
         pingJob.start();
         attendanceAutoSaveJob.start();
+        subscriptionExpiryJob.start();
     }
 };
 

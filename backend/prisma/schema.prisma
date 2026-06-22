@@ -642,6 +642,7 @@ model SchoolFeatureOverride {
   feature      Feature         @relation(fields: [featureId], references: [id], onDelete: Cascade)
   isEnabled    Boolean         @default(true)
   limitValue   Int?
+  limitUnit    String?
   reason       String?
   expiresAt    DateTime?
   updatedById  String?
@@ -733,6 +734,7 @@ model PaymentTransaction {
   createdAt               DateTime          @default(now())
 
   @@index([paymentOrderId])
+  @@unique([provider, providerPaymentId])
 }
 
 // -----------------------------------------------------------------------------
