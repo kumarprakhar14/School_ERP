@@ -10,6 +10,18 @@ datasource db {
 // ENUMS
 // -----------------------------------------------------------------------------
 
+enum ErrorResolutionStatus {
+  UNRESOLVED
+  RESOLVED
+  IGNORED
+}
+
+enum ErrorReportingStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
@@ -723,3 +735,76 @@ model PaymentTransaction {
   @@index([paymentOrderId])
 }
 
+// -----------------------------------------------------------------------------
+// SYSTEM & ERROR MONITORING
+// -----------------------------------------------------------------------------
+
+  model ProductionError {
+    id              String   @id @default(uuid())
+    fingerprint     String
+    errorName       String
+    errorMessage    String   @db.Text
+    stackTrace      String   @db.Text
+    rootStackFrame  String?
+
+    httpStatusCode  Int?
+    httpMethod      String?
+    apiRoute        String?
+
+    requestId       String?
+    schoolId        String?
+    schoolName      String?
+    userId          String?
+    userRole        String?
+
+    requestBody     Json?
+    queryParams     Json?
+    routeParams     Json?
+    clientIp        String?
+    userAgent       String?
+
+    environment     String
+    appVersion      String?
+    gitCommit       String?
+    hostname        String?
+    serverUptime    Float?
+
+    reportingStatus ErrorReportingStatus @default(PENDING)
+    occurrenceCount Int      @default(1)
+
+    firstSeenAt     DateTime @default(now())
+    lastSeenAt      DateTime @default(now())
+
+    resolutionStatus ErrorResolutionStatus @default(UNRESOLVED)
+    resolvedById    String?
+    resolvedAt      DateTime?
+    notes           String?  @db.Text
+    analyses        ProductionErrorAnalysis[]
+
+    @@index([fingerprint])
+    @@index([lastSeenAt])
+    @@index([resolutionStatus])
+    @@index([schoolId])
+  }
+
+model ProductionErrorAnalysis {
+  id                String          @id @default(uuid())
+  productionErrorId String
+  productionError   ProductionError @relation(fields: [productionErrorId], references: [id], onDelete: Cascade)
+  modelName         String
+  promptVersion     String?
+  severity          String
+  category          String
+  rootCause         String          @db.Text
+  likelyReason      String          @db.Text
+  customerImpact    String?         @db.Text
+  affectedFiles     Json?
+  recommendedFix    String?         @db.Text
+  confidence        Float?
+  summary           String          @db.Text
+  developerNotes    String?         @db.Text
+  rawResponse       Json?
+  createdAt         DateTime        @default(now())
+
+  @@index([productionErrorId])
+}

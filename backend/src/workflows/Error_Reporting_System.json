@@ -1,0 +1,511 @@
+{
+  "name": "Error_Reporting_System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "production-error",
+        "options": {
+          "responseCode": {
+            "values": {}
+          },
+          "responseData": "={\n  \"received\": true\n}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -96
+      ],
+      "id": "dd1c2702-4ec0-4416-9b89-88ad3b235043",
+      "name": "Webhook",
+      "webhookId": "a966b983-3870-45ff-abda-24c1a04c0b12"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dfc6199e-45ec-48df-988d-62c4f2dc3acc",
+              "leftValue": "={{ $json.errorId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "bb347ed3-f6b5-46a6-91ea-ca58e37abeb1",
+              "leftValue": "={{ $json.fingerprint }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "f00cc696-bdc4-44a9-93cf-657d0b9f1c83",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": "500",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "8537416e-00d5-438b-8c53-df34eaab79aa",
+      "name": "IF (Payload Validation)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4d8f0779-40e4-4c56-919a-7cf09e28c0e9",
+              "leftValue": "={{ $('Webhook').item.json.isFirstOccurrence }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        -96
+      ],
+      "id": "d09ac910-7f04-4861-a32e-46dd75c83c94",
+      "name": "IF (First Occurrence?)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dec593fe-a179-461a-9768-870524d3c3f1",
+              "name": "analysisContext",
+              "value": "={{ JSON.stringify({\n  errorId: $json.errorId,\n  requestId: $json.requestId,\n  fingerprint: $json.fingerprint,\n  isFirstOccurrence: $json.isFirstOccurrence,\n  occurrenceCount: $json.occurrenceCount,\n  timestamp: $json.timestamp,\n  endpoint: `${$json.httpMethod ?? '?'} ${$json.route ?? '?'}`,\n  statusCode: $json.statusCode,\n  environment: $json.environment,\n  school: $json.school,\n  user: {\n    role: $json.user?.role,\n    id: $json.user?.id\n  },\n  application: {\n    version: $json.serverMetadata?.appVersion,\n    gitCommit: $json.serverMetadata?.gitCommit,\n    hostname: $json.serverMetadata?.hostname\n  },\n  error: {\n    name: $json.error?.name,\n    message: $json.error?.message,\n    stackTrace: typeof $json.error?.stackTrace === 'string'\n      ? $json.error.stackTrace.split('\\n').slice(0, 15).join('\\n')\n      : $json.error?.stackTrace\n  }\n}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "9a7261ab-7e69-42f8-94f6-572abd51d577",
+      "name": "Edit Fields (Prepare AI Context)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a senior backend software engineer specializing in production incident analysis.\n\nYou are given information about a production exception that occurred in a Node.js backend.\n\nYour task is to analyze the incident and produce a structured engineering report.\n\nYour response MUST be valid JSON only.\n\nDo not wrap it inside markdown.\n\nDo not explain anything outside the JSON.\n\nDo not include code fences.\n\nIf information cannot be determined, return null rather than inventing details.\n\nBe conservative in your conclusions.",
+              "role": "model"
+            },
+            {
+              "content": "=Analyze the following production incident.\n\n{{ $json.analysisContext }}\n\nReturn JSON with exactly this schema:\n\n{\n  \"severity\": \"Critical | High | Medium | Low\",\n\n  \"category\": \"\",\n\n  \"summary\": \"\",\n\n  \"rootCause\": \"\",\n\n  \"likelyReason\": \"\",\n\n  \"customerImpact\": \"\",\n\n  \"affectedFiles\": [\n    {\n      \"file\": \"\",\n      \"line\": null,\n      \"confidence\": \"\"\n    }\n  ],\n\n  \"recommendedFix\": \"\",\n\n  \"confidence\": 0,\n\n  \"developerNotes\": \"\",\n\n  \"isLikelyRegression\": false,\n\n  \"requiresImmediateAttention\": false,\n\n  \"possibleRelatedComponents\": [],\n\n  \"tags\": []\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "3209710c-6315-469b-86eb-91af88fe807a",
+      "name": "Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JyPL18EB0gh95V3U",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const parts = $json.content?.parts ?? [];\nconst rawResponse = parts.map(p => p.text ?? '').join('');\n\nconst cleaned = rawResponse\n  .trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```\\s*$/i, '')\n  .trim();\n\nlet parsed = null;\nlet parseSuccess = false;\nlet parseError = null;\n\ntry {\n  parsed = JSON.parse(cleaned);\n  parseSuccess = true;\n} catch (err) {\n  parseError = err.message;\n}\n\nreturn {\n  json: {\n    rawResponse,\n    parseSuccess,\n    parseError,\n    analysis: parsed,\n    analysedAt: new Date().toISOString(),\n    modelName: \"gemini-3-flash-preview\",\n    promptVersion: \"v1\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "a4f91540-98e2-4e55-b5ef-5c9a9b9280c6",
+      "name": "Code (Parse & Validate AI Response)"
+    },
+    {
+      "parameters": {
+        "sendTo": "kumarprakharkp143@gmail.com, 6602291@rungta.org",
+        "subject": "={{$json.subject}}",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1920,
+        -192
+      ],
+      "id": "65e62d5b-4137-4db7-b99b-858a55d25a47",
+      "name": "Send a message",
+      "webhookId": "11868f96-c64b-40eb-b5f0-eb9da2158483",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "rtPMn9jzLR5pmIdv",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "ProductionErrorAnalysis",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "productionErrorId",
+              "fieldValue": "={{ $('Webhook').item.json.errorId }}"
+            },
+            {
+              "fieldId": "modelName",
+              "fieldValue": "={{ $json.modelName }}"
+            },
+            {
+              "fieldId": "promptVersion",
+              "fieldValue": "={{ $json.promptVersion }}"
+            },
+            {
+              "fieldId": "severity",
+              "fieldValue": "={{ $json.analysis.severity }}"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $json.analysis.category }}"
+            },
+            {
+              "fieldId": "rootCause",
+              "fieldValue": "={{ $json.analysis.rootCause }}"
+            },
+            {
+              "fieldId": "likelyReason",
+              "fieldValue": "={{ $json.analysis.likelyReason }}"
+            },
+            {
+              "fieldId": "customerImpact",
+              "fieldValue": "={{ $json.analysis.customerImpact }}"
+            },
+            {
+              "fieldId": "affectedFiles",
+              "fieldValue": "={{ $json.analysis.affectedFiles }}"
+            },
+            {
+              "fieldId": "recommendedFix",
+              "fieldValue": "={{ $json.analysis.recommendedFix }}"
+            },
+            {
+              "fieldId": "confidence",
+              "fieldValue": "={{ $json.analysis.confidence }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.analysis.summary }}"
+            },
+            {
+              "fieldId": "developerNotes",
+              "fieldValue": "={{ $json.analysis.developerNotes }}"
+            },
+            {
+              "fieldId": "rawResponse",
+              "fieldValue": "={{ $json.rawResponse }}"
+            },
+            {
+              "fieldId": "createdAt",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "id",
+              "fieldValue": "={{(+new Date).toString(36).slice(-5) + Math.random().toString(36).substr(2, 5)}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        -96
+      ],
+      "id": "d949ab4f-b4f6-4339-9f24-1e655188cb72",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "rQQNI3SzgqbseiBr",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "SchoolChakra<schoolchakra-incident@info.kumarprakhar.online>",
+        "to": "kumarprakharkp143@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }} new mail",
+        "additionalOptions": {}
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ],
+      "id": "dab3421e-2fa6-4199-8c43-b0d4ea372144",
+      "name": "Send a new email",
+      "webhookId": "d1a422ec-aea8-4246-8a41-67d208402756",
+      "credentials": {
+        "resendApi": {
+          "id": "y4zZQ2M2MGPboozv",
+          "name": "Resend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $(\"Webhook\").first().json;\nconst analysis = $('Code (Parse & Validate AI Response)').first().json.analysis;\n\nconsole.log(body);\n\nconst severity = analysis?.severity ?? \"Unknown\";\n\nconst severityColors = {\n  Critical: \"#dc2626\",\n  High: \"#ea580c\",\n  Medium: \"#ca8a04\",\n  Low: \"#16a34a\",\n  Unknown: \"#6b7280\"\n};\n\nconst color = severityColors[severity] ?? severityColors.Unknown;\n\nconst confidence =\n  analysis?.confidence != null\n    ? `${Math.round(analysis.confidence * 100)}%`\n    : \"N/A\";\n\nconst affectedFiles = (analysis?.affectedFiles ?? [])\n  .map(\n    file =>\n      `<li><code>${file.file}${\n        file.line ? `:${file.line}` : \"\"\n      }</code> <small>(${file.confidence})</small></li>`\n  )\n  .join(\"\");\n\nconst tags = (analysis?.tags ?? [])\n  .map(\n    tag =>\n      `<span style=\"display:inline-block;padding:4px 8px;margin:2px;border-radius:4px;background:#eef2ff;font-size:12px;\">${tag}</span>`\n  )\n  .join(\"\");\n\nconst subject = `🚨 [${severity}] Production Incident - ${body.httpMethod} ${body.route}`;\n\nconst html = `\n<!DOCTYPE html>\n<html>\n\n<body style=\"font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;padding:30px;\">\n\n<div style=\"max-width:900px;margin:auto;background:white;border-radius:10px;overflow:hidden;border:1px solid #ddd;\">\n\n<div style=\"background:${color};padding:20px;color:white;\">\n<h1 style=\"margin:0;\">🚨 Production Incident</h1>\n<div style=\"margin-top:8px;font-size:18px;font-weight:bold;\">\n${severity}\n</div>\n</div>\n\n<div style=\"padding:25px;\">\n\n<h2>Incident Information</h2>\n\n<table width=\"100%\" cellspacing=\"0\" cellpadding=\"6\">\n\n<tr>\n<td><strong>Timestamp</strong></td>\n<td>${body.timestamp}</td>\n</tr>\n\n<tr>\n<td><strong>Environment</strong></td>\n<td>${body.environment}</td>\n</tr>\n\n<tr>\n<td><strong>Request ID</strong></td>\n<td><code>${body.requestId}</code></td>\n</tr>\n\n<tr>\n<td><strong>Occurrence Count</strong></td>\n<td>${body.occurrenceCount}</td>\n</tr>\n\n<tr>\n<td><strong>Fingerprint</strong></td>\n<td><code>${body.fingerprint}</code></td>\n</tr>\n\n</table>\n\n<hr>\n\n<h2>API Information</h2>\n\n<table width=\"100%\" cellspacing=\"0\" cellpadding=\"6\">\n\n<tr>\n<td><strong>Endpoint</strong></td>\n<td>${body.httpMethod} ${body.route}</td>\n</tr>\n\n<tr>\n<td><strong>Status Code</strong></td>\n<td>${body.statusCode}</td>\n</tr>\n\n</table>\n\n<hr>\n\n<h2>School & User</h2>\n\n<table width=\"100%\" cellspacing=\"0\" cellpadding=\"6\">\n\n<tr>\n<td><strong>School</strong></td>\n<td>${body.school?.name ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>School ID</strong></td>\n<td>${body.school?.id ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>User</strong></td>\n<td>${body.user?.id ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Role</strong></td>\n<td>${body.user?.role ?? \"-\"}</td>\n</tr>\n\n</table>\n\n<hr>\n\n<h2>AI Analysis</h2>\n\n<table width=\"100%\" cellspacing=\"0\" cellpadding=\"6\">\n\n<tr>\n<td width=\"220\"><strong>Summary</strong></td>\n<td>${analysis?.summary ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Root Cause</strong></td>\n<td>${analysis?.rootCause ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Likely Reason</strong></td>\n<td>${analysis?.likelyReason ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Customer Impact</strong></td>\n<td>${analysis?.customerImpact ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Recommended Fix</strong></td>\n<td>${analysis?.recommendedFix ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Confidence</strong></td>\n<td>${confidence}</td>\n</tr>\n\n<tr>\n<td><strong>Requires Immediate Attention</strong></td>\n<td>${analysis?.requiresImmediateAttention ? \"✅ Yes\" : \"No\"}</td>\n</tr>\n\n<tr>\n<td><strong>Regression</strong></td>\n<td>${analysis?.isLikelyRegression ? \"Likely\" : \"No\"}</td>\n</tr>\n\n</table>\n\n<hr>\n\n<h2>Affected Files</h2>\n\n<ul>\n\n${affectedFiles || \"<li>No files identified.</li>\"}\n\n</ul>\n\n<hr>\n\n<h2>Tags</h2>\n\n${tags || \"None\"}\n\n<hr>\n\n<h2>Server Information</h2>\n\n<table width=\"100%\" cellspacing=\"0\" cellpadding=\"6\">\n\n<tr>\n<td><strong>Version</strong></td>\n<td>${body.serverMetadata?.appVersion ?? \"-\"}</td>\n</tr>\n\n<tr>\n<td><strong>Git Commit</strong></td>\n<td><code>${body.serverMetadata?.gitCommit ?? \"-\"}</code></td>\n</tr>\n\n<tr>\n<td><strong>Hostname</strong></td>\n<td>${body.serverMetadata?.hostname ?? \"-\"}</td>\n</tr>\n\n</table>\n\n<hr>\n\n<h2>Error</h2>\n\n<p><strong>${body.error?.name}</strong></p>\n\n<p>${body.error?.message}</p>\n\n<h2>Stack Trace</h2>\n\n<pre style=\"\nbackground:#111827;\ncolor:#f9fafb;\npadding:16px;\nborder-radius:8px;\noverflow:auto;\nfont-size:12px;\nline-height:1.5;\nwhite-space:pre-wrap;\n\">${body.error?.stackTrace}</pre>\n\n</div>\n\n<div style=\"padding:18px;background:#f9fafb;text-align:center;font-size:12px;color:#666;\">\nGenerated automatically by School Chakra Production Incident Pipeline\n</div>\n\n</div>\n\n</body>\n\n</html>\n`;\n\nreturn [\n  {\n    json: {\n      subject,\n      html,\n      severity\n      // body\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        -96
+      ],
+      "id": "56719b51-11b0-4e35-83f8-55f445064e4c",
+      "name": "Prepare HTML Email Content"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "environment": "production",
+          "timestamp": "2026-06-22T10:29:36.000Z",
+          "requestId": "req_773b9a1f4c2e",
+          "httpMethod": "GET",
+          "route": "/api/students/records",
+          "statusCode": 500,
+          "school": {
+            "id": "sch_1024",
+            "name": "Oakridge International School"
+          },
+          "user": {
+            "id": "usr_8829",
+            "role": "teacher",
+            "email": "m.davis@oakridge.edu"
+          },
+          "requestMetadata": {
+            "ip": "198.51.100.24",
+            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
+            "queryParams": {
+              "status": "active"
+            },
+            "headers": {
+              "accept": "application/json",
+              "authorization": "Bearer <redacted_token>"
+            }
+          },
+          "serverMetadata": {
+            "appVersion": "2.15.0",
+            "gitCommit": "f4a829b",
+            "hostname": "api-prod-01"
+          },
+          "error": {
+            "name": "PrismaClientValidationError",
+            "message": "Unknown argument `isDeleted`. Did you mean `deleted`?",
+            "stackTrace": "PrismaClientValidationError: Unknown argument `isDeleted`. Did you mean `deleted`?\n    at Document.validate (/app/node_modules/@prisma/client/runtime/library.js:123:45)\n    at StudentController.getRecords (/app/src/controllers/studentController.js:88:22)"
+          },
+          "fingerprint": "fp_8843d7f92416211d",
+          "occurrenceCount": 1,
+          "isFirstOccurrence": true,
+          "errorId": "err_5f9d3a2b1c4e8"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "IF (Payload Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF (Payload Validation)": {
+      "main": [
+        [
+          {
+            "node": "IF (First Occurrence?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF (First Occurrence?)": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields (Prepare AI Context)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields (Prepare AI Context)": {
+      "main": [
+        [
+          {
+            "node": "Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini": {
+      "main": [
+        [
+          {
+            "node": "Code (Parse & Validate AI Response)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (Parse & Validate AI Response)": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Prepare HTML Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare HTML Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a new email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1
+  },
+  "versionId": "1e992647-1810-44ca-997b-854a1999a6e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c18c349dbcafa9eb3817ccc2363030cbc7645e8be0a2d6a2c68d9549a0e474d8"
+  },
+  "nodeGroups": [],
+  "id": "DZ638iD21JLZvjQh",
+  "tags": []
+}

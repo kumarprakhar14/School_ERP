@@ -33,4 +33,7 @@ export const config = {
         privateKey: requireEnv("VAPID_PRIVATE_KEY"),
         subject: requireEnv("VAPID_SUBJECT", "mailto:info@contact.kumarprakhar.online"),
     },
+    errorReportingWebhookUrl: requireEnv("ERROR_REPORTING_WEBHOOK_URL", ""),
+    appVersion: requireEnv("APP_VERSION", "1.0.0"),
+    gitCommit: requireEnv("RENDER_GIT_COMMIT", "local-build"),
 };
