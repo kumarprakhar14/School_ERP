@@ -31,6 +31,8 @@ import Fees from './pages/Fees';
 import Profile from './pages/Profile';
 import TimeTable from './pages/TimeTable';
 import Notifications from './pages/Notifications';
+import InvoicePage from './pages/InvoicePage';
+import PaymentReceiptPage from './pages/PaymentReceiptPage';
 
 function DashboardRouter() {
   const user = useAuthStore(state => state.user);
@@ -128,6 +130,8 @@ function App() {
             <Route path="timetable" element={<TimeTable />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="invoices/:invoiceId" element={<InvoicePage />} />
+            <Route path="payments/:paymentId" element={<PaymentReceiptPage />} />
           </Route>
         </Route>
         
