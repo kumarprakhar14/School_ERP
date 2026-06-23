@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
@@ -11,6 +12,7 @@ import UpiPaymentModal from '../components/UpiPaymentModal';
 import PaymentVerification from '../components/PaymentVerification';
 
 export default function Fees() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' or 'history'
   const [feeSummary, setFeeSummary] = useState([]);
@@ -545,6 +547,9 @@ export default function Fees() {
                     align: 'right',
                     render: (fee) => (
                       <div className="flex justify-end gap-2">
+                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Document">
+                          <FileText className="w-4 h-4" />
+                        </button>
                         <button onClick={() => handleEdit(fee)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -557,23 +562,32 @@ export default function Fees() {
                     header: 'Actions',
                     align: 'right',
                     render: (fee) => {
-                      if (fee.type !== 'Invoice') return null;
-                      const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
-                      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-                      if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold">Paid</span>;
-                      
-                      const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
-                      if (pendingPayment) {
-                        return <span className="text-amber-600 text-xs font-bold px-3 py-1.5 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200 w-fit ml-auto"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>;
-                      }
-
                       return (
-                        <button 
-                          onClick={() => setSelectedInvoiceForUpi(fee.id)}
-                          className="flex items-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors ml-auto"
-                        >
-                          <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
-                        </button>
+                        <div className="flex justify-end gap-2 items-center">
+                          <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Document">
+                            <FileText className="w-4 h-4" />
+                          </button>
+                          {(() => {
+                            if (fee.type !== 'Invoice') return null;
+                            const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
+                            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                            if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold">Paid</span>;
+                            
+                            const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
+                            if (pendingPayment) {
+                              return <span className="text-amber-600 text-xs font-bold px-3 py-1.5 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200 w-fit ml-auto"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>;
+                            }
+
+                            return (
+                              <button 
+                                onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                                className="flex items-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors ml-auto"
+                              >
+                                <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                              </button>
+                            );
+                          })()}
+                        </div>
                       );
                     }
                   }])
@@ -626,6 +640,9 @@ export default function Fees() {
                     </div>
                     {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
                       <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                          <FileText className="w-3.5 h-3.5 mr-1" /> View Document
+                        </button>
                         <button onClick={() => handleEdit(fee)} className="flex items-center text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
                           <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
                         </button>
@@ -634,31 +651,32 @@ export default function Fees() {
                         </button>
                       </div>
                     ) : (
-                      fee.type === 'Invoice' && (() => {
-                        const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
-                        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-                        if (totalPaid >= fee.amount) return <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2"><span className="text-emerald-600 text-xs font-bold px-3 py-1.5">Paid</span></div>;
-                        
-                        const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
-                        if (pendingPayment) {
-                          return (
-                            <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
-                              <span className="flex items-center text-amber-600 text-xs font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>
-                            </div>
-                          );
-                        }
+                      <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                          <FileText className="w-3.5 h-3.5 mr-1" /> View Document
+                        </button>
+                        {fee.type === 'Invoice' && (() => {
+                          const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
+                          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                          if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold px-3 py-1.5">Paid</span>;
+                          
+                          const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
+                          if (pendingPayment) {
+                            return (
+                                <span className="flex items-center text-amber-600 text-xs font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>
+                            );
+                          }
 
-                        return (
-                          <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
-                            <button 
-                              onClick={() => setSelectedInvoiceForUpi(fee.id)}
-                              className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                            >
-                              <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
-                            </button>
-                          </div>
-                        );
-                      })()
+                          return (
+                              <button 
+                                onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                                className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                              >
+                                <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                              </button>
+                          );
+                        })()}
+                      </div>
                     )}
                   </div>
                 )}
