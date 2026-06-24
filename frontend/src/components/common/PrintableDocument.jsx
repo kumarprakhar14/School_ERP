@@ -42,7 +42,7 @@ const PrintableDocument = ({ children, title = "Document" }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button 
               onClick={() => handlePrint()}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors shadow-sm"
+              className="hidden sm:flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors shadow-sm"
             >
               <Printer className="w-4 h-4" />
               Print
@@ -59,8 +59,8 @@ const PrintableDocument = ({ children, title = "Document" }) => {
       </div>
 
       {/* Document Content */}
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-x-auto border border-gray-200">
-        <div ref={contentRef} className="bg-white text-gray-900 relative min-w-[794px]">
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm overflow-x-auto print:overflow-visible border border-gray-200 print:border-none print:shadow-none">
+        <div ref={contentRef} className="bg-white text-gray-900 relative min-w-[794px] print:min-w-0 print:w-full">
           {children}
         </div>
       </div>
