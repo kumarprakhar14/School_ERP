@@ -60,7 +60,7 @@ const InvoicePage = () => {
       <div className="max-w-4xl mx-auto mb-6">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200 gap-4">
           <button 
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/fees')}
             className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors border border-gray-200 sm:border-transparent"
           >
             <ArrowLeft className="w-5 h-5" />
