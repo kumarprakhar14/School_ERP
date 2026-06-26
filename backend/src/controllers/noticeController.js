@@ -81,4 +81,70 @@ const getNotices = async (req, res, next) => {
   }
 };
 
-export { createNotice, getNotices  };
+const updateNotice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, content, targetRoles } = req.body;
+    const schoolId = req.user.schoolId;
+    const role = req.user.role;
+    const userId = req.user.userId;
+
+    const notice = await prisma.notice.findUnique({ where: { id } });
+
+    if (!notice) {
+      return res.status(404).json({ error: 'Notice not found' });
+    }
+
+    if (notice.schoolId !== schoolId) {
+      return res.status(403).json({ error: 'Forbidden: Notice belongs to another school' });
+    }
+
+    if (role !== 'ADMIN' && notice.createdBy !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You can only edit your own notices' });
+    }
+
+    const updatedNotice = await prisma.notice.update({
+      where: { id },
+      data: {
+        ...(title && { title }),
+        ...(content && { content }),
+        ...(targetRoles && { targetRoles })
+      }
+    });
+
+    res.json(updatedNotice);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteNotice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schoolId = req.user.schoolId;
+    const role = req.user.role;
+    const userId = req.user.userId;
+
+    const notice = await prisma.notice.findUnique({ where: { id } });
+
+    if (!notice) {
+      return res.status(404).json({ error: 'Notice not found' });
+    }
+
+    if (notice.schoolId !== schoolId) {
+      return res.status(403).json({ error: 'Forbidden: Notice belongs to another school' });
+    }
+
+    if (role !== 'ADMIN' && notice.createdBy !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You can only delete your own notices' });
+    }
+
+    await prisma.notice.delete({ where: { id } });
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createNotice, getNotices, updateNotice, deleteNotice };

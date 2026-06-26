@@ -8,6 +8,7 @@ import AdminDashboard from './AdminDashboard';
 import GeneralDashboard from './GeneralDashboard';
 import AccountsDashboard from './AccountsDashboard';
 import FallbackDashboard from './FallbackDashboard';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -16,12 +17,16 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // New Notice State
+  // New/Edit Notice State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetRole, setTargetRole] = useState('');
   const [posting, setPosting] = useState(false);
   const [isDispatchExpanded, setIsDispatchExpanded] = useState(false);
+  const [editingNoticeId, setEditingNoticeId] = useState(null);
+  
+  // Delete Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, noticeId: null });
 
   useEffect(() => {
     fetchDashboardData();
@@ -56,18 +61,62 @@ export default function Dashboard() {
     setPosting(true);
     try {
       const targetRoles = targetRole ? [targetRole] : [];
-      await api.post('/notices', { title, content, targetRoles });
-      setTitle('');
-      setContent('');
-      setTargetRole('');
-      toast.success('Notice posted successfully');
+      if (editingNoticeId) {
+        await api.put(`/notices/${editingNoticeId}`, { title, content, targetRoles });
+        toast.success('Notice updated successfully');
+      } else {
+        await api.post('/notices', { title, content, targetRoles });
+        toast.success('Notice posted successfully');
+      }
+      resetNoticeForm();
       fetchDashboardData();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to post notice');
+      toast.error(editingNoticeId ? 'Failed to update notice' : 'Failed to post notice');
     } finally {
       setPosting(false);
     }
+  };
+
+  const handleDeleteNotice = (id) => {
+    setDeleteConfirm({ isOpen: true, noticeId: id });
+  };
+
+  const confirmDeleteNotice = async () => {
+    const id = deleteConfirm.noticeId;
+    if (!id) return;
+    try {
+      await api.delete(`/notices/${id}`);
+      toast.success('Notice deleted successfully');
+      if (editingNoticeId === id) resetNoticeForm();
+      fetchDashboardData();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete notice');
+    } finally {
+      setDeleteConfirm({ isOpen: false, noticeId: null });
+    }
+  };
+
+  const startEditingNotice = (notice) => {
+    setEditingNoticeId(notice.id);
+    setTitle(notice.title);
+    setContent(notice.content);
+    setTargetRole(notice.targetRoles?.[0] || '');
+    setIsDispatchExpanded(true);
+    // Scroll to form
+    setTimeout(() => {
+      const el = document.getElementById('post-notice');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const resetNoticeForm = () => {
+    setEditingNoticeId(null);
+    setTitle('');
+    setContent('');
+    setTargetRole('');
+    setIsDispatchExpanded(false);
   };
 
   // -----------------------------------------------------------------------------
@@ -94,11 +143,48 @@ export default function Dashboard() {
   // Route role views
   if (user?.role === 'ADMIN') {
     return (
-      <AdminDashboard
+      <>
+        <AdminDashboard
+          stats={stats}
+          notices={notices}
+          user={user}
+          navigate={navigate}
+          title={title}
+          setTitle={setTitle}
+          content={content}
+          setContent={setContent}
+          targetRole={targetRole}
+          setTargetRole={setTargetRole}
+          posting={posting}
+          handlePostNotice={handlePostNotice}
+          isDispatchExpanded={isDispatchExpanded}
+          setIsDispatchExpanded={setIsDispatchExpanded}
+          editingNoticeId={editingNoticeId}
+          resetNoticeForm={resetNoticeForm}
+          handleDeleteNotice={handleDeleteNotice}
+          startEditingNotice={startEditingNotice}
+        />
+        <ConfirmDialog
+          isOpen={deleteConfirm.isOpen}
+          title="Delete Notice"
+          message="Are you sure you want to delete this notice? This action cannot be undone."
+          confirmText="Yes, Delete"
+          onConfirm={confirmDeleteNotice}
+          onCancel={() => setDeleteConfirm({ isOpen: false, noticeId: null })}
+        />
+      </>
+    );
+  }
+
+  // Fallback / Preserved Views for STUDENT and TEACHER
+  return (
+    <>
+      <GeneralDashboard
         stats={stats}
         notices={notices}
         user={user}
         navigate={navigate}
+        loading={loading}
         title={title}
         setTitle={setTitle}
         content={content}
@@ -107,28 +193,19 @@ export default function Dashboard() {
         setTargetRole={setTargetRole}
         posting={posting}
         handlePostNotice={handlePostNotice}
-        isDispatchExpanded={isDispatchExpanded}
-        setIsDispatchExpanded={setIsDispatchExpanded}
+        editingNoticeId={editingNoticeId}
+        resetNoticeForm={resetNoticeForm}
+        handleDeleteNotice={handleDeleteNotice}
+        startEditingNotice={startEditingNotice}
       />
-    );
-  }
-
-  // Fallback / Preserved Views for STUDENT and TEACHER
-  return (
-    <GeneralDashboard
-      stats={stats}
-      notices={notices}
-      user={user}
-      navigate={navigate}
-      loading={loading}
-      title={title}
-      setTitle={setTitle}
-      content={content}
-      setContent={setContent}
-      targetRole={targetRole}
-      setTargetRole={setTargetRole}
-      posting={posting}
-      handlePostNotice={handlePostNotice}
-    />
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Notice"
+        message="Are you sure you want to delete this notice? This action cannot be undone."
+        confirmText="Yes, Delete"
+        onConfirm={confirmDeleteNotice}
+        onCancel={() => setDeleteConfirm({ isOpen: false, noticeId: null })}
+      />
+    </>
   );
 }
