@@ -8,4 +8,10 @@ const createNoticeSchema = z.object({
   targetRoles: z.array(z.enum(VALID_ROLES)).optional().default([])
 });
 
-export { createNoticeSchema  };
+const updateNoticeSchema = z.object({
+  title: z.string().min(1, 'Title cannot be empty').optional(),
+  content: z.string().min(1, 'Content cannot be empty').optional(),
+  targetRoles: z.array(z.enum(VALID_ROLES)).optional()
+});
+
+export { createNoticeSchema, updateNoticeSchema };

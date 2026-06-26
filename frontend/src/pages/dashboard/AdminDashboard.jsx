@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Bell, Send, User, Clock, BookOpen, Calendar,
   FileText, Activity, Check, ArrowRight, UploadCloud, UserPlus, UserCheck,
-  AlertCircle, DollarSign, ListTodo, ShieldCheck
+  AlertCircle, DollarSign, ListTodo, ShieldCheck, Edit, Trash2, X
 } from 'lucide-react';
 import PushNotification from '../../components/PushNotification';
 import { getGreeting, getCurrentDateText, getActivityIcon, getActivityBg, formatActivityTime } from './utils';
@@ -119,6 +119,10 @@ export default function AdminDashboard({
   handlePostNotice,
   isDispatchExpanded,
   setIsDispatchExpanded,
+  editingNoticeId,
+  resetNoticeForm,
+  handleDeleteNotice,
+  startEditingNotice,
 }) {
   if (!stats) return null;
 
@@ -580,7 +584,7 @@ export default function AdminDashboard({
               onClick={() => setIsDispatchExpanded(!isDispatchExpanded)}
             >
               <h3 className="font-bold text-gray-900 flex items-center">
-                <Send className="w-4 h-4 mr-2 text-indigo-500" /> Dispatch Announcement
+                <Send className="w-4 h-4 mr-2 text-indigo-500" /> {editingNoticeId ? 'Edit Announcement' : 'Dispatch Announcement'}
               </h3>
               <span className="text-xs text-indigo-600 font-bold hover:underline bg-indigo-50/50 px-2 py-0.5 rounded-lg border border-indigo-100">
                 {isDispatchExpanded ? 'Collapse' : 'Expand'}
@@ -614,13 +618,24 @@ export default function AdminDashboard({
                   <option value="STUDENT">Students Only</option>
                   <option value="ACCOUNTS">Accounts Only</option>
                 </select>
-                <button
-                  type="submit"
-                  disabled={posting}
-                  className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-70 flex items-center justify-center gap-1.5 cursor-pointer border-0"
-                >
-                  <Send className="w-3.5 h-3.5" /> {posting ? 'Dispatching...' : 'Dispatch Announcement'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={posting}
+                    className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-70 flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                  >
+                    <Send className="w-3.5 h-3.5" /> {posting ? (editingNoticeId ? 'Updating...' : 'Dispatching...') : (editingNoticeId ? 'Update Notice' : 'Dispatch Announcement')}
+                  </button>
+                  {editingNoticeId && (
+                    <button
+                      type="button"
+                      onClick={resetNoticeForm}
+                      className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-xs hover:bg-gray-200 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                    >
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </button>
+                  )}
+                </div>
               </form>
             )}
           </div>
@@ -643,11 +658,23 @@ export default function AdminDashboard({
                 <div>
                   <div className="flex justify-between items-start gap-3">
                     <h4 className="text-sm font-bold text-gray-900 leading-snug">{notice.title}</h4>
-                    {notice.targetRoles?.length > 0 && (
-                      <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[9px] font-bold rounded-md uppercase shrink-0">
-                        {notice.targetRoles.join(', ')}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {notice.targetRoles?.length > 0 && (
+                        <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[9px] font-bold rounded-md uppercase">
+                          {notice.targetRoles.join(', ')}
+                        </span>
+                      )}
+                      {(user?.role === 'ADMIN' || user?.userId === notice.createdBy || user?.id === notice.createdBy) && (
+                        <div className="flex items-center gap-1 ml-1">
+                          <button onClick={() => startEditingNotice(notice)} className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded bg-transparent border-0 cursor-pointer" title="Edit">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDeleteNotice(notice.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded bg-transparent border-0 cursor-pointer" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <p className="text-xs text-gray-600 mt-2 whitespace-pre-wrap leading-relaxed line-clamp-4 font-medium">
                     {notice.content}

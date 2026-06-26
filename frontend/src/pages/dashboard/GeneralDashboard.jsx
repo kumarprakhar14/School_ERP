@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Bell, Send, User, Clock, CheckCircle, Calendar, 
-  FileText, Activity, ListTodo
+  FileText, Activity, ListTodo, Edit, Trash2, X
 } from 'lucide-react';
 import PushNotification from '../../components/PushNotification';
 import { getGreeting } from './utils';
@@ -20,6 +20,10 @@ export default function GeneralDashboard({
   setTargetRole,
   posting,
   handlePostNotice,
+  editingNoticeId,
+  resetNoticeForm,
+  handleDeleteNotice,
+  startEditingNotice,
 }) {
 
   // -----------------------------------------------------------------------------
@@ -84,11 +88,23 @@ export default function GeneralDashboard({
                 <div key={notice.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all group">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">{notice.title}</h3>
-                    {notice.targetRoles?.length > 0 && (
-                      <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-indigo-100 shrink-0 ml-3">
-                        {notice.targetRoles.join(', ')} Only
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {notice.targetRoles?.length > 0 && (
+                        <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-indigo-100">
+                          {notice.targetRoles.join(', ')} Only
+                        </span>
+                      )}
+                      {(user?.role === 'ADMIN' || user?.userId === notice.createdBy || user?.id === notice.createdBy) && (
+                        <div className="flex items-center gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEditingNotice(notice)} className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded bg-transparent border-0 cursor-pointer" title="Edit">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteNotice(notice.id)} className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded bg-transparent border-0 cursor-pointer" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed mb-4">{notice.content}</p>
                   <div className="flex items-center text-xs text-gray-400 font-medium pt-3 border-t border-gray-100">
@@ -130,7 +146,7 @@ export default function GeneralDashboard({
           {user?.role === 'TEACHER' && (
             <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
               <h3 className="font-bold text-gray-900 mb-4 flex items-center">
-                <Send className="w-4 h-4 mr-2 text-indigo-500" /> Post an Announcement
+                <Send className="w-4 h-4 mr-2 text-indigo-500" /> {editingNoticeId ? 'Edit Announcement' : 'Post an Announcement'}
               </h3>
               <form onSubmit={handlePostNotice} className="space-y-3">
                 <input 
@@ -159,13 +175,24 @@ export default function GeneralDashboard({
                   <option value="STUDENT">Students Only</option>
                   <option value="ACCOUNTS">Accounts Only</option>
                 </select>
-                <button 
-                  type="submit" 
-                  disabled={posting}
-                  className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-70"
-                >
-                  {posting ? 'Posting...' : 'Publish Notice'}
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    type="submit" 
+                    disabled={posting}
+                    className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-70 border-0 cursor-pointer"
+                  >
+                    {posting ? (editingNoticeId ? 'Updating...' : 'Posting...') : (editingNoticeId ? 'Update Notice' : 'Publish Notice')}
+                  </button>
+                  {editingNoticeId && (
+                    <button
+                      type="button"
+                      onClick={resetNoticeForm}
+                      className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors shadow-sm border-0 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           )}
