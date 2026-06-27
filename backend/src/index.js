@@ -30,7 +30,7 @@ import schoolOverrideRoutes from './routes/schoolOverride.routes.js';
 import globalFlagRoutes from './routes/globalFlag.routes.js';
 import billingRoutes from './routes/billing.routes.js';
 import { requestContextMiddleware } from './middlewares/requestContext.middleware.js';
-import { reportError } from './services/errorReporting.service.js';
+import { reportError } from './services/errorReportingService.js';
 import { getContext } from './utils/requestContext.js';
 
 const app = express();
