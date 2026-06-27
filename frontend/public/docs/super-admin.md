@@ -13,6 +13,8 @@ When you log in, you land on the **Super Admin Dashboard** which gives you a bir
 | **Dashboard** | Overview of all schools and platform health |
 | **Schools** | Register, manage, and control all school accounts |
 | **Administrators** | Create and manage other Super Admin accounts |
+| **Plans** | Define and manage subscription plans and their pricing tiers |
+| **Billing** | View and manage school subscription orders |
 | **Bug Reports** | View and action bug reports submitted by users |
 
 ---
@@ -76,3 +78,33 @@ All users — regardless of their school — can submit bug reports directly fro
 - You can filter reports and paginate through them if there are many.
 
 This section helps you stay on top of user-reported issues across all schools without needing to contact each school individually.
+
+---
+
+## Plans
+
+The Plans section is where you manage the subscription tiers available on the platform.
+
+### What you can do here
+
+- **Create a Plan** — Define a new subscription plan with a name and description.
+- **Add Pricing Tiers** — Each plan can have multiple pricing options (e.g., Monthly at ₹999/month, Annual at ₹9,999/year). Add as many tiers as you need.
+- **Edit or Delete Plans and Pricing** — Update plan details or remove outdated pricing options at any time.
+- **Assign Features to Plans** — Each plan can include a set of feature flags that unlock specific capabilities for schools on that plan. Manage these feature-to-plan mappings here.
+
+> Plans define *what* a school gets access to. To activate a plan for a specific school, go to that school's detail page (in the **Schools** section) and assign the plan from there.
+
+---
+
+## Billing
+
+The Billing section gives you a full view of subscription orders across all schools on the platform.
+
+### What you can do here
+
+- **View All Orders** — See every billing order ever placed across all schools, including the plan, pricing tier, and status.
+- **View a School's Orders** — Filter orders by school to see a specific school's purchase history.
+- **Create an Order** — Manually generate a billing order for a school (e.g., when a school pays offline).
+- **Cancel an Order** — Cancel an active order if needed.
+- **Simulate Payment** — In testing or staging environments, use the Simulate option to confirm a pending payment without going through a real payment provider. This is used for internal testing only.
+

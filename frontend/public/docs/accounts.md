@@ -39,6 +39,7 @@ When you open the Fees page, you see a **summary table** showing all students in
   - **Pending** — an invoice exists but no payment has been recorded yet.
   - **Partially Paid** — some payment received, but balance remains.
   - **Overdue** — unpaid balance with a due date that has already passed.
+  - **No Fees** — no invoices have been generated for this student yet.
 
 You can use this summary to quickly identify which students have outstanding dues.
 
@@ -71,10 +72,42 @@ Once you receive a fee payment from a student, record it here:
    - **Remarks** *(optional)* — Any notes.
 3. Click **Record Payment**. The payment is logged immediately and the student's fee status updates accordingly.
 
+### Editing and Deleting Records
+
+If you need to correct a mistake, you can edit or delete existing invoices and payments:
+
+- **Edit Invoice** — Update the amount, month, year, due date, or remarks on an invoice.
+- **Delete Invoice** — Permanently removes the invoice and all its associated payments. Use this carefully — this action cannot be undone.
+- **Edit Payment** — Update the amount, payment mode, reference number, or remarks on a recorded payment.
+- **Delete Payment** — Removes a single payment record.
+
 ### Transaction History
 
 Below the summary, you can view a chronological log of all invoices and payments across the school. Each entry is labeled as either an **Invoice** or a **Payment**, along with the amount, date, and student details.
 
 You can filter the history by a specific student to see only their records.
 
+### Viewing and Downloading Invoices & Receipts
+
+Every row in the Transaction History has a **document icon** (📄) on the right. Clicking it opens a formatted PDF document:
+
+- For an **Invoice** row — opens the full fee invoice showing the student's name, class, invoice number, billing period, amount, balance due, and payment status watermark (PAID / PARTIALLY PAID / PENDING). The invoice includes the school logo and a QR code for authenticity verification.
+- For a **Payment** row — opens the payment receipt with the same details plus the payment mode and reference number.
+
+On desktop, the PDF is previewed directly in the browser. On mobile, a **Download PDF** button is provided instead. Both views include a **Download PDF** button to save or print the document.
+
+### UPI Payment Verification
+
+When a student pays via UPI from the app and submits their payment proof (UTR number and optional screenshot), it lands in a **Pending Verification** queue for you to review.
+
+To access it:
+1. Go to the **Fees** page and look for the **Pending UPI Payments** section (or tab).
+2. You will see a list of all payments awaiting verification, each showing the student name, invoice details, the UTR number they submitted, the amount, and any screenshot they attached.
+3. Review the details and cross-check the UTR with your UPI app or bank statement.
+4. Click **Approve** to confirm the payment — the student's invoice will be marked as paid.
+   Or click **Reject** if the payment cannot be verified — the student will be notified.
+
+> Only payments with status **Pending Verification** appear in this queue. Approved and rejected payments move out of the queue automatically.
+
 > If you need to bulk-import fees from a spreadsheet (e.g., for a new academic year), ask your school Admin to use the **Data Import** feature in their panel.
+

@@ -22,7 +22,8 @@ When you open the Dashboard, you will see:
 
 - **Notice Board** — All active announcements published for your school, visible to you and your students.
 - **Teacher Shortcuts** — Quick-access buttons to jump directly to Mark Attendance or Post Assignment.
-- **Post an Announcement** — A simple form to publish a notice. Fill in a title, write the message, and optionally choose who should see it (Everyone, Students Only, Teachers Only, or Accounts Only). Click "Publish Notice" and it will appear on everyone's dashboard immediately.
+- **Post an Announcement** — A simple form to publish a notice. Fill in a title, write the message, and choose who should see it using the **audience checkboxes**: you can select Everyone, or any combination of Students, Teachers, and Accounts. If you tick all individual roles, the system automatically treats it as Everyone. Click **Publish Notice** and it will appear on the relevant dashboards immediately.
+- **Edit or Delete a Notice** — You can click the **Edit** button on any notice you posted to update its title, message, or audience. Edited notices show a subtle **Edited** label. Use the **Delete** button to permanently remove a notice.
 
 ---
 
