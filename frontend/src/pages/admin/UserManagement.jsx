@@ -400,20 +400,34 @@ export default function UserManagement() {
                     <input type="text" value={formData.designation} onChange={e => setFormData({...formData, designation: e.target.value})} className="w-full border border-emerald-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white" placeholder="e.g. Science Teacher" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-emerald-800 mb-1">Assign Sections (Hold Ctrl/Cmd to select multiple)</label>
-                    <select multiple value={formData.teacherSectionIds} onChange={e => {
-                      const options = [...e.target.selectedOptions];
-                      const values = options.map(option => option.value);
-                      setFormData({...formData, teacherSectionIds: values});
-                    }} className="w-full border border-emerald-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white h-24">
+                    <label className="block text-sm font-medium text-emerald-800 mb-2">Assign Sections</label>
+                    <div className="w-full border border-emerald-200 rounded-lg p-3 bg-white max-h-48 overflow-y-auto space-y-4 custom-scrollbar">
                       {classes.map(cls => (
-                        <optgroup key={cls.id} label={`Class ${cls.name}`}>
-                          {cls.sections?.map(sec => (
-                            <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-                          ))}
-                        </optgroup>
+                        <div key={cls.id}>
+                          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Class {cls.name}</div>
+                          <div className="flex flex-wrap gap-2">
+                            {cls.sections?.map(sec => (
+                              <label key={sec.id} className={`cursor-pointer flex items-center px-3 py-1.5 rounded-md border text-xs font-semibold transition-colors select-none ${formData.teacherSectionIds.includes(sec.id) ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                                <input
+                                  type="checkbox"
+                                  className="hidden"
+                                  checked={formData.teacherSectionIds.includes(sec.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData({...formData, teacherSectionIds: [...formData.teacherSectionIds, sec.id]});
+                                    } else {
+                                      setFormData({...formData, teacherSectionIds: formData.teacherSectionIds.filter(id => id !== sec.id)});
+                                    }
+                                  }}
+                                />
+                                Section {sec.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       ))}
-                    </select>
+                      {classes.length === 0 && <div className="text-xs text-gray-400 italic">No classes available</div>}
+                    </div>
                   </div>
                 </div>
               )}
