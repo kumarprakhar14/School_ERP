@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ export default function SuperAdminProfile() {
   const [formData, setFormData] = useState({});
   const [profilePic, setProfilePic] = useState(null);
   const [previewPicUrl, setPreviewPicUrl] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   // Editing state for inline edits
   const [editingField, setEditingField] = useState(null);
@@ -181,7 +183,10 @@ export default function SuperAdminProfile() {
           <div className="absolute -top-16 left-8">
             <div className="relative group">
               <div className="w-32 h-32 bg-white rounded-full p-2 shadow-lg">
-                <div className="w-full h-full bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full flex items-center justify-center text-blue-600 overflow-hidden">
+                <div 
+                  className={`w-full h-full bg-gradient-to-tr from-blue-100 to-purple-100 rounded-full flex items-center justify-center text-blue-600 overflow-hidden ${previewPicUrl ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''}`}
+                  onClick={() => previewPicUrl && setShowImageModal(true)}
+                >
                   {previewPicUrl ? (
                     <img src={previewPicUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
@@ -321,6 +326,20 @@ export default function SuperAdminProfile() {
         onConfirm={handleDeleteAccount}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {showImageModal && previewPicUrl && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowImageModal(false)}>
+          <div className="relative max-w-5xl w-full flex justify-center animate-in zoom-in duration-200">
+            <img 
+              src={previewPicUrl} 
+              alt="Profile Preview" 
+              className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
