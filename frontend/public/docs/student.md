@@ -84,9 +84,36 @@ At the top of the Fees page, you will see a summary of your overall fee status:
   - **Pending** — an invoice was generated but no payment has been received yet.
   - **Partially Paid** — some amount has been paid but a balance remains.
   - **Overdue** — there is an outstanding balance and the due date has passed.
+  - **No Fees** — no invoices have been generated for your account yet.
 
 ### Transaction History
 
 Below the summary, you will see a detailed chronological list of all your fee invoices and payments. Each entry shows the amount, date, month/year the fee is for, and the payment mode (for payments).
 
+### Viewing and Downloading Invoices & Receipts
+
+Every row in the Transaction History has a **document icon** (📄) on the right. Clicking it opens a formatted PDF document:
+
+- For an **Invoice** row — opens the full fee invoice showing your name, class, invoice number, billing period, amount, balance due, and payment status watermark (PAID / PARTIALLY PAID / PENDING). The invoice includes the school logo and a QR code for authenticity verification.
+- For a **Payment** row — opens the payment receipt with the same details plus the payment mode and reference number.
+
+On desktop, the PDF is previewed directly in the browser. On mobile, a **Download PDF** button is provided instead. Both views include a **Download PDF** button to save or print the document.
+
+### Paying via UPI / QR Code
+
+If your school has UPI configured, you can pay your fee directly from the app:
+
+1. On the Fees page, open the invoice you want to pay.
+2. Click **Pay via UPI**. A QR code and a UPI deep-link will appear on screen.
+3. Scan the QR code with any UPI app (GPay, PhonePe, Paytm, etc.) or tap the link if you are on mobile.
+4. Complete the payment in your UPI app.
+5. Come back to the app and click **Submit Payment Proof**.
+6. Enter the **UTR number** (the 12-digit reference number shown in your UPI app after a successful payment). You can also optionally attach a screenshot of the payment confirmation.
+7. Click **Submit**. Your payment will be recorded as **Pending Verification**.
+
+Once the school's accounts staff or admin reviews and approves your submission, the status will update to confirmed and your fee record will reflect the payment.
+
+> Your fee status will not change to Paid until the payment has been verified by the school. If you believe there is an error or a delay in verification, contact your school's accounts office.
+
 > Fee invoices and payments are managed by your school's Accounts staff. If you believe there is an error in your fee records, please contact your school office.
+
