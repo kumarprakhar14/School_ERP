@@ -201,7 +201,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="flex sm:justify-end pt-20 sm:pt-4 pb-4 sm:pb-8 h-14">
+          <div className="flex sm:justify-end pt-20 sm:pt-4 pb-4 sm:pb-8">
             {!isAdmin ? (
               <div className="inline-flex items-center px-3 py-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-xs sm:text-sm font-medium">
                 <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />

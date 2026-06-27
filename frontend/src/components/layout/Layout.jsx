@@ -16,7 +16,7 @@ export default function Layout() {
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      <div className="print:hidden">
+      <div className="print:hidden h-full">
         <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       </div>
       <div className="flex-1 flex flex-col relative min-w-0 print:block">

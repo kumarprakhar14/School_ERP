@@ -23,7 +23,6 @@ const roleNavItems = {
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: FileText, label: 'Fees', path: '/fees' },
-    { icon: Settings, label: 'School Settings', path: '/admin/settings' },
   ],
   TEACHER: [
     { icon: Home, label: 'Dashboard', path: '/' },
@@ -53,7 +52,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const navItems = user ? (roleNavItems[user.role] || []) : [];
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/95 md:bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-transform duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)] md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/95 md:bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col transition-transform duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)] md:relative md:h-full md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-transparent">
         <div className="flex items-center">
         {user?.role === 'SUPER_ADMIN' ? (
