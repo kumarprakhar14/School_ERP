@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
-import { Save, Settings as SettingsIcon } from 'lucide-react';
+import { Save, Settings as SettingsIcon, Upload, Trash2 } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
 import { toast } from 'sonner';
 
 export default function Settings() {
   const [settings, setSettings] = useState({ themeColor: '#3b82f6', description: '', logoUrl: '', schoolName: '', merchantName: '', upiId: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const fetchProfile = useAuthStore(state => state.fetchProfile);
 
   useEffect(() => {
     fetchSettings();
@@ -31,14 +34,41 @@ export default function Settings() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/schools/settings', settings);
+      const formDataToSend = new FormData();
+      formDataToSend.append('themeColor', settings.themeColor || '');
+      formDataToSend.append('description', settings.description || '');
+      formDataToSend.append('merchantName', settings.merchantName || '');
+      formDataToSend.append('upiId', settings.upiId || '');
+      
+      if (logoFile) {
+        formDataToSend.append('logo', logoFile);
+      } else {
+        formDataToSend.append('logoUrl', settings.logoUrl || '');
+      }
+
+      await api.put('/schools/settings', formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       document.documentElement.style.setProperty('--app-theme-color', settings.themeColor);
       toast.success('Settings saved successfully!');
+      fetchProfile();
     } catch (error) {
       console.error('Failed to save', error);
       toast.error('Failed to save settings.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image size should be less than 2MB');
+        return;
+      }
+      setLogoFile(file);
+      setSettings({ ...settings, logoUrl: URL.createObjectURL(file) });
     }
   };
 
@@ -86,19 +116,42 @@ export default function Settings() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">School Logo URL</label>
-            <input
-              type="url"
-              value={settings.logoUrl || ''}
-              onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow shadow-sm placeholder-gray-400"
-              placeholder="https://example.com/logo.png"
-            />
-            {settings.logoUrl && (
-              <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl inline-block">
-                <img src={settings.logoUrl} alt="Logo Preview" className="h-12 object-contain" />
+            <label className="block text-sm font-semibold text-gray-700 mb-2">School Logo</label>
+            <div className="flex items-center space-x-6">
+              <div className="flex-shrink-0 h-24 w-24 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center overflow-hidden relative group">
+                {settings.logoUrl ? (
+                  <img src={settings.logoUrl} alt="Logo Preview" className="h-full w-full object-contain p-2" />
+                ) : (
+                  <Upload className="w-8 h-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                )}
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-white text-xs font-medium">Change</span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  title="Upload Logo"
+                />
               </div>
-            )}
+              <div className="flex-1">
+                <p className="text-sm text-gray-500">
+                  Upload a high-resolution logo for your school.
+                </p>
+                <p className="text-xs text-gray-400 mt-1 mb-3">Recommended size: 256x256px. Max size: 2MB. (PNG, JPG)</p>
+                {settings.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { setSettings({ ...settings, logoUrl: '' }); setLogoFile(null); }}
+                    className="flex items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Remove Logo
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>

@@ -21,7 +21,7 @@ const updateSchoolSchema = z.object({
 const updateSchoolSettingsSchema = z.object({
   themeColor: z.string().optional(),
   description: z.string().optional(),
-  logoUrl: z.string().url('Invalid logo URL').optional().nullable(),
+  logoUrl: z.union([z.string().url('Invalid logo URL'), z.literal('')]).optional().nullable(),
   merchantName: z.string().optional(),
   upiId: z.string().optional()
 });

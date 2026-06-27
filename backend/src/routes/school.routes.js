@@ -9,8 +9,9 @@ import { createSchoolSchema, updateSchoolSchema, updateSchoolSettingsSchema } fr
 router.use(authMiddleware);
 
 // Admin routes for settings
+import { upload } from '../utils/cloudinary.js';
 router.get('/settings', schoolValidityMiddleware, roleMiddleware(['ADMIN']), getSchoolSettings);
-router.put('/settings', schoolValidityMiddleware, roleMiddleware(['ADMIN']), validate({ body: updateSchoolSettingsSchema }), updateSchoolSettings);
+router.put('/settings', schoolValidityMiddleware, roleMiddleware(['ADMIN']), upload.single('logo'), validate({ body: updateSchoolSettingsSchema }), updateSchoolSettings);
 
 // Super Admin routes for school CRUD
 router.get('/', roleMiddleware(['SUPER_ADMIN']), getSchools);

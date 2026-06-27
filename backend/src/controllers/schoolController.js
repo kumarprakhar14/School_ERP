@@ -138,11 +138,21 @@ const getSchoolSettings = async (req, res, next) => {
 // ADMIN: Update current school settings
 const updateSchoolSettings = async (req, res, next) => {
   try {
-    const { themeColor, description, logoUrl, merchantName, upiId } = req.body;
+    const { themeColor, description, merchantName, upiId } = req.body;
+    let logoUrl = req.body.logoUrl;
+    if (req.file) {
+      logoUrl = req.file.path;
+    }
+    
+    const updateData = { themeColor, description, merchantName, upiId };
+    if (logoUrl !== undefined) {
+      updateData.logoUrl = logoUrl;
+    }
+
     const settings = await prisma.schoolSettings.upsert({
       where: { schoolId: req.user.schoolId },
-      update: { themeColor, description, logoUrl, merchantName, upiId },
-      create: { schoolId: req.user.schoolId, themeColor, description, logoUrl, merchantName, upiId }
+      update: updateData,
+      create: { schoolId: req.user.schoolId, ...updateData, logoUrl: updateData.logoUrl || '' }
     });
     res.json(settings);
   } catch (error) {
