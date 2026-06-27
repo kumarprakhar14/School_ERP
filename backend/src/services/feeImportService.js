@@ -1,5 +1,6 @@
 import xlsx from 'xlsx';
 import prisma from '../utils/db.js';
+import { ValidationError, BadRequestError, NotFoundError } from '../errors/index.js';
 
 /**
  * 1. Upload
@@ -33,11 +34,11 @@ export const uploadFees = async (schoolId, fileBuffer, fileName) => {
  */
 export const validateFees = async (jobId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
-  if (job.status !== 'UPLOADED') throw new Error('Invalid state for validation');
+  if (!job) throw new NotFoundError('Import job not found');
+  if (job.status !== 'UPLOADED') throw new BadRequestError('Invalid state for validation');
 
   const data = job.spreadsheetData || [];
-  if (data.length === 0) throw new Error('Spreadsheet is empty');
+  if (data.length === 0) throw new BadRequestError('Spreadsheet is empty');
 
   const requiredColumns = [
     'Total Fee',
@@ -49,7 +50,7 @@ export const validateFees = async (jobId) => {
   const firstRow = data[0];
   const missingCols = requiredColumns.filter((col) => !(col in firstRow));
   if (missingCols.length > 0) {
-    throw new Error(`Missing mandatory columns: ${missingCols.join(', ')}`);
+    throw new ValidationError(`Missing mandatory columns: ${missingCols.join(', ')}`);
   }
 
   const errors = [];
@@ -77,7 +78,7 @@ export const validateFees = async (jobId) => {
   if (errors.length > 0) {
     // If validation fails, we might just fail the job or throw error.
     // The instructions say "Reject if...". We will throw an error and let controller handle it.
-    throw new Error(`Validation failed:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...and more' : ''}`);
+    throw new ValidationError(`Validation failed:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...and more' : ''}`);
   }
 
   const updatedJob = await prisma.importJob.update({
@@ -93,8 +94,8 @@ export const validateFees = async (jobId) => {
  */
 export const matchFees = async (jobId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
-  if (job.status !== 'VALIDATED') throw new Error('Invalid state for matching');
+  if (!job) throw new NotFoundError('Import job not found');
+  if (job.status !== 'VALIDATED') throw new BadRequestError('Invalid state for matching');
 
   const data = job.spreadsheetData || [];
 
@@ -209,7 +210,7 @@ export const matchFees = async (jobId) => {
  */
 export const reconcileMatching = async (jobId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
+  if (!job) throw new NotFoundError('Import job not found');
 
   const { ambiguousRows, unmatchedRows } = job;
   
@@ -248,9 +249,9 @@ export const reconcileMatching = async (jobId) => {
 export const resolveAmbiguity = async (jobId, resolutions) => {
   // resolutions is an array of { rowNumber, resolvedStudentId }
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
+  if (!job) throw new NotFoundError('Import job not found');
   if (job.status !== 'MATCHED' && job.status !== 'AWAITING_RESOLUTION') {
-    throw new Error('Invalid state for resolution');
+    throw new BadRequestError('Invalid state for resolution');
   }
 
   const currentOverrides = job.resolvedOverrides || {};
@@ -271,7 +272,7 @@ export const resolveAmbiguity = async (jobId, resolutions) => {
 
 export const getAmbiguousRows = async (jobId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
+  if (!job) throw new NotFoundError('Import job not found');
 
   const data = job.spreadsheetData || [];
   const matchingData = job.matchingData || [];
@@ -301,7 +302,7 @@ export const getAmbiguousRows = async (jobId) => {
  */
 export const previewFees = async (jobId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
+  if (!job) throw new NotFoundError('Import job not found');
   if (job.status !== 'READY_FOR_PREVIEW' && job.status !== 'MATCHED') {
      // If there were no unmatched rows, it might be MATCHED. Let's allow READY_FOR_PREVIEW and MATCHED and AWAITING_RESOLUTION(if resolvedCount == totalIssues)
   }
@@ -327,7 +328,7 @@ export const previewFees = async (jobId) => {
     }
 
     if (!studentId) {
-      throw new Error(`Row ${rowNumber} is not resolved to a student.`);
+      throw new BadRequestError(`Row ${rowNumber} is not resolved to a student.`);
     }
 
     // Convert money to integer (paise)
@@ -335,7 +336,7 @@ export const previewFees = async (jobId) => {
     const amountPaid = Math.round(parseFloat(row['Amount Paid']) * 100);
 
     if (amountPaid > totalFee) {
-      throw new Error(`Row ${rowNumber}: Amount Paid (${amountPaid}) cannot be greater than Total Fee (${totalFee}).`);
+      throw new BadRequestError(`Row ${rowNumber}: Amount Paid (${amountPaid}) cannot be greater than Total Fee (${totalFee}).`);
     }
 
     totalInvoiceAmount += totalFee;
@@ -385,9 +386,9 @@ export const previewFees = async (jobId) => {
  */
 export const confirmFees = async (jobId, adminUserId) => {
   const job = await prisma.importJob.findUnique({ where: { id: jobId } });
-  if (!job) throw new Error('Import job not found');
+  if (!job) throw new NotFoundError('Import job not found');
   if (job.status !== 'READY_FOR_CONFIRMATION') {
-    throw new Error('Import not ready for confirmation. Please run preview first.');
+    throw new BadRequestError('Import not ready for confirmation. Please run preview first.');
   }
 
   const data = job.spreadsheetData || [];
