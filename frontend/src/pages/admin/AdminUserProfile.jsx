@@ -328,23 +328,34 @@ export default function AdminUserProfile() {
                           </div>
                           
                           {editingField === 'sections' ? (
-                            <select 
-                              multiple 
-                              value={formData.teacherSectionIds} 
-                              onChange={e => {
-                                const values = [...e.target.selectedOptions].map(o => o.value);
-                                setFormData({...formData, teacherSectionIds: values});
-                              }}
-                              className="w-full bg-white border border-blue-300 rounded px-2 py-2 outline-none focus:ring-2 focus:ring-blue-500 h-32 mt-2"
-                            >
+                            <div className="w-full border border-blue-300 rounded-lg p-3 bg-white max-h-48 overflow-y-auto space-y-4 mt-2 custom-scrollbar">
                               {classes.map(cls => (
-                                <optgroup key={cls.id} label={`Class ${cls.name}`}>
-                                  {cls.sections?.map(sec => (
-                                    <option key={sec.id} value={sec.id}>Section {sec.name}</option>
-                                  ))}
-                                </optgroup>
+                                <div key={cls.id}>
+                                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Class {cls.name}</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {cls.sections?.map(sec => (
+                                      <label key={sec.id} className={`cursor-pointer flex items-center px-3 py-1.5 rounded-md border text-xs font-semibold transition-colors select-none ${formData.teacherSectionIds?.includes(sec.id) ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                                        <input
+                                          type="checkbox"
+                                          className="hidden"
+                                          checked={formData.teacherSectionIds?.includes(sec.id) || false}
+                                          onChange={(e) => {
+                                            const currentIds = formData.teacherSectionIds || [];
+                                            if (e.target.checked) {
+                                              setFormData({...formData, teacherSectionIds: [...currentIds, sec.id]});
+                                            } else {
+                                              setFormData({...formData, teacherSectionIds: currentIds.filter(id => id !== sec.id)});
+                                            }
+                                          }}
+                                        />
+                                        Section {sec.name}
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
                               ))}
-                            </select>
+                              {classes.length === 0 && <div className="text-xs text-gray-400 italic">No classes available</div>}
+                            </div>
                           ) : (
                             <div className="font-medium mt-1">
                               {formData.teacherSectionIds?.length > 0 ? (
