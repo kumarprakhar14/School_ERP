@@ -16,8 +16,8 @@ export default function GeneralDashboard({
   setTitle,
   content,
   setContent,
-  targetRole,
-  setTargetRole,
+  targetRoles,
+  setTargetRoles,
   posting,
   handlePostNotice,
   editingNoticeId,
@@ -89,9 +89,18 @@ export default function GeneralDashboard({
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-blue-600 transition-colors">{notice.title}</h3>
                     <div className="flex items-center gap-2 shrink-0">
-                      {notice.targetRoles?.length > 0 && (
+                      {notice.targetRoles?.length > 0 ? notice.targetRoles.map(role => (
+                        <span key={role} className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-indigo-100">
+                          {role}{notice.targetRoles.length === 1 ? ' ONLY' : ''}
+                        </span>
+                      )) : (
                         <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-indigo-100">
-                          {notice.targetRoles.join(', ')} Only
+                          EVERYONE
+                        </span>
+                      )}
+                      {new Date(notice.updatedAt).getTime() - new Date(notice.createdAt).getTime() > 1000 && (
+                        <span className="px-2.5 py-0.5 bg-gray-50 border border-gray-200 text-gray-500 text-[10px] font-bold uppercase tracking-wider rounded-md italic" title="This notice has been edited">
+                          Edited
                         </span>
                       )}
                       {(user?.role === 'ADMIN' || user?.userId === notice.createdBy || user?.id === notice.createdBy) && (
@@ -165,16 +174,31 @@ export default function GeneralDashboard({
                   placeholder="Write announcement details..." 
                   className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-gray-50/50 resize-none"
                 />
-                <select 
-                  value={targetRole}
-                  onChange={e => setTargetRole(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:border-indigo-500 outline-none bg-gray-50/50 text-gray-600 font-medium"
-                >
-                  <option value="">Visible to Everyone</option>
-                  <option value="TEACHER">Teachers Only</option>
-                  <option value="STUDENT">Students Only</option>
-                  <option value="ACCOUNTS">Accounts Only</option>
-                </select>
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-sm font-bold text-gray-700 ml-1">Target Audience</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['TEACHER', 'STUDENT', 'ACCOUNTS'].map(role => (
+                      <label key={role} className={`cursor-pointer px-3 py-1.5 rounded-lg border text-sm font-bold transition-all flex items-center select-none ${targetRoles.includes(role) ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={targetRoles.includes(role)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setTargetRoles([...targetRoles, role]);
+                            } else {
+                              setTargetRoles(targetRoles.filter(r => r !== role));
+                            }
+                          }}
+                        />
+                        {role === 'TEACHER' ? 'Teachers' : role === 'STUDENT' ? 'Students' : 'Accounts'}
+                      </label>
+                    ))}
+                    <div className="text-[11px] text-gray-400 font-semibold ml-2 flex items-center">
+                      (Leave all unchecked for Everyone)
+                    </div>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button 
                     type="submit" 
