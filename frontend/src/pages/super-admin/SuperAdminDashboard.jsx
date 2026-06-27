@@ -51,7 +51,7 @@ export default function SuperAdminDashboard() {
                   </div>
                 </div>
                 
-                <h3 className="font-bold text-lg text-gray-900 mb-1">{school.name} <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded ml-2">Code: {school.code}</span></h3>
+                <h3 className="font-bold text-lg text-gray-900 mb-1 flex flex-wrap items-center gap-x-2 gap-y-1"><span>{school.name}</span><span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded whitespace-nowrap">Code: {school.code}</span></h3>
                 <p className="text-sm text-gray-500 mb-4 line-clamp-1">{school.settings?.description || 'No description provided.'}</p>
                 
                 <div className="flex items-center text-sm text-gray-500 mb-5 bg-gray-50/80 p-2.5 rounded-lg">

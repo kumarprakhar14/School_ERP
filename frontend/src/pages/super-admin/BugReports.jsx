@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Building2, Bug, Clock, CheckCircle2, AlertCircle, RefreshCcw, Search, Image as ImageIcon, X } from 'lucide-react';
 import api from '../../lib/api';
 import { toast } from 'sonner';
@@ -194,18 +195,13 @@ export default function BugReports() {
       </div>
 
       {/* Image Preview Modal */}
-      {selectedImage && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+      {selectedImage && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
           <div className="relative max-w-5xl w-full flex justify-center animate-in zoom-in duration-200">
-            <button 
-              onClick={() => setSelectedImage(null)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
-            >
-              <X className="w-8 h-8" />
-            </button>
             <img src={selectedImage} alt="Full size screenshot" className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain" />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -402,9 +402,13 @@ export default function Fees() {
                     align: 'right',
                     render: (summary) => (
                       summary.status === 'NO_FEES' ? (
-                        <button onClick={() => handleQuickInvoice(summary.student.id)} className="text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-                          Create Invoice
-                        </button>
+                        (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
+                          <button onClick={() => handleQuickInvoice(summary.student.id)} className="text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                            Create Invoice
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )
                       ) : (
                         <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">
                           View History
@@ -436,9 +440,11 @@ export default function Fees() {
                     </div>
                     <div className="pt-2">
                       {summary.status === 'NO_FEES' ? (
-                        <button onClick={() => handleQuickInvoice(summary.student.id)} className="w-full text-center text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors">
-                          Create Invoice
-                        </button>
+                        (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
+                          <button onClick={() => handleQuickInvoice(summary.student.id)} className="w-full text-center text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors">
+                            Create Invoice
+                          </button>
+                        ) : null
                       ) : (
                         <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="w-full text-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-colors">
                           View History
