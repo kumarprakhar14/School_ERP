@@ -2,7 +2,8 @@
 
 > **Version:** 1.0  
 > **Base URL:** `http://localhost:<PORT>/api`  
-> **Last Updated:** June 2026
+> **Last Updated:** June 2026  
+> **Last Modified:** 27 June 2026
 
 This document is the **single source of truth** for all backend API endpoints of the SchoolChakra system. It is intended for backend testers, new engineers onboarding the codebase, and engineers migrating from/to this system.
 
@@ -27,7 +28,11 @@ This document is the **single source of truth** for all backend API endpoints of
 15. [Category: Bug Reports](#15-category-bug-reports)
 16. [Category: Dashboard](#16-category-dashboard)
 17. [Category: Push Notifications & In-App Notification Center](#17-category-push-notifications--in-app-notification-center)
-18. [Appendix: Data Models & Enums](#18-appendix-data-models--enums)
+18. [Category: Search](#18-category-search)
+19. [Category: Platform Management — Plans, Features & Billing](#19-category-platform-management--plans-features--billing)
+20. [Category: Subscription & Override Management](#20-category-subscription--override-management)
+21. [Category: Diagnostics](#21-category-diagnostics)
+22. [Appendix: Data Models & Enums](#22-appendix-data-models--enums)
 
 ---
 
@@ -116,6 +121,7 @@ The global error handler translates all errors into structured responses. Intern
 | Error Class | HTTP Status | Trigger |
 |---|---|---|
 | `ValidationError` | `400` | Manual schema validation failure |
+| `BadRequestError` | `400` | Client-side business rule violation (e.g., invalid import state, template mismatch) |
 | `NotFoundError` | `404` | A requested database record was not found |
 | `ForbiddenError` | `403` | Business-rule access denial (e.g., operating on another school's data) |
 | `ConflictError` | `409` | A duplicate record was attempted |
@@ -1345,7 +1351,7 @@ Base path: `/api/notices`
 
 ### `POST /api/notices`
 
-**Purpose:** Creates and publishes a new notice for the school. The `targetRoles` field determines which user roles can see the notice. An empty array means the notice is visible to all roles.
+**Purpose:** Creates and publishes a new notice for the school. The `targetRoles` field determines which user roles can see the notice. An empty array (or all roles selected) means the notice is visible to everyone.
 
 **Auth Required:** Yes  
 **Roles:** `ADMIN`, `TEACHER`
@@ -1356,7 +1362,7 @@ Base path: `/api/notices`
 |---|---|---|---|
 | `title` | `string` | ✅ | Notice headline |
 | `content` | `string` | ✅ | Full text content of the notice |
-| `targetRoles` | `string[]` | ❌ | Array of roles to target. Defaults to `[]` (everyone). Valid values: `"STUDENT"`, `"TEACHER"`, `"ADMIN"`, `"ACCOUNTS"`, `"SUPER_ADMIN"` |
+| `targetRoles` | `string[]` | ❌ | Array of roles to target. Defaults to `[]` (everyone). Valid values: `"STUDENT"`, `"TEACHER"`, `"ADMIN"`, `"ACCOUNTS"`, `"SUPER_ADMIN"`. Multiple roles can be specified simultaneously. If all possible roles are selected on the frontend, the payload is automatically normalized to `[]` (everyone). |
 
 ```json
 {
@@ -1408,6 +1414,7 @@ Base path: `/api/notices`
     "targetRoles": ["STUDENT", "TEACHER"],
     "isArchived": false,
     "createdAt": "2026-06-04T09:00:00.000Z",
+    "updatedAt": "2026-06-04T09:00:00.000Z",
     "author": {
       "name": "Principal Sharma",
       "role": "ADMIN"
@@ -1415,6 +1422,63 @@ Base path: `/api/notices`
   }
 ]
 ```
+
+> **Edited flag:** The frontend compares `createdAt` vs `updatedAt` (>1s difference) to display a subtle **Edited** badge on modified notices.
+
+---
+
+### `PUT /api/notices/:id`
+
+**Purpose:** Updates an existing notice. Any field (`title`, `content`, `targetRoles`) can be changed. Updating a notice sets its `updatedAt` timestamp, which the frontend uses to display the **Edited** flag.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `TEACHER`
+
+**Path Variables:** `id` — Notice UUID
+
+**Request Body (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | Updated notice headline |
+| `content` | `string` | Updated content body |
+| `targetRoles` | `string[]` | Updated array of target roles |
+
+```json
+{
+  "title": "Updated: School Holiday",
+  "content": "Correction: School will be closed on June 11th instead.",
+  "targetRoles": ["STUDENT"]
+}
+```
+
+**Success Response `200 OK`:** Returns the updated notice object.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `403` | Caller is not the author of the notice and is not an ADMIN | `"Access forbidden: Insufficient permissions"` |
+| `404` | Notice not found | `"Notice not found"` |
+
+---
+
+### `DELETE /api/notices/:id`
+
+**Purpose:** Permanently deletes a notice.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `TEACHER`
+
+**Path Variables:** `id` — Notice UUID
+
+**Success Response `204 No Content`**
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Notice not found | `"Notice not found"` |
 
 ---
 
@@ -1660,7 +1724,79 @@ Base path: `/api/fees`
 | Status | Condition | Message |
 |---|---|---|
 | `400` | Invalid amount, month, or year | Zod validation error |
-| `404` | Student not found in this school | `"Student not found not found"` |
+| `404` | Student not found in this school | `"Student not found"` |
+
+---
+
+### `PUT /api/fees/invoice/:id`
+
+**Purpose:** Updates an existing fee invoice's amount, month, year, due date, or remarks.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Path Variables:** `id` — Invoice UUID
+
+**Request Body (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| `amount` | `number` | Updated total amount |
+| `month` | `number` | Updated month (1–12) |
+| `year` | `number` | Updated year |
+| `dueDate` | `string (ISO date)` | Updated due date |
+| `remarks` | `string` | Updated remarks |
+
+**Success Response `200 OK`:** Returns the updated invoice object.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Invoice not found in this school | `"Invoice not found"` |
+
+---
+
+### `DELETE /api/fees/invoice/:id`
+
+**Purpose:** Deletes a fee invoice and **all associated payments** in a single transaction.
+
+> ⚠️ This is a destructive operation. All payment records linked to the invoice will also be deleted.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Path Variables:** `id` — Invoice UUID
+
+**Success Response `200 OK`:**
+```json
+{ "message": "Invoice and associated payments deleted successfully" }
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Invoice not found in this school | `"Invoice not found"` |
+
+---
+
+### `GET /api/fees/invoices/:id`
+
+**Purpose:** Retrieves a single fee invoice by its UUID, including its associated payments.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`, `STUDENT`
+
+**Path Variables:** `id` — Invoice UUID
+
+**Success Response `200 OK`:** Returns the full invoice object with nested payments.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Invoice not found | `"Invoice not found"` |
 
 ---
 
@@ -1711,7 +1847,76 @@ Base path: `/api/fees`
 
 | Status | Condition | Message |
 |---|---|---|
-| `404` | Invoice not found in this school | `"Invoice not found not found"` |
+| `404` | Invoice not found in this school | `"Invoice not found"` |
+
+---
+
+### `PUT /api/fees/payment/:id`
+
+**Purpose:** Updates an existing payment's amount, payment mode, reference number, or remarks.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Path Variables:** `id` — Payment UUID
+
+**Request Body (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| `amount` | `number` | Updated payment amount |
+| `paymentMode` | `string` | Updated payment mode |
+| `referenceNo` | `string` | Updated reference number |
+| `remarks` | `string` | Updated remarks |
+
+**Success Response `200 OK`:** Returns the updated payment object.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Payment not found in this school | `"Payment not found"` |
+
+---
+
+### `DELETE /api/fees/payment/:id`
+
+**Purpose:** Deletes a single payment record.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Path Variables:** `id` — Payment UUID
+
+**Success Response `200 OK`:**
+```json
+{ "message": "Payment deleted successfully" }
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Payment not found in this school | `"Payment not found"` |
+
+---
+
+### `GET /api/fees/payments/:id`
+
+**Purpose:** Retrieves a single payment record by its UUID.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`, `STUDENT`
+
+**Path Variables:** `id` — Payment UUID
+
+**Success Response `200 OK`:** Returns the full payment object.
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Payment not found | `"Payment not found"` |
 
 ---
 
@@ -1750,6 +1955,7 @@ Base path: `/api/fees`
 | `"PENDING"` | Fee generated, no payment yet |
 | `"PARTIALLY_PAID"` | Some amount paid, balance remaining |
 | `"OVERDUE"` | Balance remaining and earliest due date has passed |
+| `"NO_FEES"` | No invoices have been generated for this student yet |
 
 ---
 
@@ -1777,6 +1983,9 @@ Base path: `/api/fees`
     "date": "2026-06-04T10:30:00.000Z",
     "paymentMode": "ONLINE",
     "referenceNo": "TXN123456",
+    "utr": null,
+    "screenshotUrl": null,
+    "status": null,
     "remarks": "Paid via UPI",
     "student": { "name": "Ravi Kumar", "erpId": "ABC005" }
   },
@@ -1786,6 +1995,7 @@ Base path: `/api/fees`
     "invoiceNumber": "INV-2026-6-A1B2C3D4",
     "amount": 150000,
     "date": "2026-06-04T10:00:00.000Z",
+    "dueDate": "2026-06-15T00:00:00.000Z",
     "remarks": "June tuition fee",
     "month": 6,
     "year": 2026,
@@ -2365,6 +2575,16 @@ The fee import uses a stateful **ImportJob** (stored in the database). Each step
   "status": "VALIDATED"
 }
 ```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | Uploaded file is empty | `"Spreadsheet is empty"` |
+| `400` | Required columns are missing (template mismatch) | `"Missing mandatory columns: <col1>, <col2>..."` |
+| `400` | Row-level data type or value validation failures | `"Validation failed:\n<up to 10 row errors>"` |
+| `404` | Import job not found | `"Import job not found"` |
+| `400` | Job is not in `UPLOADED` state | `"Invalid state for validation"` |
 
 ---
 
@@ -3003,6 +3223,316 @@ This endpoint is called in three scenarios on the frontend:
 
 ---
 
+## 18. Category: Search
+
+Base path: `/api/search`
+
+> Protected by `authMiddleware`. Returns results scoped to the authenticated user's school.
+
+---
+
+### `GET /api/search`
+
+**Purpose:** Performs a global search across users, classes, sections, notices, and assignments within the school. Returns a unified set of results across entity types.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated school user
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `q` | `string` | ✅ | The search query string |
+
+**Example Request:**
+```
+GET /api/search?q=ravi
+```
+
+**Success Response `200 OK`:** Returns an object with arrays of matching records per entity type (shape varies by implementation).
+
+---
+
+## 19. Category: Platform Management — Plans, Features & Billing
+
+> All routes in this section are exclusively for `SUPER_ADMIN`. They manage the commercial subscription plans, features, and billing orders for the multi-tenant platform.
+
+---
+
+### Plans — Base path: `/api/plans`
+
+#### `GET /api/plans`
+**Purpose:** Returns all subscription plans defined on the platform.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+**Success Response `200 OK`:** Returns an array of plan objects.
+
+---
+
+#### `POST /api/plans`
+**Purpose:** Creates a new subscription plan.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+**Success Response `201 Created`:** Returns the created plan object.
+
+---
+
+#### `PUT /api/plans/:id`
+**Purpose:** Updates an existing plan's details.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only  
+**Path Variables:** `id` — Plan UUID
+
+**Success Response `200 OK`:** Returns the updated plan.
+
+---
+
+#### `DELETE /api/plans/:id`
+**Purpose:** Deletes a plan.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only  
+**Path Variables:** `id` — Plan UUID
+
+**Success Response `200 OK`:** Returns a success message.
+
+---
+
+#### `POST /api/plans/:id/pricing`
+**Purpose:** Adds a pricing tier to a plan (e.g., monthly, annual).
+
+**Auth Required:** Yes — `SUPER_ADMIN` only  
+**Path Variables:** `id` — Plan UUID
+
+**Success Response `201 Created`:** Returns the created pricing object.
+
+---
+
+#### `PUT /api/plans/:id/pricing/:pricingId`
+**Purpose:** Updates a pricing tier on a plan.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+#### `DELETE /api/plans/:id/pricing/:pricingId`
+**Purpose:** Removes a pricing tier from a plan.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+### Features — Base path: `/api/features`
+
+#### `GET /api/features`
+**Purpose:** Returns all feature flags defined on the platform.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+#### `POST /api/features`
+**Purpose:** Creates a new feature flag.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+#### `PUT /api/features/:id`
+**Purpose:** Updates a feature flag.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+#### `DELETE /api/features/:id`
+**Purpose:** Deletes a feature flag.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+### Plan Features — Base path: `/api/plan-features`
+
+**Purpose:** Manages the mapping between plans and the features they include.
+
+#### `GET /api/plan-features/:planId` — Returns all features assigned to a plan.
+#### `POST /api/plan-features` — Assigns a feature to a plan.
+#### `PUT /api/plan-features/:id` — Updates a plan-feature mapping.
+#### `DELETE /api/plan-features/:id` — Removes a feature from a plan.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only for all routes.
+
+---
+
+### Billing — Base path: `/api/billing`
+
+> Manages school subscription orders and payment simulation.
+
+#### `GET /api/billing/orders`
+**Purpose:** Lists all billing orders across all schools.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only
+
+---
+
+#### `GET /api/billing/orders/school/:schoolId`
+**Purpose:** Returns billing orders for a specific school.
+
+**Auth Required:** Yes — `SUPER_ADMIN` or that school's `ADMIN`
+
+---
+
+#### `POST /api/billing/orders`
+**Purpose:** Creates a new billing order (subscription purchase).
+
+**Auth Required:** Yes — `SUPER_ADMIN` or `ADMIN`
+
+---
+
+#### `POST /api/billing/orders/:id/cancel`
+**Purpose:** Cancels an active billing order.
+
+**Auth Required:** Yes — `SUPER_ADMIN` or `ADMIN`  
+**Path Variables:** `id` — Order UUID
+
+---
+
+#### `POST /api/billing/orders/:id/simulate`
+**Purpose:** Simulates a payment provider verification for an order (used in non-production environments for testing the billing flow).
+
+**Auth Required:** Yes — `SUPER_ADMIN` only  
+**Path Variables:** `id` — Order UUID
+
+---
+
+## 20. Category: Subscription & Override Management
+
+Base path: `/api/subscriptions`
+
+> All routes in this section require `SUPER_ADMIN` role. These APIs manage per-school subscription lifecycles and feature overrides.
+
+---
+
+### School Subscriptions — `/api/subscriptions/schools/:schoolId`
+
+#### `GET /api/subscriptions/schools/:schoolId`
+**Purpose:** Returns the full subscription history for a specific school.
+
+---
+
+#### `POST /api/subscriptions/schools/:schoolId/assign`
+**Purpose:** Assigns a subscription plan to a school, activating the plan for that school.
+
+---
+
+#### `POST /api/subscriptions/schools/:schoolId/suspend`
+**Purpose:** Suspends the active subscription of a school.
+
+---
+
+#### `POST /api/subscriptions/schools/:schoolId/reactivate`
+**Purpose:** Reactivates a suspended school subscription.
+
+---
+
+#### `POST /api/subscriptions/schools/:schoolId/cancel`
+**Purpose:** Permanently cancels the subscription for a school.
+
+---
+
+#### `POST /api/subscriptions/schools/:schoolId/extend`
+**Purpose:** Extends the validity/duration of a school's active subscription.
+
+---
+
+### School Feature Overrides — `/api/subscriptions/overrides`
+
+**Purpose:** Allows Super Admin to grant or revoke individual feature flags for a specific school, independent of their subscription plan.
+
+#### `GET /api/subscriptions/overrides/:schoolId` — Returns all overrides for a school.
+#### `POST /api/subscriptions/overrides/:schoolId` — Creates a new override for a school.
+#### `PUT /api/subscriptions/overrides/:id/archive` — Archives (disables) an override.
+
+---
+
+### Global Flags — `/api/subscriptions/global-flags`
+
+**Purpose:** Platform-level feature flags that apply globally across all schools.
+
+#### `GET /api/subscriptions/global-flags` — Returns all active global flags.
+#### `POST /api/subscriptions/global-flags` — Creates a new global flag.
+#### `PUT /api/subscriptions/global-flags/:id/archive` — Archives a global flag.
+
+---
+
+## 21. Category: Diagnostics
+
+Base path: `/api/diagnostics`
+
+> Exclusively for `SUPER_ADMIN`. Provides internal tooling for inspecting the effective feature set of a school.
+
+---
+
+### `GET /api/diagnostics/features/:schoolId`
+
+**Purpose:** Returns a diagnostic report of all feature flags that are effectively active for a given school — combining their subscription plan's features, any per-school overrides, and any global flags. Useful for debugging access issues.
+
+**Auth Required:** Yes — `SUPER_ADMIN` only  
+**Path Variables:** `schoolId` — School UUID
+
+**Success Response `200 OK`:** Returns an object describing the school's resolved feature set.
+
+---
+
+## 22. Appendix: Data Models & Enums
+
+### Enums
+
+#### `UserRole`
+| Value | Description |
+|---|---|
+| `SUPER_ADMIN` | Platform-level administrator |
+| `ADMIN` | School administrator |
+| `TEACHER` | Teaching staff |
+| `STUDENT` | Enrolled student |
+| `ACCOUNTS` | Finance/accounts staff |
+
+#### `AttendanceStatus`
+| Value | Description |
+|---|---|
+| `PRESENT` | Student was present |
+| `ABSENT` | Student was absent |
+| `LEAVE` | Student was on approved leave |
+
+#### `FeeStatus` (derived, not stored)
+| Value | Description |
+|---|---|
+| `PAID` | All dues cleared |
+| `PENDING` | Invoice exists, nothing paid |
+| `PARTIALLY_PAID` | Some amount paid, balance remains |
+| `OVERDUE` | Balance remaining, due date has passed |
+| `NO_FEES` | No invoices generated for this student |
+
+#### `SchoolStatus`
+| Value | Description |
+|---|---|
+| `ACTIVE` | School is active and users can log in |
+| `INACTIVE` | School is disabled — users cannot log in |
+
+#### `BugStatus`
+| Value | Description |
+|---|---|
+| `OPEN` | Bug is newly reported |
+| `IN_PROGRESS` | Bug is being investigated |
+| `CLOSED` | Bug has been resolved |
+
+#### `DayOfWeek`
+`MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`, `SATURDAY`, `SUNDAY`
+
+---
+
 ### Key Model Relationships
 
 ```
@@ -3022,7 +3552,15 @@ School
   ├── TimeTableEntry[] (N) — links Class, Section, Subject, Teacher, Period, DayOfWeek
   ├── Notice[] (1:N)
   ├── FeeInvoice[] (1:N) → Payment[]
+  ├── Subscription[] (1:N) → Plan → PlanFeature[]
+  ├── SchoolFeatureOverride[] (1:N)
   └── AcademicYear[] (1:N) → TeacherAssignment[]
+
+Plan[]
+  ├── PlanPricing[] (1:N)
+  └── PlanFeature[] (N) → Feature[]
+
+GlobalFlag[] — platform-wide feature switches (not school-scoped)
 
 NotificationLog[] — standalone audit table, optionally scoped to a schoolId
   ├── entityType String?  — identifies the source entity (e.g., "notice", "assignment", "invoice", "payment"); null for legacy records

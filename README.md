@@ -1,5 +1,7 @@
 # 🏫 SchoolChakra Platform
 
+> **Last Modified:** 27 June 2026
+
 A modern, multi-tenant SaaS application for managing multiple schools, their students, teachers, academics, and finances.
 
 [![React](https://img.shields.io/badge/Frontend-React%20v18-61dafb?style=for-the-badge&logo=react)](https://react.dev/)
@@ -17,25 +19,30 @@ A modern, multi-tenant SaaS application for managing multiple schools, their stu
 - **School Lifecycle Management:** Register new schools with auto-created admin accounts; disable, enable, archive, restore, or permanently delete schools.
 - **Dynamic Theming:** Custom brand colors per school that instantly propagate across the UI.
 - **Administrator Management:** Create and manage multiple Super Admin accounts; transfer primary status between accounts.
+- **Subscription Plan Management:** Define and manage tiered subscription plans with pricing options (monthly, annual, etc.). Assign, suspend, reactivate, cancel, or extend plans per school.
+- **Feature Flag System:** Create and manage platform-level feature flags. Assign features to plans, apply per-school overrides, or broadcast global flags across all schools. Diagnose a school's effective feature set via the diagnostics endpoint.
+- **Billing & Orders:** Track subscription purchase orders per school. Supports order creation, cancellation, and payment simulation for testing.
 - **Bug Reports:** Platform-wide bug report inbox — view reports from all schools, see attached screenshots, and update report status (Open → In Progress → Closed).
+- **Global Search:** Search across users, classes, notices, and assignments within a school.
 - **Background Jobs:** Configured Cron jobs for automated system tasks (e.g., auto-finalization of locked attendance after 48 hours).
 - **API Logging:** Integrated `morgan` for robust backend request tracking.
 
 ### 🏫 Admin Module
 - **Setup Checklist:** First-time onboarding checklist shown on the dashboard to guide new admins through initial school setup.
 - **Operational Dashboard:** School-wide stats (students, teachers, classes, attendance rate, fees collected/pending), attendance trend chart, student class distribution chart, financial snapshot, and a live activity timeline.
-- **Notice Board & Announcements:** Post notices/announcements from the dashboard with audience targeting (Everyone, Students Only, Teachers Only, or Accounts Only). Published notices appear immediately on the dashboards of all targeted users.
+- **Notice Board & Announcements:** Post notices/announcements from the dashboard with **multi-audience targeting** (Everyone, or any combination of Students, Teachers, and Accounts). Notices display individual role pills per audience. Notices modified after creation show a subtle **Edited** flag. Published notices appear immediately on the dashboards of all targeted users.
 - **User Management:** Create, update, and delete user profiles across all roles (Teacher, Student, Accounts, Admin). Supports profile photo uploads via Cloudinary, contact details, and ERP ID management.
 - **User Status Control:** Disable (suspend) or archive (soft-delete) individual user accounts without losing their data.
 - **Academic Structure Management:** Create and manage classes and sections; enforce uniqueness constraints.
 - **Timetable Management:** Define subjects (with short codes), configure period time slots, and create timetable entries linking class/section, subject, teacher, period, and day of the week. Prevents double-booking of teachers and sections.
-- **Data Import (Bulk Upload):** CSV-based bulk import for students, teachers, and fee records. Fee import uses a guided multi-step wizard (Upload → Validate → Match → Reconcile → Resolve Ambiguities → Preview → Confirm). Downloadable error reports for failed rows.
+- **Data Import (Bulk Upload):** CSV-based bulk import for students, teachers, and fee records. Fee import uses a guided multi-step wizard (Upload → Validate → Match → Reconcile → Resolve Ambiguities → Preview → Confirm). Template mismatch and row-level validation errors are surfaced to the user with specific, actionable messages (400) rather than generic server errors. Downloadable error reports for failed rows.
+- **Teacher Section Assignment UX:** When creating or editing a teacher, class/section assignments use a clean checkbox-based multi-select UI grouped by class, replacing the native `<select multiple>` element.
 - **School Settings:** Update school name, theme color, logo URL, and description.
 - **Role-Based Access Control (RBAC):** Granular dashboard routing and permission handling per role.
 
 ### 👨‍🏫 Teacher Module
 - **Notice Board:** View all active school announcements targeted at the teacher role or everyone.
-- **Post Announcements:** Publish notices directly from the dashboard with audience targeting (Everyone, Students Only, Teachers Only, or Accounts Only).
+- **Post Announcements:** Publish notices directly from the dashboard with **multi-audience targeting** (Everyone, or any combination of Students, Teachers, and Accounts). Selecting all roles automatically normalizes to "Everyone".
 - **Smart Filtering:** Attendance and assignment dropdowns automatically filter to show only the classes/sections assigned to the teacher.
 - **Robust Attendance Tracking:**
   - Mark daily attendance (Present/Absent) with "Mark All Present / Absent" bulk action.
