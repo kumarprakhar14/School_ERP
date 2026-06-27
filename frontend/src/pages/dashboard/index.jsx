@@ -20,7 +20,7 @@ export default function Dashboard() {
   // New/Edit Notice State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [targetRole, setTargetRole] = useState('');
+  const [targetRoles, setTargetRoles] = useState([]);
   const [posting, setPosting] = useState(false);
   const [isDispatchExpanded, setIsDispatchExpanded] = useState(false);
   const [editingNoticeId, setEditingNoticeId] = useState(null);
@@ -60,12 +60,15 @@ export default function Dashboard() {
     e.preventDefault();
     setPosting(true);
     try {
-      const targetRoles = targetRole ? [targetRole] : [];
+      const allRoles = ['TEACHER', 'STUDENT', 'ACCOUNTS'];
+      const isAllSelected = allRoles.every(role => targetRoles.includes(role));
+      const payloadRoles = isAllSelected ? [] : targetRoles;
+
       if (editingNoticeId) {
-        await api.put(`/notices/${editingNoticeId}`, { title, content, targetRoles });
+        await api.put(`/notices/${editingNoticeId}`, { title, content, targetRoles: payloadRoles });
         toast.success('Notice updated successfully');
       } else {
-        await api.post('/notices', { title, content, targetRoles });
+        await api.post('/notices', { title, content, targetRoles: payloadRoles });
         toast.success('Notice posted successfully');
       }
       resetNoticeForm();
@@ -102,7 +105,7 @@ export default function Dashboard() {
     setEditingNoticeId(notice.id);
     setTitle(notice.title);
     setContent(notice.content);
-    setTargetRole(notice.targetRoles?.[0] || '');
+    setTargetRoles(notice.targetRoles || []);
     setIsDispatchExpanded(true);
     // Scroll to form
     setTimeout(() => {
@@ -115,7 +118,7 @@ export default function Dashboard() {
     setEditingNoticeId(null);
     setTitle('');
     setContent('');
-    setTargetRole('');
+    setTargetRoles([]);
     setIsDispatchExpanded(false);
   };
 
@@ -153,8 +156,8 @@ export default function Dashboard() {
           setTitle={setTitle}
           content={content}
           setContent={setContent}
-          targetRole={targetRole}
-          setTargetRole={setTargetRole}
+          targetRoles={targetRoles}
+          setTargetRoles={setTargetRoles}
           posting={posting}
           handlePostNotice={handlePostNotice}
           isDispatchExpanded={isDispatchExpanded}
@@ -189,8 +192,8 @@ export default function Dashboard() {
         setTitle={setTitle}
         content={content}
         setContent={setContent}
-        targetRole={targetRole}
-        setTargetRole={setTargetRole}
+        targetRoles={targetRoles}
+        setTargetRoles={setTargetRoles}
         posting={posting}
         handlePostNotice={handlePostNotice}
         editingNoticeId={editingNoticeId}
