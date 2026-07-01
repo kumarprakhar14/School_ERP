@@ -20,6 +20,7 @@ const roleNavItems = {
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Users, label: 'Users', path: '/admin/users' },
     { icon: FileText, label: 'Data Import', path: '/admin/import' },
+    { icon: Calendar, label: 'Academic Calendar', path: '/admin/academic-calendar' },
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: FileText, label: 'Fees', path: '/fees' },

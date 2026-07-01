@@ -8,6 +8,7 @@ import { getGreeting } from './utils';
 
 export default function GeneralDashboard({
   stats,
+  calendarStatus,
   notices,
   user,
   navigate,
@@ -231,7 +232,7 @@ export default function GeneralDashboard({
       <PushNotification />
 
       {/* Welcome Banner (General) */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-600/10 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-600/10 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="relative z-10">
           <span className="px-2.5 py-0.5 bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider rounded-md backdrop-blur-sm border border-white/15">
@@ -239,6 +240,19 @@ export default function GeneralDashboard({
           </span>
           <h1 className="text-2xl font-bold mt-2.5 mb-1">{getGreeting()}, {user?.name}!</h1>
           <p className="text-blue-100 opacity-90 text-xs sm:text-sm font-semibold">Here is what's happening at {user?.schoolName || 'your school'} today.</p>
+        </div>
+        <div className="relative z-10 text-left md:text-right shrink-0 flex flex-col items-start md:items-end">
+          {calendarStatus && (
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-1 ${
+              calendarStatus.status === 'WORKING' ? 'bg-green-100 text-green-700' :
+              calendarStatus.status === 'HOLIDAY' ? 'bg-red-100 text-red-700' :
+              'bg-blue-100 text-blue-700'
+            }`}>
+              {calendarStatus.status === 'WORKING' ? 'Working Day' : calendarStatus.status}
+              {calendarStatus.reason ? ` • ${calendarStatus.reason}` : ''}
+            </span>
+          )}
+          <div className="text-sm font-bold text-white/90">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
         </div>
       </div>
 

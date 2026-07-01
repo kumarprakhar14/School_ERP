@@ -29,6 +29,7 @@ import schoolSubscriptionRoutes from './routes/schoolSubscription.routes.js';
 import schoolOverrideRoutes from './routes/schoolOverride.routes.js';
 import globalFlagRoutes from './routes/globalFlag.routes.js';
 import billingRoutes from './routes/billing.routes.js';
+import academicCalendarRoutes from './routes/academicCalendar.routes.js';
 import { requestContextMiddleware } from './middlewares/requestContext.middleware.js';
 import { reportError } from './services/errorReportingService.js';
 import { getContext } from './utils/requestContext.js';
@@ -80,6 +81,7 @@ app.use('/api/subscriptions/schools', schoolSubscriptionRoutes);
 app.use('/api/subscriptions/overrides', schoolOverrideRoutes);
 app.use('/api/subscriptions/global-flags', globalFlagRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/academic-calendar', academicCalendarRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {

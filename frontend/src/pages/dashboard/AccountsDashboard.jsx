@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ResponsiveTable from '../../components/ui/ResponsiveTable';
 import PushNotification from '../../components/PushNotification';
+import academicCalendarApi from '../../services/api/academicCalendar';
 
 function CollectionTrendChart({ data }) {
   if (!data || data.length === 0) return null;
@@ -46,8 +47,11 @@ export default function AccountsDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await api.get('/dashboard/accounts');
-      setData(response.data);
+      const [response, calRes] = await Promise.all([
+        api.get('/dashboard/accounts'),
+        academicCalendarApi.getTodayStatus().catch(() => null)
+      ]);
+      setData({ ...response.data, calendarStatus: calRes?.data || null });
     } catch (error) {
       console.error('Failed to fetch accounts dashboard:', error);
     } finally {
@@ -108,7 +112,17 @@ export default function AccountsDashboard() {
             Welcome back to <span className="text-blue-600 font-bold">{user?.schoolName || 'Demo School'}</span>.
           </p>
         </div>
-        <div className="text-left shrink-0">
+        <div className="text-left shrink-0 flex flex-col items-start md:items-end">
+          {data?.calendarStatus && (
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-1 ${
+              data.calendarStatus.status === 'WORKING' ? 'bg-green-100 text-green-700' :
+              data.calendarStatus.status === 'HOLIDAY' ? 'bg-red-100 text-red-700' :
+              'bg-blue-100 text-blue-700'
+            }`}>
+              {data.calendarStatus.status === 'WORKING' ? 'Working Day' : data.calendarStatus.status}
+              {data.calendarStatus.reason ? ` • ${data.calendarStatus.reason}` : ''}
+            </span>
+          )}
           <div className="text-sm font-bold text-gray-800">{today}</div>
           <div className="text-xs text-gray-400 font-semibold mt-0.5 flex items-center">
             <Clock className="w-3.5 h-3.5 mr-1" /> Fee Collection Workspace

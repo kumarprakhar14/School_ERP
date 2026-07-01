@@ -106,6 +106,7 @@ function AttendanceTrendChart({ data }) {
 
 export default function AdminDashboard({
   stats,
+  calendarStatus,
   notices,
   user,
   navigate,
@@ -246,7 +247,17 @@ export default function AdminDashboard({
             Welcome back to <span className="text-blue-600 font-bold">{user?.schoolName || 'Demo School'}</span>.
           </p>
         </div>
-        <div className="text-left shrink-0">
+        <div className="text-left shrink-0 flex flex-col items-start md:items-end">
+          {calendarStatus && (
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-1 ${
+              calendarStatus.status === 'WORKING' ? 'bg-green-100 text-green-700' :
+              calendarStatus.status === 'HOLIDAY' ? 'bg-red-100 text-red-700' :
+              'bg-blue-100 text-blue-700'
+            }`}>
+              {calendarStatus.status === 'WORKING' ? 'Working Day' : calendarStatus.status}
+              {calendarStatus.reason ? ` • ${calendarStatus.reason}` : ''}
+            </span>
+          )}
           <div className="text-sm font-bold text-gray-800">{getCurrentDateText()}</div>
           <div className="text-xs text-gray-400 font-semibold mt-0.5">Active Campus Monitoring</div>
         </div>
