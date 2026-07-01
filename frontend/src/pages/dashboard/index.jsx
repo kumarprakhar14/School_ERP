@@ -9,6 +9,7 @@ import GeneralDashboard from './GeneralDashboard';
 import AccountsDashboard from './AccountsDashboard';
 import FallbackDashboard from './FallbackDashboard';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import academicCalendarApi from '../../services/api/academicCalendar';
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -16,6 +17,7 @@ export default function Dashboard() {
   const [notices, setNotices] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [calendarStatus, setCalendarStatus] = useState(null);
 
   // New/Edit Notice State
   const [title, setTitle] = useState('');
@@ -34,11 +36,15 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [noticeRes, statsRes] = await Promise.all([
+      const [noticeRes, statsRes, calRes] = await Promise.all([
         api.get('/notices'),
-        api.get('/dashboard/stats').catch(() => ({ data: null }))
+        api.get('/dashboard/stats').catch(() => ({ data: null })),
+        academicCalendarApi.getTodayStatus().catch(() => null)
       ]);
       setNotices(noticeRes.data || []);
+      if (calRes && calRes.data) {
+        setCalendarStatus(calRes.data);
+      }
       if (statsRes.data) {
         const data = statsRes.data;
         if (typeof data.feesCollected === 'number') data.feesCollected /= 100;
@@ -149,6 +155,7 @@ export default function Dashboard() {
       <>
         <AdminDashboard
           stats={stats}
+          calendarStatus={calendarStatus}
           notices={notices}
           user={user}
           navigate={navigate}
@@ -184,6 +191,7 @@ export default function Dashboard() {
     <>
       <GeneralDashboard
         stats={stats}
+        calendarStatus={calendarStatus}
         notices={notices}
         user={user}
         navigate={navigate}

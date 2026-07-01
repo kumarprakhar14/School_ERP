@@ -78,6 +78,12 @@ enum DayOfWeek {
   SUNDAY
 }
 
+enum CalendarDayStatus {
+  WORKING
+  HOLIDAY
+  VACATION
+}
+
 // -----------------------------------------------------------------------------
 // CORE ENTITIES
 // -----------------------------------------------------------------------------
@@ -103,6 +109,7 @@ model School {
   subscriptions SchoolSubscription[]
   featureOverrides SchoolFeatureOverride[]
   paymentOrders PaymentOrder[]
+  academicCalendarOverrides AcademicCalendarOverride[]
 }
 
 model SchoolSettings {
@@ -150,6 +157,7 @@ model User {
   activatedSubscriptions  SchoolSubscription[] @relation("SubscriptionActivator")
   updatedOverrides        SchoolFeatureOverride[] @relation("OverrideUpdater")
   updatedGlobalFlags      GlobalFeatureFlag[] @relation("GlobalFlagUpdater")
+  createdCalendarOverrides AcademicCalendarOverride[] @relation("OverrideCreator")
 
   @@unique([schoolId, erpId]) // Unique per school
   @@index([schoolId, name])
@@ -807,4 +815,27 @@ model ProductionErrorAnalysis {
   createdAt         DateTime        @default(now())
 
   @@index([productionErrorId])
+}
+
+// -----------------------------------------------------------------------------
+// ACADEMIC CALENDAR
+// -----------------------------------------------------------------------------
+
+model AcademicCalendarOverride {
+  id        String            @id @default(uuid())
+  schoolId  String
+  school    School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  startDate DateTime          @db.Date
+  endDate   DateTime          @db.Date
+  status    CalendarDayStatus
+  reason    String?
+  
+  createdBy String?
+  creator   User?             @relation("OverrideCreator", fields: [createdBy], references: [id])
+  
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([schoolId])
+  @@index([schoolId, startDate, endDate])
 }

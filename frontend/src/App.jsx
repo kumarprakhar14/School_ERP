@@ -22,6 +22,7 @@ import Settings from './pages/admin/Settings';
 import UserManagement from './pages/admin/UserManagement';
 import AdminUserProfile from './pages/admin/AdminUserProfile';
 import BulkImport from './pages/admin/BulkImport';
+import AcademicCalendar from './pages/admin/AcademicCalendar';
 
 import Dashboard from './pages/dashboard';
 import Academics from './pages/Academics';
@@ -119,6 +120,7 @@ function App() {
               <Route path="admin/users" element={<UserManagement />} />
               <Route path="admin/users/:id" element={<AdminUserProfile />} />
               <Route path="admin/import" element={<BulkImport />} />
+              <Route path="admin/academic-calendar" element={<AcademicCalendar />} />
             </Route>
 
             {/* Phase 3 & 4 routes */}
