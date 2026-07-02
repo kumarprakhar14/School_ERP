@@ -12,6 +12,7 @@ You do not manage academic records or user accounts. Your focus is entirely on f
 |---|---|
 | **Dashboard** | School notice board and overall announcements |
 | **Fees** | Generate invoices, record payments, and view fee summaries |
+| **Reports** | View fee collection reports, payment method breakdowns, and defaulter lists |
 
 ---
 
@@ -111,3 +112,46 @@ To access it:
 
 > If you need to bulk-import fees from a spreadsheet (e.g., for a new academic year), ask your school Admin to use the **Data Import** feature in their panel.
 
+---
+
+## Reports & Insights
+
+The Reports page gives you a financial overview of the school's fee performance. It is accessible from **Reports** in the sidebar.
+
+> As an Accounts user, you will see only the **Fee Insights** tab. The Attendance Insights tab is available to Admins only.
+
+### Using the Filter Bar
+
+Use the **Filter Bar** at the top of the page to define the scope of data you want to see:
+
+- **Date Range** — Choose a preset time window:
+  - *Today*, *This Week*, *This Month*, *Last Month*, *This Year*, or *Custom Range*.
+  - For **Custom Range**, you must also fill in a **Start Date** and **End Date**.
+- **Class (Optional)** — Filter results to a specific class only.
+- **Section (Optional)** — Further narrow results to a specific section within the chosen class. This field becomes available after a class is selected.
+
+Click **Apply Filters** to load the data. The page defaults to **This Month** when first opened.
+
+### Summary Cards
+
+At the top of the Fee Insights tab, four cards give you an at-a-glance financial snapshot:
+
+- **Expected Amount** — The total fee amount billed (all invoices) within the selected period.
+- **Collected Amount** — The total amount received through recorded payments.
+- **Outstanding** — The remaining unpaid balance (Expected minus Collected).
+- **Collection Rate** — The percentage of billed fees that have been collected, displayed as a progress bar.
+
+### Payment Methods
+
+The **Payment Methods** panel shows a visual breakdown of how fees were collected, grouped by payment mode (e.g., Cash, Online, Cheque). Each method is shown as a proportional bar relative to the total collected amount. This helps you understand which payment channels your school relies on most.
+
+### Fee Defaulters
+
+The **Fee Defaulters** table lists students who have outstanding, overdue invoices within the selected period. Each row shows:
+
+- **Student** — The student's full name.
+- **Class/Sec** — The student's class and section.
+- **Pending Amount** — The amount still owed on the overdue invoice.
+- **Overdue** — How many days past the due date the invoice is. Entries overdue by more than 30 days are highlighted in red; those under 30 days are shown in amber.
+
+Use this list to follow up with students or their guardians for outstanding payments.
