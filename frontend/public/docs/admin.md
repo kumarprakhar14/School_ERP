@@ -16,6 +16,8 @@ When you log in for the first time, the Dashboard shows a **Setup Checklist** to
 | **Academics** | Manage classes and sections |
 | **Time Table** | Set up subjects, periods, and the class schedule |
 | **Fees** | View fee summaries and verify UPI payments submitted by students |
+| **Academic Calendar** | Manage school holidays, vacations, and special working days |
+| **Reports** | View attendance insights and fee collection reports |
 | **School Settings** | Update your school's name, logo, theme color, and description |
 
 ---
@@ -211,4 +213,107 @@ On desktop, the PDF is previewed directly in the browser. On mobile, a **Downloa
 
 > For full day-to-day fee management (creating invoices, recording payments), the **Accounts** role has dedicated tools in their panel.
 
+---
+
+## Academic Calendar
+
+The Academic Calendar page lets you manage school-level overrides to the default working schedule. Every date that is not explicitly overridden follows a system default: **Monday to Saturday is a Working Day**, and **Sunday is a Holiday**.
+
+You only need to add an override when you want to deviate from this default — for example, to mark a festival holiday, declare a vacation period, or designate a specific Sunday as a working day.
+
+### Viewing the Calendar
+
+The Academic Calendar page shows a table of all existing overrides for your school. Each entry shows:
+
+- **Start Date** and **End Date** — the date range the override applies to.
+- **Status** — the type of override (see below).
+- **Reason / Occasion** — a description of why the override was created (e.g., "Summer Vacation", "Diwali").
+
+You can filter the list by month using the **month picker** in the top-right corner of the page to narrow down overrides to a specific month.
+
+### Override Types
+
+| Status | Description |
+|---|---|
+| **Working Day** | Marks a normally non-working day (e.g., a Sunday) as a working day. End date is automatically set to the same as Start Date. |
+| **Holiday** | Marks a single day as a holiday. End date is automatically set to the same as Start Date. |
+| **Vacation** | Marks a multi-day period (e.g., summer break) as non-working. You must set both a Start Date and an End Date. |
+
+### Adding an Override
+
+1. Click **Add Override**.
+2. In the form that appears:
+   - **Status Type** — choose whether this is a Working Day, Holiday, or Vacation.
+   - **Start Date** — the first date of the override.
+   - **End Date** — only editable when the status is **Vacation**. For Working Day and Holiday, the end date is automatically set to match the start date.
+   - **Reason / Occasion** — Required for Holiday and Vacation types. Optional for Working Day.
+3. Click **Save Override**.
+
+> If the dates you enter overlap with an existing override, the system will show a conflict error. Resolve the conflict by deleting or editing the existing entry first.
+
+### Editing an Override
+
+Click the **Edit** icon (pencil) on any override row to open the edit form with the current values pre-filled. Make your changes and click **Save Override**.
+
+### Deleting an Override
+
+Click the **Delete** icon (trash) on any override row. A confirmation dialog will appear. Confirm to delete — the affected dates will revert to the system default status.
+
+> Deleting an override does not affect past attendance records. It only changes how future dates are interpreted.
+
+---
+
+## Reports & Insights
+
+The Reports page gives you a data-driven view of your school's attendance and financial performance. It is accessible from **Reports** in the sidebar.
+
+### Tabs
+
+As an Admin, you have access to two report tabs:
+- **Attendance Insights** — data about student attendance.
+- **Fee Insights** — data about fee collections and defaulters.
+
+### Using the Filter Bar
+
+Before viewing reports, use the **Filter Bar** at the top of the page to set the scope of data:
+
+- **Date Range** — Choose a preset time window:
+  - *Today*, *This Week*, *This Month*, *Last Month*, *This Year*, or *Custom Range*.
+  - For **Custom Range**, you must also fill in a **Start Date** and **End Date**.
+- **Class (Optional)** — Filter results to a specific class only.
+- **Section (Optional)** — Further narrow results to a specific section within the chosen class. This field is only enabled after a class is selected.
+
+Click **Apply Filters** to load the report data with your selected filters. Reports default to **This Month** when you first open the page.
+
+---
+
+### Attendance Insights
+
+The Attendance tab displays four summary cards at the top followed by two detailed panels:
+
+**Summary Cards:**
+- **Working Days** — Total number of school working days in the selected period.
+- **Total Present** — Cumulative count of student-present records across all days.
+- **Total Absent** — Cumulative count of student-absent records across all days.
+- **Avg. Attendance Rate** — The average attendance percentage across the school, shown as a progress bar.
+
+**Detailed Panels:**
+- **Top 10 Attendance** — A ranked list of the 10 students with the highest attendance percentage in the selected period. The top 3 are highlighted in amber. Each entry shows the student's name, ERP ID, attendance percentage, and total days present.
+- **Low Attendance** — A list of students whose attendance falls below **75%** in the selected period. Each entry shows the student's name, ERP ID, and their current attendance percentage highlighted in red. If no students are below the threshold, a green "All Good!" message is shown.
+
+---
+
+### Fee Insights
+
+The Fee tab displays four summary cards followed by two detailed panels:
+
+**Summary Cards:**
+- **Expected Amount** — Total fee amount billed (all invoices) within the selected period.
+- **Collected Amount** — Total amount received through recorded payments.
+- **Outstanding** — Remaining unpaid balance (Expected minus Collected).
+- **Collection Rate** — The percentage of billed fees that have been collected, shown as a progress bar.
+
+**Detailed Panels:**
+- **Payment Methods** — A horizontal bar breakdown showing how much was collected through each payment mode (e.g., Cash, Online, Cheque). Bars are proportional to the total collected amount.
+- **Fee Defaulters** — A table listing students with overdue, unpaid invoices. Each row shows the student's name, class and section, the pending amount, and how many days overdue the invoice is. Entries overdue by more than 30 days are highlighted in red; those below 30 days are shown in amber.
 
