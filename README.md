@@ -1,6 +1,6 @@
 # 🏫 SchoolChakra Platform
 
-> **Last Modified:** 27 June 2026
+> **Last Modified:** 2 July 2026
 
 A modern, multi-tenant SaaS application for managing multiple schools, their students, teachers, academics, and finances.
 
@@ -38,6 +38,11 @@ A modern, multi-tenant SaaS application for managing multiple schools, their stu
 - **Data Import (Bulk Upload):** CSV-based bulk import for students, teachers, and fee records. Fee import uses a guided multi-step wizard (Upload → Validate → Match → Reconcile → Resolve Ambiguities → Preview → Confirm). Template mismatch and row-level validation errors are surfaced to the user with specific, actionable messages (400) rather than generic server errors. Downloadable error reports for failed rows.
 - **Teacher Section Assignment UX:** When creating or editing a teacher, class/section assignments use a clean checkbox-based multi-select UI grouped by class, replacing the native `<select multiple>` element.
 - **School Settings:** Update school name, theme color, logo URL, and description.
+- **Academic Calendar:** Manage school-level calendar overrides — declare holidays, multi-day vacations, and special working days. The system defaults Mon–Sat as working days and Sunday as a holiday; overrides only need to be created when deviating from this default. Supports overlap detection and month-based filtering.
+- **Reports & Insights:** Data-driven reporting dashboard with two tabs:
+  - **Attendance Insights** — school-wide attendance summary (working days, present/absent counts, avg. attendance rate), Top 10 best-attending students ranking, and a low-attendance alert list (below 75% threshold).
+  - **Fee Insights** — fee collection summary (expected, collected, outstanding, collection rate), payment method breakdown, and a fee defaulters table with overdue day tracking.
+  - Both reports support flexible filtering by date range (Today, This Week, This Month, Last Month, This Year, Custom Range), class, and section.
 - **Role-Based Access Control (RBAC):** Granular dashboard routing and permission handling per role.
 
 ### 👨‍🏫 Teacher Module
@@ -67,7 +72,18 @@ A modern, multi-tenant SaaS application for managing multiple schools, their stu
 - **Invoice Generation:** Create fee invoices per student per month/year with optional due date and remarks. Auto-generated invoice numbers.
 - **Payment Recording:** Log payments against invoices with payment mode, reference number, and remarks. Fee status updates automatically.
 - **Transaction History:** Chronological log of all invoices and payments across the school, filterable by student.
+- **Invoice & Receipt PDF:** Generate and download formatted PDF invoices and payment receipts. Invoices include the school logo, invoice number, billing period, payment status watermark (PAID / PARTIALLY PAID / PENDING), and a QR code. Previewed inline on desktop; downloadable on mobile.
+- **UPI Payment Verification:** Review and approve or reject UPI payment proofs (UTR number + optional screenshot) submitted by students.
 - **"Added By" Tracking:** All fee transactions record which staff member created them. This field is exclusively visible to Accounts users.
+- **Fee Reports:** Dedicated fee reporting tab — collection summary (expected, collected, outstanding, collection rate), payment method breakdown by mode, and a fee defaulters table with overdue day tracking. Filterable by date range, class, and section.
+
+---
+
+## 🏗️ Backend Architecture
+- **Entry Point Separation:** `server.js` handles server startup, cron initialization, and web push setup. `app.js` owns Express configuration, middleware, routing, and global error handling.
+- **Centralized Route Registry:** All API routes are consolidated in `src/routes/index.routes.js` and mounted to `/api` from `app.js`, eliminating import clutter from the entry point.
+- **Service → Repository Pattern:** Business logic is encapsulated in dedicated service classes; data access is isolated in repository classes (e.g., `AttendanceReportRepository`, `FeeReportRepository`).
+- **Report Engine:** A dedicated `ReportEngine` and `ReportDTOs` layer standardizes report data aggregation and formatting across all report types.
 
 ---
 
