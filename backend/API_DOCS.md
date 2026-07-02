@@ -32,7 +32,9 @@ This document is the **single source of truth** for all backend API endpoints of
 19. [Category: Platform Management — Plans, Features & Billing](#19-category-platform-management--plans-features--billing)
 20. [Category: Subscription & Override Management](#20-category-subscription--override-management)
 21. [Category: Diagnostics](#21-category-diagnostics)
-22. [Appendix: Data Models & Enums](#22-appendix-data-models--enums)
+22. [Category: Academic Calendar](#22-category-academic-calendar)
+23. [Category: Reports](#23-category-reports)
+24. [Appendix: Data Models & Enums](#24-appendix-data-models--enums)
 
 ---
 
@@ -3486,7 +3488,380 @@ Base path: `/api/diagnostics`
 
 ---
 
-## 22. Appendix: Data Models & Enums
+## 22. Category: Academic Calendar
+
+Base path: `/api/academic-calendar`
+
+> All routes in this category are protected by `authMiddleware`.
+
+---
+
+### `GET /api/academic-calendar/status`
+
+**Purpose:** Retrieves the effective academic calendar status for a specific date, accounting for any overrides (holidays, exams, etc.).
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated user
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `date` | `string (YYYY-MM-DD)` | ✅ | The date to check |
+
+**Success Response `200 OK`:**
+```json
+{
+  "success": true,
+  "data": {
+    "date": "2026-06-15",
+    "isWorkingDay": true,
+    "dayType": "NORMAL",
+    "description": null
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | Missing `date` parameter | `"Date query parameter is required."` |
+
+---
+
+### `GET /api/academic-calendar/today`
+
+**Purpose:** Retrieves the effective academic calendar status for today.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated user
+
+**Request:** None
+
+**Success Response `200 OK`:**
+```json
+{
+  "success": true,
+  "data": {
+    "date": "2026-07-02",
+    "isWorkingDay": false,
+    "dayType": "WEEKEND",
+    "description": "Sunday"
+  }
+}
+```
+
+---
+
+### `GET /api/academic-calendar`
+
+**Purpose:** Lists all academic calendar overrides for the authenticated user's school.
+
+**Auth Required:** Yes  
+**Roles:** Any authenticated user
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `startDate` | `string (YYYY-MM-DD)` | ❌ | Filter overrides starting from this date |
+| `endDate` | `string (YYYY-MM-DD)` | ❌ | Filter overrides ending before this date |
+
+**Success Response `200 OK`:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid-override",
+      "schoolId": "uuid-school",
+      "title": "Summer Vacation",
+      "startDate": "2026-05-01T00:00:00.000Z",
+      "endDate": "2026-06-30T00:00:00.000Z",
+      "type": "HOLIDAY",
+      "description": "Annual summer break"
+    }
+  ]
+}
+```
+
+---
+
+### `POST /api/academic-calendar`
+
+**Purpose:** Creates a new academic calendar override for the school.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `SUPER_ADMIN`
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `title` | `string` | ✅ | Title of the override |
+| `startDate` | `string (YYYY-MM-DD)` | ✅ | Override start date |
+| `endDate` | `string (YYYY-MM-DD)` | ✅ | Override end date |
+| `type` | `string (enum)` | ✅ | Override type (e.g., `HOLIDAY`, `EXAM`, `EVENT`, `WEEKEND_WORKING`) |
+| `description` | `string` | ❌ | Additional details |
+
+```json
+{
+  "title": "Independence Day",
+  "startDate": "2026-08-15",
+  "endDate": "2026-08-15",
+  "type": "HOLIDAY"
+}
+```
+
+**Success Response `201 Created`:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "title": "Independence Day",
+    "startDate": "2026-08-15T00:00:00.000Z",
+    "endDate": "2026-08-15T00:00:00.000Z",
+    "type": "HOLIDAY"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `400` | Validation failure | Zod validation error |
+| `409` | Overlap with existing | `"An override already exists for these dates."` |
+
+---
+
+### `PUT /api/academic-calendar/:id`
+
+**Purpose:** Updates an existing academic calendar override.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `SUPER_ADMIN`
+
+**Path Variables:** `id` — Override UUID
+
+**Request Body (all optional):**
+Matches POST body fields.
+
+**Success Response `200 OK`:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "title": "Extended Summer Vacation",
+    "startDate": "2026-05-01T00:00:00.000Z",
+    "endDate": "2026-07-05T00:00:00.000Z",
+    "type": "HOLIDAY"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Not found | `"Override not found"` |
+| `409` | Overlap with existing | `"An override already exists for these dates."` |
+
+---
+
+### `DELETE /api/academic-calendar/:id`
+
+**Purpose:** Deletes a specific academic calendar override.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `SUPER_ADMIN`
+
+**Path Variables:** `id` — Override UUID
+
+**Success Response `200 OK`:**
+```json
+{
+  "success": true,
+  "message": "Override deleted successfully."
+}
+```
+
+**Error Responses:**
+
+| Status | Condition | Message |
+|---|---|---|
+| `404` | Not found | `"Override not found"` |
+
+---
+
+## 23. Category: Reports
+
+Base path: `/api/reports`
+
+> All routes in this category are protected by `authMiddleware` and `schoolValidityMiddleware`.
+
+---
+
+### `GET /api/reports/attendance/summary`
+
+**Purpose:** Retrieves summary statistics for student attendance across the school for a specified period.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`
+
+**Query Parameters:**
+Accepts standard report filters (e.g., `startDate`, `endDate`, `classId`, `sectionId`).
+
+**Success Response `200 OK`:**
+```json
+{
+  "totalPresent": 450,
+  "totalAbsent": 50,
+  "attendancePercentage": 90.0,
+  "period": { "start": "2026-06-01", "end": "2026-06-30" }
+}
+```
+
+---
+
+### `GET /api/reports/attendance/ranking`
+
+**Purpose:** Retrieves attendance ranking data for students or sections.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`
+
+**Query Parameters:**
+Accepts standard report filters.
+
+**Success Response `200 OK`:**
+```json
+[
+  { "rank": 1, "studentName": "John Doe", "attendancePercentage": 100 },
+  { "rank": 2, "studentName": "Jane Smith", "attendancePercentage": 98.5 }
+]
+```
+
+---
+
+### `GET /api/reports/attendance/low-attendance`
+
+**Purpose:** Retrieves a list of students whose attendance falls below a configured threshold.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`
+
+**Query Parameters:**
+Accepts standard report filters and `threshold`.
+
+**Success Response `200 OK`:**
+```json
+[
+  { "studentName": "Bob Williams", "attendancePercentage": 65.5 }
+]
+```
+
+---
+
+### `GET /api/reports/attendance/chronic-absentees`
+
+**Purpose:** Retrieves a list of students who have been consecutively absent for an extended number of days.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`
+
+**Query Parameters:**
+Accepts standard report filters.
+
+**Success Response `200 OK`:**
+```json
+[
+  { "studentName": "Charlie Brown", "consecutiveAbsences": 5 }
+]
+```
+
+---
+
+### `GET /api/reports/attendance/comparative`
+
+**Purpose:** Retrieves comparative attendance metrics (e.g., across terms or months). *(Not Implemented Yet)*
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`
+
+**Success Response `501 Not Implemented`:**
+```json
+{
+  "message": "Not Implemented Yet"
+}
+```
+
+---
+
+### `GET /api/reports/fees/collection-summary`
+
+**Purpose:** Retrieves a summarized view of fee collections within a specific period.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Query Parameters:**
+Accepts standard report filters.
+
+**Success Response `200 OK`:**
+```json
+{
+  "totalCollected": 1500000,
+  "totalPending": 50000,
+  "collectionPercentage": 96.7
+}
+```
+
+---
+
+### `GET /api/reports/fees/payment-methods`
+
+**Purpose:** Retrieves a breakdown of fee collections grouped by payment method (CASH, ONLINE, CHEQUE, etc.).
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Query Parameters:**
+Accepts standard report filters.
+
+**Success Response `200 OK`:**
+```json
+[
+  { "method": "ONLINE", "amount": 1000000 },
+  { "method": "CASH", "amount": 500000 }
+]
+```
+
+---
+
+### `GET /api/reports/fees/defaulters`
+
+**Purpose:** Retrieves a list of students who have overdue, unpaid fee invoices.
+
+**Auth Required:** Yes  
+**Roles:** `ADMIN`, `ACCOUNTS`
+
+**Query Parameters:**
+Accepts standard report filters.
+
+**Success Response `200 OK`:**
+```json
+[
+  { "studentName": "Alice Johnson", "pendingAmount": 15000, "dueDate": "2026-05-15" }
+]
+```
+
+---
+
+## 24. Appendix: Data Models & Enums
 
 ### Enums
 
