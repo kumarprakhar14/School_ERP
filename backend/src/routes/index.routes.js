@@ -1,0 +1,57 @@
+import express from 'express';
+
+import authRoutes from './auth.routes.js';
+import schoolRoutes from './school.routes.js';
+import userRoutes from './user.routes.js';
+import classRoutes from './class.routes.js';
+import attendanceRoutes from './attendance.routes.js';
+import noticeRoutes from './notice.routes.js';
+import assignmentRoutes from './assignment.routes.js';
+import feeRoutes from './fee.routes.js';
+import dashboardRoutes from './dashboard.routes.js';
+import timetableRoutes from './timetable.routes.js';
+import importRoutes from './import.routes.js';
+import bugRoutes from './bug.routes.js';
+import searchRoutes from './search.routes.js';
+import pushNotificationRoutes from './pushNotification.routes.js';
+import notificationRoutes from './notification.routes.js';
+import plansRoutes from './plans.routes.js';
+import featuresRoutes from './features.routes.js';
+import planFeaturesRoutes from './planFeatures.routes.js';
+import diagnosticsRoutes from './diagnostics.routes.js';
+import schoolSubscriptionRoutes from './schoolSubscription.routes.js';
+import schoolOverrideRoutes from './schoolOverride.routes.js';
+import globalFlagRoutes from './globalFlag.routes.js';
+import billingRoutes from './billing.routes.js';
+import academicCalendarRoutes from './academicCalendar.routes.js';
+import reportsRoutes from './reports.routes.js';
+
+const router = express.Router();
+
+router.use('/auth', authRoutes);
+router.use('/schools', schoolRoutes);
+router.use('/users', userRoutes);
+router.use('/classes', classRoutes);
+router.use('/attendance', attendanceRoutes);
+router.use('/notices', noticeRoutes);
+router.use('/assignments', assignmentRoutes);
+router.use('/fees', feeRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/timetable', timetableRoutes);
+router.use('/import', importRoutes);
+router.use('/bugs', bugRoutes);
+router.use('/search', searchRoutes);
+router.use('/push', pushNotificationRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/plans', plansRoutes);
+router.use('/features', featuresRoutes);
+router.use('/plan-features', planFeaturesRoutes);
+router.use('/diagnostics', diagnosticsRoutes);
+router.use('/subscriptions/schools', schoolSubscriptionRoutes);
+router.use('/subscriptions/overrides', schoolOverrideRoutes);
+router.use('/subscriptions/global-flags', globalFlagRoutes);
+router.use('/billing', billingRoutes);
+router.use('/academic-calendar', academicCalendarRoutes);
+router.use('/reports', reportsRoutes);
+
+export default router;

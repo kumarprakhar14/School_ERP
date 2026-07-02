@@ -43,6 +43,61 @@ class AcademicCalendarService {
   }
 
   /**
+   * Internal method to resolve the status of every day in a date range.
+   * Fetches overrides once to prevent N+1 queries.
+   */
+  async _resolveRange(schoolId, startDateString, endDateString) {
+    const startDate = new Date(startDateString);
+    const endDate = new Date(endDateString);
+    const start = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
+    const end = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()));
+
+    const overrides = await prisma.academicCalendarOverride.findMany({
+      where: {
+        schoolId,
+        startDate: { lte: end },
+        endDate: { gte: start }
+      }
+    });
+
+    const days = [];
+    let current = new Date(start);
+
+    while (current <= end) {
+      const currentDateString = current.toISOString().split('T')[0];
+      const isSunday = current.getUTCDay() === 0;
+      let status = isSunday ? 'HOLIDAY' : 'WORKING';
+
+      const activeOverride = overrides.find(o => 
+        new Date(o.startDate) <= current && new Date(o.endDate) >= current
+      );
+
+      if (activeOverride) {
+        status = activeOverride.status;
+      }
+
+      days.push({
+        date: currentDateString,
+        status
+      });
+
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+
+    return days;
+  }
+
+  /**
+   * Public method for reporting and metrics to get the total number of working days in a range.
+   * @param {string|Date} startDate
+   * @param {string|Date} endDate
+   */
+  async countWorkingDays(schoolId, startDate, endDate) {
+    const days = await this._resolveRange(schoolId, startDate, endDate);
+    return days.filter(d => d.status === 'WORKING').length;
+  }
+
+  /**
    * Create a new academic calendar override.
    */
   async createOverride(schoolId, data, userId) {
