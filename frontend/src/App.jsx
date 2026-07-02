@@ -34,6 +34,7 @@ import TimeTable from './pages/TimeTable';
 import Notifications from './pages/Notifications';
 import InvoicePage from './pages/InvoicePage';
 import PaymentReceiptPage from './pages/PaymentReceiptPage';
+import ReportsDashboard from './pages/reports/ReportsDashboard';
 
 function DashboardRouter() {
   const user = useAuthStore(state => state.user);
@@ -129,6 +130,7 @@ function App() {
             <Route path="attendance" element={<Attendance />} />
             <Route path="assignments" element={<Assignments />} />
             <Route path="fees" element={<Fees />} />
+            <Route path="reports" element={<ReportsDashboard />} />
             <Route path="timetable" element={<TimeTable />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<Notifications />} />

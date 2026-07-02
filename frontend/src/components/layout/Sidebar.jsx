@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X, Bug, CreditCard, Layers } from 'lucide-react';
+import { Home, Users, Calendar, FileText, Settings, BookOpen, Building2, X, Bug, CreditCard, Layers, TrendingUp } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import ReportBugModal from '../modals/ReportBugModal';
 
@@ -24,6 +24,7 @@ const roleNavItems = {
     { icon: BookOpen, label: 'Academics', path: '/academics' },
     { icon: Calendar, label: 'Time Table', path: '/timetable' },
     { icon: FileText, label: 'Fees', path: '/fees' },
+    { icon: TrendingUp, label: 'Reports', path: '/reports' },
   ],
   TEACHER: [
     { icon: Home, label: 'Dashboard', path: '/' },
@@ -35,6 +36,7 @@ const roleNavItems = {
   ACCOUNTS: [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: FileText, label: 'Fees', path: '/fees' },
+    { icon: TrendingUp, label: 'Reports', path: '/reports' },
   ],
   STUDENT: [
     { icon: Home, label: 'Dashboard', path: '/' },
