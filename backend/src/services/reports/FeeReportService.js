@@ -16,7 +16,7 @@ export class FeeReportService {
   async getPaymentMethods(schoolId, query) {
     const { filters, dateRange } = await ReportEngine.validateAndParseFilters(schoolId, query);
     
-    const repoResult = await FeeReportRepository.getPaymentMethods(schoolId, dateRange.startDate, dateRange.endDate);
+    const repoResult = await FeeReportRepository.getPaymentMethods(schoolId, dateRange.startDate, dateRange.endDate, filters);
     
     const formattedData = ReportDTOs.formatPaymentMethods(repoResult);
 

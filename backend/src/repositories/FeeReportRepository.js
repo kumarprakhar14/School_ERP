@@ -4,44 +4,27 @@ import { queryLogger } from '../utils/queryLogger.js';
 export class FeeReportRepository {
   static async getCollectionSummary(schoolId, startDate, endDate, filters = {}) {
     return await queryLogger.measure('FeeReportRepository.getCollectionSummary', async () => {
-      // Find all invoices that belong to the school and match optional filters
+      // Build the invoice filter: invoices whose dueDate falls in the selected period
       const where = {
         schoolId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate
-        }
-      };
-      
-      // Calculate total expected amount (sum of all totalAmount for invoices created in this period)
-      const expectedAmountResult = await prisma.feeInvoice.aggregate({
-        _sum: { totalAmount: true },
-        where
-      });
-      const expectedAmount = expectedAmountResult._sum.totalAmount || 0;
-
-      // Calculate total collected amount (sum of all successful payments in this period)
-      // Note: Payment date is based on paidAt
-      const paymentWhere = {
-        schoolId,
-        status: 'SUCCESS',
-        paidAt: {
+        dueDate: {
           gte: startDate,
           lte: endDate
         }
       };
 
-      const collectedAmountResult = await prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: paymentWhere
-      });
-      const collectedAmount = collectedAmountResult._sum.amount || 0;
+      // Apply class/section filters via student → studentProfile → section → class
+      if (filters.sectionId) {
+        where.student = {
+          studentProfile: { sectionId: filters.sectionId }
+        };
+      } else if (filters.classId) {
+        where.student = {
+          studentProfile: { section: { classId: filters.classId } }
+        };
+      }
 
-      // Outstanding amount could be expected - collected if they strictly overlap,
-      // but realistically outstanding is per invoice (total - paid so far).
-      // Since this is a summary for a period, we can define outstanding for those invoices created in this period:
-      // However, a raw query is safer if we want exact outstanding for the filtered invoices.
-      
+      // Fetch the selected invoices with their ALL-TIME successful payments
       const invoices = await prisma.feeInvoice.findMany({
         where,
         select: {
@@ -52,13 +35,18 @@ export class FeeReportRepository {
           }
         }
       });
-      
-      let outstandingAmount = 0;
+
+      // Compute all three metrics from the SAME invoice population
+      let expectedAmount = 0;
+      let collectedAmount = 0;
+
       invoices.forEach(inv => {
-        const paidForThisInvoice = inv.payments.reduce((sum, p) => sum + p.amount, 0);
-        const remaining = inv.totalAmount - paidForThisInvoice;
-        if (remaining > 0) outstandingAmount += remaining;
+        expectedAmount += inv.totalAmount;
+        collectedAmount += inv.payments.reduce((sum, p) => sum + p.amount, 0);
       });
+
+      // Outstanding is derived, not queried separately — guarantees Expected - Collected = Outstanding
+      const outstandingAmount = Math.max(0, expectedAmount - collectedAmount);
 
       return {
         expectedAmount,
@@ -68,18 +56,34 @@ export class FeeReportRepository {
     });
   }
 
-  static async getPaymentMethods(schoolId, startDate, endDate) {
+  static async getPaymentMethods(schoolId, startDate, endDate, filters = {}) {
     return await queryLogger.measure('FeeReportRepository.getPaymentMethods', async () => {
-      return await prisma.payment.groupBy({
-        by: ['paymentMode'],
-        where: {
-          schoolId,
-          status: 'SUCCESS',
-          paidAt: {
+      // Build filter: payments linked to invoices whose dueDate falls in the period
+      const where = {
+        schoolId,
+        status: 'SUCCESS',
+        invoice: {
+          dueDate: {
             gte: startDate,
             lte: endDate
           }
-        },
+        }
+      };
+
+      // Apply class/section filters via invoice → student → studentProfile → section → class
+      if (filters.sectionId) {
+        where.invoice.student = {
+          studentProfile: { sectionId: filters.sectionId }
+        };
+      } else if (filters.classId) {
+        where.invoice.student = {
+          studentProfile: { section: { classId: filters.classId } }
+        };
+      }
+
+      return await prisma.payment.groupBy({
+        by: ['paymentMode'],
+        where,
         _sum: {
           amount: true
         }
@@ -89,17 +93,34 @@ export class FeeReportRepository {
 
   static async getDefaulters(schoolId, startDate, endDate, filters = {}) {
     return await queryLogger.measure('FeeReportRepository.getDefaulters', async () => {
-      // Find invoices due within the given period that have an outstanding balance > 0
-      // Due to the complexity of nested sums, we use raw SQL.
-      // We calculate daysOverdue against the *current date* as requested.
-      
-      return await prisma.$queryRaw`
+      // Build class/section filter conditions for the raw SQL
+      const classFilterJoin = (filters.classId || filters.sectionId)
+        ? `JOIN "StudentProfile" sp ON sp."userId" = u.id
+           LEFT JOIN "Section" sec ON sp."sectionId" = sec.id
+           LEFT JOIN "Class" cls ON sec."classId" = cls.id`
+        : `LEFT JOIN "StudentProfile" sp ON sp."userId" = u.id
+           LEFT JOIN "Section" sec ON sp."sectionId" = sec.id
+           LEFT JOIN "Class" cls ON sec."classId" = cls.id`;
+
+      let classFilterWhere = '';
+      const params = [schoolId, startDate, endDate];
+
+      if (filters.sectionId) {
+        classFilterWhere = `AND sp."sectionId" = $4`;
+        params.push(filters.sectionId);
+      } else if (filters.classId) {
+        classFilterWhere = `AND sec."classId" = $4`;
+        params.push(filters.classId);
+      }
+
+      // Use $queryRawUnsafe since we need dynamic WHERE clauses
+      const query = `
         SELECT 
           f.id,
           f."studentId",
           u.name as "studentName",
-          c.name as "className",
-          s.name as "sectionName",
+          cls.name as "className",
+          sec.name as "sectionName",
           f."dueDate",
           (f."totalAmount" - COALESCE((
             SELECT SUM(p.amount) 
@@ -109,14 +130,13 @@ export class FeeReportRepository {
           EXTRACT(DAY FROM (CURRENT_DATE - f."dueDate")) as "daysOverdue"
         FROM "FeeInvoice" f
         JOIN "User" u ON f."studentId" = u.id
-        LEFT JOIN "StudentProfile" sp ON sp."userId" = u.id
-        LEFT JOIN "Section" s ON sp."sectionId" = s.id
-        LEFT JOIN "Class" c ON s."classId" = c.id
-        WHERE f."schoolId" = ${schoolId}
+        ${classFilterJoin}
+        WHERE f."schoolId" = $1
           AND f."dueDate" IS NOT NULL
-          AND f."dueDate" >= ${startDate}
-          AND f."dueDate" <= ${endDate}
+          AND f."dueDate" >= $2
+          AND f."dueDate" <= $3
           AND f."dueDate" < CURRENT_DATE
+          ${classFilterWhere}
           AND (f."totalAmount" - COALESCE((
             SELECT SUM(p.amount) 
             FROM "Payment" p 
@@ -124,6 +144,9 @@ export class FeeReportRepository {
           ), 0)) > 0
         ORDER BY "daysOverdue" DESC
       `;
+
+      return await prisma.$queryRawUnsafe(query, ...params);
     });
   }
 }
+

@@ -25,9 +25,10 @@ export class ReportEngine {
           endDate = new Date(now);
           break;
         case 'This Week': {
-          const first = now.getDate() - now.getDay() + 1; // Monday
-          startDate = new Date(now.setDate(first));
-          endDate = new Date(now.setDate(first + 6));
+          const day = now.getDay(); // 0=Sun, 1=Mon, ...
+          const diffToMonday = day === 0 ? -6 : 1 - day;
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+          endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 6);
           break;
         }
         case 'This Month':
@@ -40,7 +41,7 @@ export class ReportEngine {
           break;
         case 'This Year':
           startDate = new Date(now.getFullYear(), 0, 1);
-          endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+          endDate = new Date(now.getFullYear(), 11, 31);
           break;
         case 'Custom Range':
           if (!query.startDate || !query.endDate) {
@@ -60,9 +61,9 @@ export class ReportEngine {
       endDate = new Date(query.endDate);
     }
 
-    // Normalize to Midnight UTC
+    // Normalize: startDate to start-of-day UTC, endDate to end-of-day UTC
     startDate = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
-    endDate = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()));
+    endDate = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999));
 
     // System Protection: Max window of 5 years
     const FIVE_YEARS_MS = 5 * 365 * 24 * 60 * 60 * 1000;
