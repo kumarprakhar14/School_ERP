@@ -36,9 +36,10 @@ export class ReportDTOs {
   }
 
   static formatFeeCollectionSummary(repositoryResult) {
-    const expected = Number(repositoryResult.expectedAmount || 0);
-    const collected = Number(repositoryResult.collectedAmount || 0);
-    const outstanding = Number(repositoryResult.outstandingAmount || 0);
+    // Convert from paisa (stored in DB) to rupees (displayed to user)
+    const expected = Number(repositoryResult.expectedAmount || 0) / 100;
+    const collected = Number(repositoryResult.collectedAmount || 0) / 100;
+    const outstanding = Number(repositoryResult.outstandingAmount || 0) / 100;
 
     return {
       expectedAmount: expected,
@@ -51,7 +52,7 @@ export class ReportDTOs {
   static formatPaymentMethods(repositoryResult) {
     return repositoryResult.map(item => ({
       method: item.paymentMode || 'Unknown',
-      amount: Number(item._sum.amount || 0)
+      amount: Number(item._sum.amount || 0) / 100
     }));
   }
 
@@ -62,7 +63,7 @@ export class ReportDTOs {
       studentName: defaulter.studentName,
       className: defaulter.className,
       sectionName: defaulter.sectionName,
-      pendingAmount: Number(defaulter.pendingAmount || 0),
+      pendingAmount: Number(defaulter.pendingAmount || 0) / 100,
       dueDate: defaulter.dueDate,
       daysOverdue: defaulter.daysOverdue
     }));
