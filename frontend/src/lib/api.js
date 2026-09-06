@@ -36,7 +36,9 @@ api.interceptors.response.use(
       
       localStorage.removeItem('token');
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        const redirect = window.location.pathname + window.location.search;
+        try { sessionStorage.setItem('redirectAfterLogin', redirect); } catch {}
+        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
       }
     } else if (error.response && error.response.status === 403) {
       const code = error.response.data?.code;

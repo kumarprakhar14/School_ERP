@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, isInitialized, fetchProfile } = useAuthStore();
+  const location = useLocation();
 
   useEffect(() => {
     if (!isInitialized) {
@@ -20,7 +21,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {

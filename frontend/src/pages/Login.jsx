@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { BookOpen, LogIn, AlertCircle, X } from 'lucide-react';
 
@@ -13,13 +13,19 @@ export default function Login() {
   const login = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state?.from?.pathname ? `${location.state.from.pathname}${location.state.from.search || ''}` : null)
+    || new URLSearchParams(location.search).get('redirect')
+    || (() => { try { return sessionStorage.getItem('redirectAfterLogin'); } catch { return null; } })()
+    || '/';
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     const res = await login(erpId, password, schoolId);
     if (res.success) {
-      navigate('/');
+      sessionStorage.removeItem('redirectAfterLogin');
+      navigate(from, { replace: true });
     } else {
       setError(res.message);
     }
