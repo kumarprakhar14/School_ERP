@@ -4,6 +4,7 @@ import api from '../lib/api';
 const useAuthStore = create((set, get) => ({
   user: null,
   token: localStorage.getItem('token') || null,
+  refreshToken: localStorage.getItem('refreshToken') || null,
   isLoading: false,
   isInitialized: false,
 
@@ -16,10 +17,11 @@ const useAuthStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await api.post('/auth/login', { erpId, password, schoolId });
-      const { token, user } = response.data;
+      const { token, refreshToken, user } = response.data;
       localStorage.setItem('token', token);
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
       get().applyTheme(user);
-      set({ user, token, isLoading: false });
+      set({ user, token, refreshToken, isLoading: false });
       return { success: true };
     } catch (error) {
       set({ isLoading: false });
@@ -29,8 +31,9 @@ const useAuthStore = create((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     document.documentElement.style.removeProperty('--app-theme-color');
-    set({ user: null, token: null });
+    set({ user: null, token: null, refreshToken: null });
   },
 
   fetchProfile: async () => {
@@ -47,7 +50,8 @@ const useAuthStore = create((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch profile', error);
       localStorage.removeItem('token');
-      set({ user: null, token: null, isInitialized: true });
+      localStorage.removeItem('refreshToken');
+      set({ user: null, token: null, refreshToken: null, isInitialized: true });
     }
   }
 }));

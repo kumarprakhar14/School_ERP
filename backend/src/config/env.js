@@ -21,6 +21,7 @@ export const config = {
     databaseUrl: requireEnv("DATABASE_URL"),
     directUrl: requireEnv("DIRECT_URL"),
     jwtSecret: requireEnv("JWT_SECRET"),
+    jwtRefreshSecret: requireEnv("JWT_REFRESH_SECRET"),
     cloudinary: {
         cloudName: requireEnv("CLOUDINARY_CLOUD_NAME"),
         apiKey: requireEnv("CLOUDINARY_API_KEY"),

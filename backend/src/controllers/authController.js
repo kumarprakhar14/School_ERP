@@ -1,6 +1,6 @@
 import prisma from '../utils/db.js';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { NotFoundError, UnauthorizedError } from '../errors/index.js';
 
 const USER_SELECT_FIELDS = {
@@ -66,11 +66,13 @@ const login = async (req, res, next) => {
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    const token = generateToken(user.id, user.schoolId, user.role);
+    const token = generateAccessToken(user.id, user.schoolId, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.schoolId, user.role);
 
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -117,6 +119,40 @@ const getMe = async (req, res, next) => {
   }
 };
 
+const refreshToken = async (req, res, next) => {
+  try {
+    const { token: expiredToken, refreshToken: incomingRefreshToken } = req.body;
+
+    if (!incomingRefreshToken) {
+      return res.status(401).json({ message: 'Refresh token is required' });
+    }
+
+    const decoded = verifyRefreshToken(incomingRefreshToken);
+    
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    // Optionally check if user is still active in DB
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { isActive: true, isArchived: true }
+    });
+
+    if (!user || !user.isActive || user.isArchived) {
+      return res.status(401).json({ message: 'User account is not valid' });
+    }
+
+    const newToken = generateAccessToken(decoded.userId, decoded.schoolId, decoded.role);
+    const newRefreshToken = generateRefreshToken(decoded.userId, decoded.schoolId, decoded.role);
+
+    res.json({ token: newToken, refreshToken: newRefreshToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export { login,
   getMe,
+  refreshToken
  };
