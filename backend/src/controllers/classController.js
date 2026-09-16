@@ -1,7 +1,7 @@
 import prisma from '../utils/db.js';
 import { ForbiddenError } from '../errors/index.js';
 
-// Get all classes and sections for the school
+// Get all classes and sections for the school — intentionally bounded (few classes per school), no pagination
 const getClasses = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
@@ -15,7 +15,7 @@ const getClasses = async (req, res, next) => {
           }
         }
       },
-      orderBy: { name: 'asc' }
+      orderBy: [{ name: 'asc' }, { id: 'asc' }]
     });
     res.json(classes);
   } catch (error) {
@@ -144,6 +144,10 @@ const getSectionStudents = async (req, res, next) => {
   try {
     const { sectionId } = req.params;
     const schoolId = req.user.schoolId;
+    const q = (req.query.q || req.query.search || '').trim();
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
     // Verify the section belongs to the school
     const section = await prisma.section.findFirst({
@@ -153,11 +157,27 @@ const getSectionStudents = async (req, res, next) => {
       throw new ForbiddenError('The specified section does not belong to your school');
     }
 
+    const where = { sectionId, ...(q && { user: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { erpId: { contains: q, mode: 'insensitive' } }] } }) };
+    const orderBy = { user: { name: 'asc' } };
+
+    if (hasPagination) {
+      const [students, total] = await Promise.all([
+        prisma.studentProfile.findMany({ where, include: { user: { select: { id: true, name: true, erpId: true } } }, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma.studentProfile.count({ where }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: students, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
     const students = await prisma.studentProfile.findMany({
       where: { sectionId },
       include: {
         user: { select: { id: true, name: true, erpId: true } }
-      }
+      },
+      orderBy,
     });
 
     res.json(students);
@@ -170,6 +190,10 @@ const getClassStudents = async (req, res, next) => {
   try {
     const { classId } = req.params;
     const schoolId = req.user.schoolId;
+    const q = (req.query.q || req.query.search || '').trim();
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
     // Verify the class belongs to the school
     const cls = await prisma.class.findFirst({
@@ -179,11 +203,27 @@ const getClassStudents = async (req, res, next) => {
       throw new ForbiddenError('The specified class does not belong to your school');
     }
 
+    const where = { section: { classId }, ...(q && { user: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { erpId: { contains: q, mode: 'insensitive' } }] } }) };
+    const orderBy = { user: { name: 'asc' } };
+
+    if (hasPagination) {
+      const [students, total] = await Promise.all([
+        prisma.studentProfile.findMany({ where, include: { user: { select: { id: true, name: true, erpId: true } } }, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma.studentProfile.count({ where }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: students, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
     const students = await prisma.studentProfile.findMany({
       where: { section: { classId } },
       include: {
         user: { select: { id: true, name: true, erpId: true } }
-      }
+      },
+      orderBy,
     });
 
     res.json(students);

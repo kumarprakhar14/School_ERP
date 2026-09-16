@@ -121,8 +121,39 @@ export const submitPayment = async (req, res, next) => {
 export const getPendingPayments = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    
+    const where = { schoolId, status: 'PENDING_VERIFICATION' };
+
+    if (req.query.page || req.query.limit) {
+      const [payments, total] = await Promise.all([
+        prisma.payment.findMany({
+          where,
+          include: {
+            invoice: {
+              include: {
+                student: { select: { name: true, erpId: true } }
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit
+        }),
+        prisma.payment.count({ where })
+      ]);
+      
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      
+      return res.json({ data: payments, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
     const payments = await prisma.payment.findMany({
-      where: { schoolId, status: 'PENDING_VERIFICATION' },
+      where,
       include: {
         invoice: {
           include: {

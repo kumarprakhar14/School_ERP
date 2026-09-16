@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldAlert, AlertTriangle, Plus, X, Search, CheckCircle2, XCircle, Power, Loader2, Archive } from 'lucide-react';
 import api from '../../lib/api';
 import { toast } from 'sonner';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function GlobalFeatureFlags() {
   const [flags, setFlags] = useState([]);
@@ -98,58 +99,62 @@ export default function GlobalFeatureFlags() {
         </div>
         
         <div className="overflow-x-auto">
-          {filteredFlags.length > 0 ? (
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Feature</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">State</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Reason</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Updated By</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredFlags.map(f => (
-                  <tr key={f.id} className={`hover:bg-gray-50/50 transition-colors ${!f.isActive ? 'opacity-50' : ''}`}>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{f.feature.name}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-0.5">{f.feature.key}</div>
-                      {!f.isActive && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">Archived</div>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${f.isEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {f.isEnabled ? <CheckCircle2 className="w-3 h-3 mr-1"/> : <XCircle className="w-3 h-3 mr-1"/>}
-                        {f.isEnabled ? 'Globally Enabled' : 'Globally Disabled'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-600 truncate max-w-[200px] block" title={f.reason}>{f.reason || '-'}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-gray-900">{f.updatedBy?.name || 'System'}</div>
-                      <div className="text-xs text-gray-500">{new Date(f.createdAt).toLocaleDateString()}</div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {f.isActive && (
-                        <button 
-                          onClick={() => handleArchive(f.id)}
-                          className="text-gray-400 hover:text-gray-600 flex items-center justify-end w-full text-xs font-medium bg-gray-100 px-2 py-1 rounded"
-                        >
-                          <Archive className="w-3 h-3 mr-1" /> Archive
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-12 text-center text-gray-500">
-              <ShieldAlert className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p>No global feature flags found matching your criteria.</p>
-            </div>
-          )}
+          <ResponsiveTable
+            data={filteredFlags}
+            keyExtractor={(f) => f.id}
+            emptyMessage="No global feature flags found."
+            emptyIcon={ShieldAlert}
+            columns={[
+              {
+                header: 'Feature',
+                render: (f) => (
+                  <div className={!f.isActive ? 'opacity-50' : ''}>
+                    <div className="font-bold text-gray-900">{f.feature.name}</div>
+                    <div className="text-xs text-gray-500 font-mono mt-0.5">{f.feature.key}</div>
+                    {!f.isActive && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">Archived</div>}
+                  </div>
+                )
+              },
+              {
+                header: 'State',
+                render: (f) => (
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${f.isEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} ${!f.isActive ? 'opacity-50' : ''}`}>
+                    {f.isEnabled ? <CheckCircle2 className="w-3 h-3 mr-1"/> : <XCircle className="w-3 h-3 mr-1"/>}
+                    {f.isEnabled ? 'Globally Enabled' : 'Globally Disabled'}
+                  </span>
+                )
+              },
+              {
+                header: 'Reason',
+                render: (f) => (
+                  <span className={`text-gray-600 truncate max-w-[200px] block ${!f.isActive ? 'opacity-50' : ''}`} title={f.reason}>{f.reason || '-'}</span>
+                )
+              },
+              {
+                header: 'Updated By',
+                render: (f) => (
+                  <div className={!f.isActive ? 'opacity-50' : ''}>
+                    <div className="text-gray-900">{f.updatedBy?.name || 'System'}</div>
+                    <div className="text-xs text-gray-500">{new Date(f.createdAt).toLocaleDateString()}</div>
+                  </div>
+                )
+              },
+              {
+                header: 'Actions',
+                align: 'right',
+                render: (f) => (
+                  f.isActive && (
+                    <button 
+                      onClick={() => handleArchive(f.id)}
+                      className="text-gray-400 hover:text-gray-600 flex items-center justify-end text-xs font-medium bg-gray-100 px-2 py-1 rounded ml-auto"
+                    >
+                      <Archive className="w-3 h-3 mr-1" /> Archive
+                    </button>
+                  )
+                )
+              }
+            ]}
+          />
         </div>
       </div>
 

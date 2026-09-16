@@ -90,28 +90,29 @@ const getAttendance = async (req, res, next) => {
       whereClause.studentId = studentId;
     }
 
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-    let queryOptions = {
-      where: whereClause,
-      include: {
-        student: { select: { name: true, erpId: true } }
-      }
-    };
-
-    if (page && limit) {
-      const totalCount = await prisma.attendance.count({ where: whereClause });
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
+    const q = (req.query.q || req.query.search || '').trim();
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const orderBy = [{ date: 'desc' }, { id: 'asc' }];
+    let where = whereClause;
+    if (q) {
+      where = { ...whereClause, student: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { erpId: { contains: q, mode: 'insensitive' } }] } };
     }
 
-    const records = await prisma.attendance.findMany(queryOptions);
+    if (hasPagination) {
+      const [records, total] = await Promise.all([
+        prisma.attendance.findMany({ where, include: { student: { select: { name: true, erpId: true } } }, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma.attendance.count({ where }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: records, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
+    const records = await prisma.attendance.findMany({ where: whereClause, include: { student: { select: { name: true, erpId: true } } }, orderBy });
     res.json(records);
   } catch (error) {
     next(error);

@@ -10,6 +10,8 @@ import ResponsiveTable from '../../components/ui/ResponsiveTable';
 export default function SuperAdminManagement() {
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = useAuthStore(state => state.user);
   
@@ -23,17 +25,24 @@ export default function SuperAdminManagement() {
   const [formData, setFormData] = useState({ name: '', password: '', contactDetails: '' });
 
   useEffect(() => {
-    fetchAdmins();
-  }, []);
+    fetchAdmins(page);
+  }, [page]);
 
-  const fetchAdmins = async () => {
-    setLoading(true);
+  const fetchAdmins = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
-      const res = await api.get('/users?role=SUPER_ADMIN');
-      setAdmins(res.data);
+      const res = await api.get(`/users?role=SUPER_ADMIN&page=${pageNum}&limit=20`);
+      // Since getUsers uses unwrapped pagination
+      const { data, pagination } = res.data;
+      if (pageNum === 1) {
+        setAdmins(data || []);
+      } else {
+        setAdmins(prev => [...prev, ...(data || [])]);
+      }
+      setHasMore(pageNum < (pagination?.totalPages || 1));
       
       // Update local storage user if their status changed
-      const updatedMe = res.data.find(a => a.id === currentUser.id);
+      const updatedMe = (data || []).find(a => a.id === currentUser.id);
       if (updatedMe && currentUser.isPrimary !== updatedMe.isPrimary) {
         useAuthStore.setState({ user: { ...currentUser, isPrimary: updatedMe.isPrimary } });
       }
@@ -55,7 +64,8 @@ export default function SuperAdminManagement() {
       toast.success('Super Admin created successfully');
       setShowAddModal(false);
       setFormData({ name: '', password: '', contactDetails: '' });
-      fetchAdmins();
+      if (page === 1) fetchAdmins(1);
+      else setPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create admin');
     } finally {
@@ -72,7 +82,8 @@ export default function SuperAdminManagement() {
       if (selectedAdmin.id === currentUser.id) {
         useAuthStore.getState().logout();
       } else {
-        fetchAdmins();
+        if (page === 1) fetchAdmins(1);
+        else setPage(1);
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete administrator');
@@ -86,7 +97,8 @@ export default function SuperAdminManagement() {
       await api.put(`/users/${selectedAdmin.id}`, { isPrimary: true });
       toast.success(`${selectedAdmin.name} is now the Primary Super Admin`);
       setShowPrimaryConfirm(false);
-      fetchAdmins();
+      if (page === 1) fetchAdmins(1);
+      else setPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to transfer primary status');
       setShowPrimaryConfirm(false);
@@ -122,6 +134,8 @@ export default function SuperAdminManagement() {
           ) : (
             <ResponsiveTable
               data={admins}
+              hasMore={hasMore}
+              onLoadMore={() => setPage(p => p + 1)}
               keyExtractor={(admin) => admin.id}
               emptyMessage="No administrators found."
               emptyIcon={ShieldAlert}

@@ -4,6 +4,7 @@ import { Bell, Clock, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { resolveNotificationRoute } from '../lib/resolveNotificationRoute';
 import useAuthStore from '../store/authStore';
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 const groupNotifications = (notifications) => {
   const groups = {
@@ -127,7 +128,18 @@ export default function Notifications() {
             <p className="text-sm mt-1">You don't have any notifications yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <InfiniteScroll
+            dataLength={notifications.length}
+            next={() => setPage(p => p + 1)}
+            hasMore={hasMore}
+            loader={
+              <div className="p-6 text-center">
+                <span className="w-6 h-6 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin inline-block"></span>
+              </div>
+            }
+            style={{ overflow: 'visible' }}
+            className="divide-y divide-gray-50"
+          >
             {Object.entries(grouped).map(([label, items]) => {
               if (items.length === 0) return null;
               
@@ -186,20 +198,7 @@ export default function Notifications() {
                 </div>
               );
             })}
-            
-            {hasMore && (
-              <div className="p-6 text-center border-t border-gray-50">
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={loading}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-bold border border-gray-200 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  {loading ? 'Loading...' : 'Load Older Notifications'}
-                </button>
-              </div>
-            )}
-          </div>
+          </InfiniteScroll>
         )}
       </div>
     </div>

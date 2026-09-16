@@ -1,31 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { reportsApi } from '../../../services/api/reports';
-import { Users, UserX, CalendarClock, Target, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Users, UserX, CalendarClock, Target, AlertTriangle, TrendingUp, Loader2 } from 'lucide-react';
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 export default function AttendanceReportTab({ filters, setLoading, onError }) {
   const [summary, setSummary] = useState(null);
   const [ranking, setRanking] = useState([]);
   const [lowAttendance, setLowAttendance] = useState([]);
+  const [lowPage, setLowPage] = useState(1);
+  const [lowHasMore, setLowHasMore] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchSummary();
   }, [filters]);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchLowAttendance(lowPage);
+  }, [filters, lowPage]);
+
+  const fetchSummary = async () => {
     try {
       setLoading(true);
-      const [summaryRes, rankingRes, lowRes] = await Promise.all([
+      const [summaryRes, rankingRes] = await Promise.all([
         reportsApi.getAttendanceSummary(filters),
-        reportsApi.getAttendanceRanking(filters),
-        reportsApi.getLowAttendance({ ...filters, threshold: 75 })
+        reportsApi.getAttendanceRanking(filters)
       ]);
       setSummary(summaryRes.data);
       setRanking(rankingRes.data);
-      setLowAttendance(lowRes.data);
     } catch (error) {
       onError(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLowAttendance = async (pageNum = 1) => {
+    try {
+      const res = await reportsApi.getLowAttendance({ ...filters, threshold: 75, page: pageNum, limit: 10 });
+      const { data, pagination } = res.data ? res : { data: res.data || res, pagination: res.pagination };
+      if (pageNum === 1) {
+        setLowAttendance(data || []);
+      } else {
+        setLowAttendance(prev => [...prev, ...(data || [])]);
+      }
+      setLowHasMore(pageNum < (pagination?.totalPages || 1));
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -139,7 +159,7 @@ export default function AttendanceReportTab({ filters, setLoading, onError }) {
             </div>
             <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-1 rounded-md">Below 75%</span>
           </div>
-          <div className="p-4 flex-1 overflow-auto max-h-[400px] custom-scrollbar">
+          <div className="p-4 flex-1 overflow-auto max-h-[400px] custom-scrollbar" id="low-attendance-scroll-target">
             {lowAttendance.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-8">
                 <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-3">
@@ -149,9 +169,16 @@ export default function AttendanceReportTab({ filters, setLoading, onError }) {
                 <p className="text-gray-500 text-xs mt-1">No students have attendance below 75%.</p>
               </div>
             ) : (
-              <ul className="space-y-3">
+              <InfiniteScroll
+                dataLength={lowAttendance.length}
+                next={() => setLowPage(p => p + 1)}
+                hasMore={lowHasMore}
+                loader={<div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>}
+                scrollableTarget="low-attendance-scroll-target"
+                className="space-y-3"
+              >
                 {lowAttendance.map((student) => (
-                  <li key={student.studentId} className="flex items-center justify-between p-3 rounded-xl bg-red-50/40 border border-red-100/50 hover:bg-red-50 transition-colors">
+                  <div key={student.studentId} className="flex items-center justify-between p-3 rounded-xl bg-red-50/40 border border-red-100/50 hover:bg-red-50 transition-colors">
                     <div>
                       <p className="font-medium text-sm text-gray-900">{student.name}</p>
                       <p className="text-xs text-red-400">{student.erpId}</p>
@@ -159,9 +186,9 @@ export default function AttendanceReportTab({ filters, setLoading, onError }) {
                     <div className="bg-white px-3 py-1 rounded-lg border border-red-100 shadow-sm">
                       <p className="font-bold text-sm text-red-600">{student.attendancePercentage}%</p>
                     </div>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </InfiniteScroll>
             )}
           </div>
         </div>

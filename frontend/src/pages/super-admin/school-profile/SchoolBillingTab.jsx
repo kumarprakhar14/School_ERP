@@ -3,11 +3,14 @@ import { CreditCard, Loader2, PlayCircle, CheckCircle2, XCircle, AlertCircle, Re
 import api from '../../../lib/api';
 import { toast } from 'sonner';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
+import ResponsiveTable from '../../../components/ui/ResponsiveTable';
 
 export default function SchoolBillingTab({ schoolId }) {
   const [orders, setOrders] = useState([]);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [simulateModal, setSimulateModal] = useState({ isOpen: false, orderId: null });
   const [createModalOpen, setCreateModalOpen] = useState(false);
   
@@ -16,15 +19,21 @@ export default function SchoolBillingTab({ schoolId }) {
     purpose: 'SUBSCRIPTION_PURCHASE'
   });
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
       const [ordersRes, plansRes] = await Promise.all([
-        api.get(`/billing/orders/school/${schoolId}`),
+        api.get(`/billing/orders/school/${schoolId}?page=${pageNum}&limit=10`),
         api.get('/plans')
       ]);
-      setOrders(ordersRes.data);
-      setPlans(plansRes.data);
+      const { data, pagination } = ordersRes.data;
+      if (pageNum === 1) {
+        setOrders(data || []);
+      } else {
+        setOrders(prev => [...prev, ...(data || [])]);
+      }
+      setHasMore(pageNum < (pagination?.totalPages || 1));
+      if (pageNum === 1) setPlans(plansRes.data);
     } catch (err) {
       toast.error('Failed to load billing data');
     } finally {
@@ -33,8 +42,13 @@ export default function SchoolBillingTab({ schoolId }) {
   };
 
   useEffect(() => {
-    if (schoolId) fetchData();
-  }, [schoolId]);
+    if (schoolId) fetchData(page);
+  }, [schoolId, page]);
+
+  const refreshData = () => {
+    setPage(1);
+    fetchData(1);
+  };
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
@@ -42,7 +56,7 @@ export default function SchoolBillingTab({ schoolId }) {
       await api.post('/billing/orders', { schoolId, ...formData });
       toast.success('Payment order created successfully');
       setCreateModalOpen(false);
-      fetchData();
+      refreshData();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create order');
     }
@@ -53,7 +67,7 @@ export default function SchoolBillingTab({ schoolId }) {
       await api.post(`/billing/orders/${simulateModal.orderId}/simulate`, { result });
       toast.success(`Payment simulation ${result.toLowerCase()} recorded`);
       setSimulateModal({ isOpen: false, orderId: null });
-      fetchData();
+      refreshData();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to simulate payment');
     }
@@ -68,7 +82,7 @@ export default function SchoolBillingTab({ schoolId }) {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
+  if (loading && page === 1) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
 
   return (
     <div className="space-y-6">
@@ -88,54 +102,58 @@ export default function SchoolBillingTab({ schoolId }) {
         </div>
         
         <div className="overflow-x-auto">
-          {orders.length > 0 ? (
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Order ID / Provider</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Amount</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Purpose</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Status</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {orders.map(o => (
-                  <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs font-bold text-gray-900 truncate max-w-[150px]" title={o.id}>{o.id}</div>
-                      <div className="text-xs text-gray-500 mt-1 uppercase">{o.provider || 'None'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{o.currency} {parseFloat(o.amount).toFixed(2)}</div>
-                      <div className="text-xs text-gray-500">{o.planPricing?.plan?.name || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">{o.purpose.replace(/_/g, ' ')}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(o.status)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {o.status === 'AWAITING_PAYMENT' && (
-                        <button 
-                          onClick={() => setSimulateModal({ isOpen: true, orderId: o.id })}
-                          className="text-indigo-600 hover:text-indigo-800 text-xs font-medium bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center justify-end w-full ml-auto"
-                        >
-                          <PlayCircle className="w-3.5 h-3.5 mr-1" /> Simulate Webhook
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-12 text-center text-gray-500">
-              <CreditCard className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p>No billing orders found for this school.</p>
-            </div>
-          )}
+          <ResponsiveTable
+            data={orders}
+            hasMore={hasMore}
+            onLoadMore={() => setPage(p => p + 1)}
+            keyExtractor={(o) => o.id}
+            emptyMessage="No payment orders found for this school."
+            emptyIcon={CreditCard}
+            columns={[
+              {
+                header: 'Order ID / Provider',
+                render: (o) => (
+                  <div>
+                    <div className="font-mono text-xs font-bold text-gray-900 truncate max-w-[150px]" title={o.id}>{o.id}</div>
+                    <div className="text-xs text-gray-500 mt-1 uppercase">{o.provider || 'None'}</div>
+                  </div>
+                )
+              },
+              {
+                header: 'Amount',
+                render: (o) => (
+                  <div>
+                    <div className="font-bold text-gray-900">{o.currency} {parseFloat(o.amount).toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">{o.planPricing?.plan?.name || '-'}</div>
+                  </div>
+                )
+              },
+              {
+                header: 'Purpose',
+                render: (o) => (
+                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">{o.purpose.replace(/_/g, ' ')}</span>
+                )
+              },
+              {
+                header: 'Status',
+                render: (o) => getStatusBadge(o.status)
+              },
+              {
+                header: 'Actions',
+                align: 'right',
+                render: (o) => (
+                  o.status === 'AWAITING_PAYMENT' && (
+                    <button 
+                      onClick={() => setSimulateModal({ isOpen: true, orderId: o.id })}
+                      className="inline-flex items-center text-xs font-medium bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                    >
+                      <PlayCircle className="w-4 h-4 mr-1.5" /> Simulate
+                    </button>
+                  )
+                )
+              }
+            ]}
+          />
         </div>
       </div>
 

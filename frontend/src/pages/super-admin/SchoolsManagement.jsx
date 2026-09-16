@@ -10,6 +10,8 @@ export default function SchoolsManagement() {
   const navigate = useNavigate();
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -25,13 +27,21 @@ export default function SchoolsManagement() {
   });
 
   useEffect(() => {
-    fetchSchools();
-  }, []);
+    fetchSchools(page);
+  }, [page]);
 
-  const fetchSchools = async () => {
+  const fetchSchools = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
-      const res = await api.get('/schools?includeArchived=true');
-      setSchools(res.data);
+      const res = await api.get(`/schools?includeArchived=true&page=${pageNum}&limit=20`);
+      // Since getSchools uses unwrapped pagination when hasPagination is true
+      const { data, pagination } = res.data;
+      if (pageNum === 1) {
+        setSchools(data || []);
+      } else {
+        setSchools(prev => [...prev, ...(data || [])]);
+      }
+      setHasMore(pageNum < (pagination?.totalPages || 1));
     } catch (error) {
       console.error('Failed to fetch schools', error);
       toast.error('Failed to load schools');
@@ -47,7 +57,8 @@ export default function SchoolsManagement() {
       await api.post('/schools', formData);
       setShowAddModal(false);
       setFormData({ name: '', code: '', validUntil: '', themeColor: '#3b82f6', description: '', adminName: '', adminPassword: '' });
-      fetchSchools();
+      if (page === 1) fetchSchools(1);
+      else setPage(1); // Reset to page 1 which triggers fetch
       toast.success('School created successfully');
     } catch (error) {
       console.error('Failed to create school', error);
@@ -80,6 +91,8 @@ export default function SchoolsManagement() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <ResponsiveTable
             data={schools}
+            hasMore={hasMore}
+            onLoadMore={() => setPage(p => p + 1)}
             keyExtractor={(school) => school.id}
             emptyMessage="No schools found. Add a school to get started."
             emptyIcon={Building2}

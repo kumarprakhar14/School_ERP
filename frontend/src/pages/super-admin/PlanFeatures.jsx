@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Edit2, Loader2, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { planService, featureService, planFeatureService } from '../../services/api/subscription';
 import { toast } from 'sonner';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function PlanFeatures() {
   const { planId } = useParams();
@@ -154,62 +155,77 @@ export default function PlanFeatures() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50/80 border-b border-gray-100 text-gray-600 font-medium">
-            <tr>
-              <th className="px-6 py-4">Feature</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Limit</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {planFeatures.length === 0 ? (
-              <tr><td colSpan="4" className="p-8 text-center text-gray-400">No features mapped to this plan yet.</td></tr>
-            ) : planFeatures.map(pf => (
-              <tr key={pf.id} className="hover:bg-gray-50/50">
-                <td className="px-6 py-4">
+        <ResponsiveTable
+          data={planFeatures}
+          keyExtractor={(pf) => pf.id}
+          emptyMessage="No features mapped to this plan yet."
+          columns={[
+            {
+              header: 'Feature',
+              render: (pf) => (
+                <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{pf.feature.name}</span>
                     {pf.feature.isCore && <ShieldAlert className="w-3.5 h-3.5 text-indigo-500" title="Core Infrastructure" />}
                   </div>
                   <div className="text-xs text-gray-500 font-mono mt-0.5">{pf.feature.key}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <button 
-                    onClick={() => handleToggleEnable(pf)}
-                    disabled={pf.feature.isCore}
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      pf.isEnabled 
-                        ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    } ${pf.feature.isCore ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  >
-                    {pf.isEnabled ? 'Enabled' : 'Disabled'}
-                  </button>
-                </td>
-                <td className="px-6 py-4">
-                  {pf.limitValue ? (
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-900">{pf.limitValue}</span>
-                      <span className="text-[10px] uppercase text-gray-500 tracking-wider">{pf.limitUnit || 'UNITS'}</span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-xs italic">Unlimited</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-1">
-                    <button onClick={() => openModal(pf)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit2 className="w-4 h-4" /></button>
-                    {!pf.feature.isCore && (
-                      <button onClick={() => handleDelete(pf.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
-                    )}
+                </div>
+              )
+            },
+            {
+              header: 'Status',
+              render: (pf) => (
+                <button 
+                  onClick={() => handleToggleEnable(pf)}
+                  disabled={pf.feature.isCore}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    pf.isEnabled 
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  } ${pf.feature.isCore ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {pf.isEnabled ? 'Enabled' : 'Disabled'}
+                </button>
+              )
+            },
+            {
+              header: 'Limit',
+              render: (pf) => (
+                pf.limitValue ? (
+                  <div className="flex flex-col">
+                    <span className="font-medium text-gray-900">{pf.limitValue}</span>
+                    <span className="text-[10px] uppercase text-gray-500 tracking-wider">{pf.limitUnit || 'UNITS'}</span>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ) : (
+                  <span className="text-gray-400 text-xs italic">Unlimited</span>
+                )
+              )
+            },
+            {
+              header: 'Actions',
+              align: 'right',
+              render: (pf) => (
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => openModal(pf)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit limit/status">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(pf.id)} 
+                    disabled={pf.feature.isCore}
+                    className={`p-1.5 rounded transition-colors ${
+                      pf.feature.isCore 
+                        ? 'text-gray-300 cursor-not-allowed' 
+                        : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                    }`}
+                    title={pf.feature.isCore ? "Cannot delete core features" : "Remove from plan"}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )
+            }
+          ]}
+        />
       </div>
 
       {isModalOpen && (

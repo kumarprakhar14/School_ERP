@@ -16,11 +16,24 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.erpId.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, debouncedSearch]);
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,9 +53,12 @@ export default function UserManagement() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(page);
+  }, [page, filter, debouncedSearch]);
+
+  useEffect(() => {
     fetchClasses();
-  }, [filter]);
+  }, []);
 
   const fetchClasses = async () => {
     try {
@@ -53,14 +69,27 @@ export default function UserManagement() {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const fetchUsers = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
       const roleParam = filter ? `role=${filter}&` : '';
-      const res = await api.get(`/users?${roleParam}includeArchived=true`);
-      setUsers(res.data);
+      const searchParam = debouncedSearch ? `q=${encodeURIComponent(debouncedSearch)}&` : '';
+      
+      const res = await api.get(`/users?${roleParam}${searchParam}includeArchived=true&page=${pageNum}&limit=20`);
+      
+      const newData = res.data.data;
+      const pagination = res.data.pagination;
+
+      if (pageNum === 1) {
+        setUsers(newData);
+      } else {
+        setUsers(prev => [...prev, ...newData]);
+      }
+      
+      setHasMore(pageNum < pagination.totalPages);
     } catch (error) {
       console.error('Failed to fetch users', error);
+      toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -84,7 +113,8 @@ export default function UserManagement() {
       toast.success(`User created! ERP ID is ${response.data.user.erpId}`);
       setShowAddModal(false);
       resetForm();
-      fetchUsers();
+      setPage(1);
+      fetchUsers(1);
     } catch (error) {
       console.error('Failed to create user', error);
       toast.error(error.response?.data?.message || 'Failed to create user');
@@ -106,7 +136,8 @@ export default function UserManagement() {
         useAuthStore.setState({ user: { ...currentUser, isPrimary: false } });
       }
       
-      fetchUsers();
+      setPage(1);
+      fetchUsers(1);
       setShowPrimaryConfirm(false);
       setSelectedAdminForPrimary(null);
     } catch (error) {
@@ -121,7 +152,17 @@ export default function UserManagement() {
     try {
       await api.patch(`/users/${userId}/${action}`);
       toast.success(`User ${action}d successfully`);
-      fetchUsers();
+      
+      // Update locally to avoid fetching from top (or refetch if desired)
+      setUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+          if (action === 'disable') return { ...u, isActive: false };
+          if (action === 'enable') return { ...u, isActive: true };
+          if (action === 'archive') return { ...u, isArchived: true };
+          if (action === 'restore') return { ...u, isArchived: false };
+        }
+        return u;
+      }));
     } catch (error) {
       toast.error(error.response?.data?.message || `Failed to ${action} user`);
     }
@@ -191,13 +232,15 @@ export default function UserManagement() {
           </div>
         </div>
         
-        {loading ? (
+        {loading && page === 1 ? (
            <div className="flex justify-center p-12">
             <span className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
           </div>
         ) : (
           <ResponsiveTable
-            data={filteredUsers}
+            data={users}
+            hasMore={hasMore}
+            onLoadMore={() => setPage(p => p + 1)}
             keyExtractor={(user) => user.id}
             emptyMessage="No users found matching your search."
             emptyIcon={Search}

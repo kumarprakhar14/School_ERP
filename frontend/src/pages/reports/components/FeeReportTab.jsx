@@ -1,31 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { reportsApi } from '../../../services/api/reports';
 import { Banknote, TrendingUp, TrendingDown, CreditCard, AlertOctagon } from 'lucide-react';
+import ResponsiveTable from '../../../components/ui/ResponsiveTable';
 
 export default function FeeReportTab({ filters, setLoading, onError }) {
   const [collectionSummary, setCollectionSummary] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [defaulters, setDefaulters] = useState([]);
+  const [defaultersPage, setDefaultersPage] = useState(1);
+  const [defaultersHasMore, setDefaultersHasMore] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchSummary();
   }, [filters]);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchDefaulters(defaultersPage);
+  }, [filters, defaultersPage]);
+
+  const fetchSummary = async () => {
     try {
       setLoading(true);
-      const [summaryRes, methodsRes, defaultersRes] = await Promise.all([
+      const [summaryRes, methodsRes] = await Promise.all([
         reportsApi.getFeeCollectionSummary(filters),
-        reportsApi.getFeePaymentMethods(filters),
-        reportsApi.getFeeDefaulters(filters)
+        reportsApi.getFeePaymentMethods(filters)
       ]);
       setCollectionSummary(summaryRes.data);
       setPaymentMethods(methodsRes.data);
-      setDefaulters(defaultersRes.data);
     } catch (error) {
       onError(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDefaulters = async (pageNum = 1) => {
+    try {
+      const res = await reportsApi.getFeeDefaulters({ ...filters, page: pageNum, limit: 10 });
+      const { data, pagination } = res.data ? res : { data: res.data || res, pagination: res.pagination };
+      if (pageNum === 1) {
+        setDefaulters(data || []);
+      } else {
+        setDefaulters(prev => [...prev, ...(data || [])]);
+      }
+      setDefaultersHasMore(pageNum < (pagination?.totalPages || 1));
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -146,46 +166,38 @@ export default function FeeReportTab({ filters, setLoading, onError }) {
             </span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
-                  <th className="px-6 py-3 font-medium">Student</th>
-                  <th className="px-6 py-3 font-medium">Class/Sec</th>
-                  <th className="px-6 py-3 font-medium text-right">Pending Amount</th>
-                  <th className="px-6 py-3 font-medium text-center">Overdue</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {defaulters.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500 text-sm">
-                      No fee defaulters found for this period.
-                    </td>
-                  </tr>
-                ) : (
-                  defaulters.map((defaulter) => (
-                    <tr key={defaulter.invoiceId} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-3">
-                        <p className="font-medium text-sm text-gray-900">{defaulter.studentName}</p>
-                      </td>
-                      <td className="px-6 py-3">
-                        <p className="text-sm text-gray-600">{defaulter.className} - {defaulter.sectionName}</p>
-                      </td>
-                      <td className="px-6 py-3 text-right">
-                        <p className="font-semibold text-sm text-red-600">{formatCurrency(defaulter.pendingAmount)}</p>
-                      </td>
-                      <td className="px-6 py-3 text-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          defaulter.daysOverdue > 30 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {defaulter.daysOverdue} Days
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <ResponsiveTable
+              data={defaulters}
+              hasMore={defaultersHasMore}
+              onLoadMore={() => setDefaultersPage(p => p + 1)}
+              keyExtractor={(d) => d.invoiceId}
+              emptyMessage="No fee defaulters found for this period."
+              emptyIcon={AlertOctagon}
+              columns={[
+                {
+                  header: 'Student',
+                  render: (d) => <p className="font-medium text-sm text-gray-900">{d.studentName}</p>
+                },
+                {
+                  header: 'Class/Sec',
+                  render: (d) => <p className="text-sm text-gray-600">{d.className} - {d.sectionName}</p>
+                },
+                {
+                  header: 'Pending Amount',
+                  render: (d) => <p className="font-semibold text-sm text-red-600">{formatCurrency(d.pendingAmount)}</p>
+                },
+                {
+                  header: 'Overdue',
+                  render: (d) => (
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                      d.daysOverdue > 30 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {d.daysOverdue} Days
+                    </span>
+                  )
+                }
+              ]}
+            />
           </div>
         </div>
       </div>

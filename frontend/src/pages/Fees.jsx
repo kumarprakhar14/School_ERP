@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import api from '../lib/api';
+import { unwrapPaginated } from '../lib/unwrapPaginated';
 import useAuthStore from '../store/authStore';
+import useDebounce from '../hooks/useDebounce';
 import { toast } from 'sonner';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import ResponsiveTable from '../components/ui/ResponsiveTable';
@@ -24,6 +26,12 @@ export default function Fees() {
   const [searchHistory, setSearchHistory] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [summaryPage, setSummaryPage] = useState(1);
+  const [summaryPagination, setSummaryPagination] = useState(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPagination, setHistoryPagination] = useState(null);
+  const debouncedSearchSummary = useDebounce(searchSummary, 350);
+  const debouncedSearchHistory = useDebounce(searchHistory, 350);
 
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -48,30 +56,45 @@ export default function Fees() {
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [summaryRes, historyRes] = await Promise.all([
-        api.get('/fees/summary'),
-        api.get('/fees/history')
-      ]);
-      setFeeSummary(summaryRes.data);
-      setFeeHistory(historyRes.data);
-      
-      if (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') {
-        const studentsRes = await api.get('/users?role=STUDENT');
-        const formattedStudents = studentsRes.data.map(student => {
+  const fetchStudentsData = async () => {
+    if (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') {
+      try {
+        const studentsRes = await api.get('/users', { params: { role: 'STUDENT', limit: 100 } });
+        const unwrappedStudents = unwrapPaginated(studentsRes);
+        const arr = unwrappedStudents.data || studentsRes.data;
+        const formattedStudents = (Array.isArray(arr) ? arr : []).map(student => {
           const section = student.studentProfile?.section;
           const className = section?.class?.name || '';
           const sectionName = section?.name || '';
-          
-          return {
-            ...student,
-            classDetails: section ? `${className}${sectionName}`.trim() : ''
-          };
+          return { ...student, classDetails: section ? `${className} ${sectionName}`.trim() : '' };
         });
         setStudents(formattedStudents);
+      } catch (error) {
+        console.error(error);
       }
+    }
+  };
+
+  const fetchSummaryData = async (opts = {}) => {
+    const sPage = opts.summaryPage ?? summaryPage;
+    const qSummary = opts.debouncedSearchSummary ?? debouncedSearchSummary;
+    const sStatus = opts.statusFilter ?? statusFilter;
+    
+    if (sPage === 1) setLoading(true);
+    try {
+      const summaryParams = { page: sPage, limit: 20 };
+      if (qSummary) summaryParams.q = qSummary;
+      if (sStatus && sStatus !== 'ALL') summaryParams.status = sStatus;
+      
+      const summaryRes = await api.get('/fees/summary', { params: summaryParams });
+      const sumUnwrapped = unwrapPaginated(summaryRes);
+      
+      if (sPage === 1) {
+        setFeeSummary(sumUnwrapped.data || []);
+      } else {
+        setFeeSummary(prev => [...prev, ...(sumUnwrapped.data || [])]);
+      }
+      setSummaryPagination(sumUnwrapped.pagination);
     } catch (error) {
       console.error(error);
     } finally {
@@ -79,10 +102,58 @@ export default function Fees() {
     }
   };
 
+  const fetchHistoryData = async (opts = {}) => {
+    const hPage = opts.historyPage ?? historyPage;
+    const qHistory = opts.debouncedSearchHistory ?? debouncedSearchHistory;
+    
+    if (hPage === 1) setLoading(true);
+    try {
+      const historyParams = { page: hPage, limit: 20 };
+      if (qHistory) historyParams.q = qHistory;
+      
+      const historyRes = await api.get('/fees/history', { params: historyParams });
+      const histUnwrapped = unwrapPaginated(historyRes);
+      
+      if (hPage === 1) {
+        setFeeHistory(histUnwrapped.data || []);
+      } else {
+        setFeeHistory(prev => [...prev, ...(histUnwrapped.data || [])]);
+      }
+      setHistoryPagination(histUnwrapped.pagination);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial Data
   useEffect(() => {
-    fetchData();
+    fetchStudentsData();
+    fetchSummaryData({ summaryPage: 1 });
+    fetchHistoryData({ historyPage: 1 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Reset pages when filters change
+  useEffect(() => {
+    setSummaryPage(1);
+  }, [debouncedSearchSummary, statusFilter]);
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [debouncedSearchHistory]);
+
+  // Fetch Summary when page, search, or status changes
+  useEffect(() => {
+    fetchSummaryData({ summaryPage, debouncedSearchSummary, statusFilter });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryPage, debouncedSearchSummary, statusFilter]);
+
+  // Fetch History when page or search changes
+  useEffect(() => {
+    fetchHistoryData({ historyPage, debouncedSearchHistory });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyPage, debouncedSearchHistory]);
 
   const resetForms = () => {
     setInvoiceForm({ studentId: '', amount: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), dueDate: '', remarks: '' });
@@ -195,26 +266,21 @@ export default function Fees() {
       }
       setShowDeleteConfirm(false);
       setRecordToDelete(null);
-      fetchData();
+      fetchStudentsData();
+      fetchSummaryData({ summaryPage: 1 });
+      fetchHistoryData({ historyPage: 1 });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete record');
     }
   };
 
-  const filteredSummary = feeSummary.filter(f => {
-    const matchesSearch = f.student?.name.toLowerCase().includes(searchSummary.toLowerCase()) || 
-                          f.student?.erpId.toLowerCase().includes(searchSummary.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || f.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Server-driven when paginated, fallback client filter during transition
+  const filteredSummary = feeSummary;
 
-  const filteredHistory = feeHistory.filter(f => {
-    const matchesSearch = f.student?.name.toLowerCase().includes(searchHistory.toLowerCase()) || 
-                          f.student?.erpId.toLowerCase().includes(searchHistory.toLowerCase()) ||
-                          (f.referenceNo && f.referenceNo.toLowerCase().includes(searchHistory.toLowerCase())) ||
-                          (f.invoiceNumber && f.invoiceNumber.toLowerCase().includes(searchHistory.toLowerCase()));
-    const matchesType = typeFilter === 'ALL' || f.type.toUpperCase() === typeFilter.toUpperCase();
-    return matchesSearch && matchesType;
+  // History type filtering remains client-side (applies to whatever is loaded)
+  const filteredHistory = feeHistory.filter(h => {
+    if (typeFilter !== 'ALL' && h.type?.toUpperCase() !== typeFilter) return false;
+    return true;
   });
 
   const selectedStudentInvoices = feeHistory.filter(h => h.type === 'Invoice' && h.student?.id === paymentForm.studentId);
@@ -322,12 +388,7 @@ export default function Fees() {
         )}
       </div>
 
-      {loading ? (
-        <div className="flex justify-center p-12">
-          <span className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></span>
-        </div>
-      ) : (
-        <>
+      <>
           {/* TAB A: SUMMARY */}
           {activeTab === 'summary' && (
             <div className="space-y-4">
@@ -366,94 +427,102 @@ export default function Fees() {
                 </div>
               </div>
               
-              <ResponsiveTable
-                data={filteredSummary}
-                keyExtractor={(item) => item.student.id}
-                emptyMessage="No student records found matching your search."
-                emptyIcon={Search}
-                columns={[
-                  {
-                    header: 'Student',
-                    render: (summary) => (
-                      <div>
-                        <p className="font-bold text-gray-900">{summary.student.name}</p>
-                        <p className="text-xs text-gray-500 font-mono mt-0.5">{summary.student.erpId}</p>
-                      </div>
-                    )
-                  },
-                  { header: 'Class/Sec', render: (s) => <span className="text-sm text-gray-600">{s.student.classDetails}</span> },
-                  { header: 'Total Billed', render: (s) => <span className="font-mono font-medium text-gray-600">₹{(s.totalAmount / 100).toFixed(2)}</span> },
-                  { header: 'Amount Due', render: (s) => <span className="font-mono font-bold text-gray-900">₹{(s.dueAmount / 100).toFixed(2)}</span> },
-                  { header: 'Due Date', render: (s) => <span className="text-sm text-gray-600">{s.dueDate ? new Date(s.dueDate).toLocaleDateString() : '-'}</span> },
-                  {
-                    header: 'Status',
-                    render: (summary) => (
-                      <>
-                        {summary.status === 'NO_FEES' && <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-md border border-gray-200 flex w-fit items-center"><FileText className="w-3 h-3 mr-1"/> NO FEES</span>}
-                        {summary.status === 'PAID' && <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>}
-                        {summary.status === 'PARTIALLY_PAID' && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 flex w-fit items-center"><DollarSign className="w-3 h-3 mr-1"/> PARTIAL</span>}
-                        {summary.status === 'PENDING' && <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>}
-                        {summary.status === 'OVERDUE' && <span className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-md border border-red-100 flex w-fit items-center"><AlertCircle className="w-3 h-3 mr-1"/> OVERDUE</span>}
-                      </>
-                    )
-                  },
-                  {
-                    header: 'Action',
-                    align: 'right',
-                    render: (summary) => (
-                      summary.status === 'NO_FEES' ? (
-                        (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
-                          <button onClick={() => handleQuickInvoice(summary.student.id)} className="text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
-                            Create Invoice
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 text-xs">-</span>
-                        )
-                      ) : (
-                        <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">
-                          View History
-                        </button>
+              {loading && summaryPage === 1 ? (
+                <div className="flex justify-center p-12">
+                  <span className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+                </div>
+              ) : (
+                <ResponsiveTable
+                  data={filteredSummary}
+                  hasMore={summaryPagination?.totalPages > summaryPage}
+                  onLoadMore={() => setSummaryPage(p => p + 1)}
+                  keyExtractor={(item) => item.student.id}
+                  emptyMessage="No student records found matching your search."
+                  emptyIcon={Search}
+                  columns={[
+                    {
+                      header: 'Student',
+                      render: (summary) => (
+                        <div>
+                          <p className="font-bold text-gray-900">{summary.student.name}</p>
+                          <p className="text-xs text-gray-500 font-mono mt-0.5">{summary.student.erpId}</p>
+                        </div>
                       )
-                    )
-                  }
-                ]}
-                renderMobileCard={(summary) => (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
-                    <div className="flex justify-between items-start border-b border-gray-50 pb-3">
-                      <div>
-                        <h3 className="font-bold text-gray-900">{summary.student.name}</h3>
-                        <p className="text-xs text-gray-500 font-mono">ID: {summary.student.erpId}</p>
-                      </div>
-                      <div>
-                        {summary.status === 'NO_FEES' && <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-md border border-gray-200 flex w-fit items-center"><FileText className="w-3 h-3 mr-1"/> NO FEES</span>}
-                        {summary.status === 'PAID' && <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>}
-                        {summary.status === 'PARTIALLY_PAID' && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 flex w-fit items-center"><DollarSign className="w-3 h-3 mr-1"/> PARTIAL</span>}
-                        {summary.status === 'PENDING' && <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>}
-                        {summary.status === 'OVERDUE' && <span className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-md border border-red-100 flex w-fit items-center"><AlertCircle className="w-3 h-3 mr-1"/> OVERDUE</span>}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-gray-500 text-xs block">Total Billed</span><span className="font-mono font-medium text-gray-600">₹{(summary.totalAmount / 100).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 text-xs block">Amount Due</span><span className="font-mono font-bold text-gray-900">₹{(summary.dueAmount / 100).toFixed(2)}</span></div>
-                      <div><span className="text-gray-500 text-xs block">Due Date</span><span>{summary.dueDate ? new Date(summary.dueDate).toLocaleDateString() : '-'}</span></div>
-                      <div><span className="text-gray-500 text-xs block">Class</span><span>{summary.student.classDetails}</span></div>
-                    </div>
-                    <div className="pt-2">
-                      {summary.status === 'NO_FEES' ? (
-                        (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
-                          <button onClick={() => handleQuickInvoice(summary.student.id)} className="w-full text-center text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors">
-                            Create Invoice
+                    },
+                    { header: 'Class/Sec', render: (s) => <span className="text-sm text-gray-600">{s.student.classDetails}</span> },
+                    { header: 'Total Billed', render: (s) => <span className="font-mono font-medium text-gray-600">₹{(s.totalAmount / 100).toFixed(2)}</span> },
+                    { header: 'Amount Due', render: (s) => <span className="font-mono font-bold text-gray-900">₹{(s.dueAmount / 100).toFixed(2)}</span> },
+                    { header: 'Due Date', render: (s) => <span className="text-sm text-gray-600">{s.dueDate ? new Date(s.dueDate).toLocaleDateString() : '-'}</span> },
+                    {
+                      header: 'Status',
+                      render: (summary) => (
+                        <>
+                          {summary.status === 'NO_FEES' && <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-md border border-gray-200 flex w-fit items-center"><FileText className="w-3 h-3 mr-1"/> NO FEES</span>}
+                          {summary.status === 'PAID' && <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>}
+                          {summary.status === 'PARTIALLY_PAID' && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 flex w-fit items-center"><DollarSign className="w-3 h-3 mr-1"/> PARTIAL</span>}
+                          {summary.status === 'PENDING' && <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>}
+                          {summary.status === 'OVERDUE' && <span className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-md border border-red-100 flex w-fit items-center"><AlertCircle className="w-3 h-3 mr-1"/> OVERDUE</span>}
+                        </>
+                      )
+                    },
+                    {
+                      header: 'Action',
+                      align: 'right',
+                      render: (summary) => (
+                        summary.status === 'NO_FEES' ? (
+                          (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
+                            <button onClick={() => handleQuickInvoice(summary.student.id)} className="text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                              Create Invoice
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )
+                        ) : (
+                          <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors">
+                            View History
                           </button>
-                        ) : null
-                      ) : (
-                        <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="w-full text-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-colors">
-                          View History
-                        </button>
-                      )}
+                        )
+                      )
+                    }
+                  ]}
+                  renderMobileCard={(summary) => (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                      <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                        <div>
+                          <h3 className="font-bold text-gray-900">{summary.student.name}</h3>
+                          <p className="text-xs text-gray-500 font-mono">ID: {summary.student.erpId}</p>
+                        </div>
+                        <div>
+                          {summary.status === 'NO_FEES' && <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-md border border-gray-200 flex w-fit items-center"><FileText className="w-3 h-3 mr-1"/> NO FEES</span>}
+                          {summary.status === 'PAID' && <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-md border border-emerald-100 flex w-fit items-center"><CheckCircle className="w-3 h-3 mr-1"/> PAID</span>}
+                          {summary.status === 'PARTIALLY_PAID' && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md border border-blue-100 flex w-fit items-center"><DollarSign className="w-3 h-3 mr-1"/> PARTIAL</span>}
+                          {summary.status === 'PENDING' && <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-md border border-amber-100 flex w-fit items-center"><Clock className="w-3 h-3 mr-1"/> PENDING</span>}
+                          {summary.status === 'OVERDUE' && <span className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-md border border-red-100 flex w-fit items-center"><AlertCircle className="w-3 h-3 mr-1"/> OVERDUE</span>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-gray-500 text-xs block">Total Billed</span><span className="font-mono font-medium text-gray-600">₹{(summary.totalAmount / 100).toFixed(2)}</span></div>
+                        <div><span className="text-gray-500 text-xs block">Amount Due</span><span className="font-mono font-bold text-gray-900">₹{(summary.dueAmount / 100).toFixed(2)}</span></div>
+                        <div><span className="text-gray-500 text-xs block">Due Date</span><span>{summary.dueDate ? new Date(summary.dueDate).toLocaleDateString() : '-'}</span></div>
+                        <div><span className="text-gray-500 text-xs block">Class</span><span>{summary.student.classDetails}</span></div>
+                      </div>
+                      <div className="pt-2">
+                        {summary.status === 'NO_FEES' ? (
+                          (user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
+                            <button onClick={() => handleQuickInvoice(summary.student.id)} className="w-full text-center text-blue-600 hover:text-blue-700 text-xs font-medium bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors">
+                              Create Invoice
+                            </button>
+                          ) : null
+                        ) : (
+                          <button onClick={() => { setSearchHistory(summary.student.erpId); setActiveTab('history'); }} className="w-full text-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-lg transition-colors">
+                            View History
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              />
+                  )}
+                />
+              )}
             </div>
           )}
 
@@ -492,201 +561,209 @@ export default function Fees() {
                 </div>
               </div>
 
-              <ResponsiveTable
-                data={filteredHistory}
-                keyExtractor={(item) => item.id}
-                emptyMessage="No fee records found for this student."
-                emptyIcon={FileText}
-                columns={[
-                  {
-                    header: 'Transaction',
-                    render: (fee) => (
-                      <div className="flex items-center gap-3">
-                        {fee.type === 'Invoice' ? (
-                          <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0" title="Invoice (Charge)">
-                            {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+              {loading && historyPage === 1 ? (
+                <div className="flex justify-center p-12">
+                  <span className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></span>
+                </div>
+              ) : (
+                <ResponsiveTable
+                  data={filteredHistory}
+                  hasMore={historyPagination?.totalPages > historyPage}
+                  onLoadMore={() => setHistoryPage(p => p + 1)}
+                  keyExtractor={(item) => item.id}
+                  emptyMessage="No fee records found for this student."
+                  emptyIcon={FileText}
+                  columns={[
+                    {
+                      header: 'Transaction',
+                      render: (fee) => (
+                        <div className="flex items-center gap-3">
+                          {fee.type === 'Invoice' ? (
+                            <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0" title="Invoice (Charge)">
+                              {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                            </div>
+                          ) : fee.status === 'REJECTED' ? (
+                            <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0" title="Payment (Rejected)">
+                              <X className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0" title="Payment (Received)">
+                              {user?.role === 'STUDENT' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-bold text-gray-900">{fee.student?.name}</p>
+                            <p className="text-xs text-gray-500 font-mono mt-0.5">{fee.student?.erpId}</p>
                           </div>
-                        ) : fee.status === 'REJECTED' ? (
-                          <div className="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0" title="Payment (Rejected)">
-                            <X className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0" title="Payment (Received)">
-                            {user?.role === 'STUDENT' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-bold text-gray-900">{fee.student?.name}</p>
-                          <p className="text-xs text-gray-500 font-mono mt-0.5">{fee.student?.erpId}</p>
                         </div>
-                      </div>
-                    )
-                  },
-                  {
-                    header: 'Amount',
-                    render: (fee) => (
-                      <span className={`font-mono font-bold ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
-                        {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
-                      </span>
-                    )
-                  },
-                  {
-                    header: 'Details',
-                    render: (fee) => (
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-xs font-bold text-gray-700 font-mono">{fee.invoiceNumber}</span>
-                        {fee.type === 'Invoice' ? (
-                          <span className="text-xs text-gray-500">Bill: {monthNames[fee.month - 1]} {fee.year}</span>
-                        ) : (
-                          <>
-                            {fee.paymentMode && <span className="text-xs text-gray-500 font-medium">via {fee.paymentMode}</span>}
-                            {fee.referenceNo && <span className="text-xs text-gray-400 font-mono">Ref: {fee.referenceNo}</span>}
-                          </>
-                        )}
-                      </div>
-                    )
-                  },
-                  { header: 'Remarks', render: (fee) => <span className="text-sm text-gray-500">{fee.remarks || '-'}</span> },
-                  { header: 'Date', render: (fee) => <span className="text-sm text-gray-500">{new Date(fee.date).toLocaleDateString()}</span> },
-                  ...((user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? [{
-                    header: 'Actions',
-                    align: 'right',
-                    render: (fee) => (
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Document">
-                          <FileText className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleEdit(fee)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDeleteClick(fee)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )
-                  }] : [{
-                    header: 'Actions',
-                    align: 'right',
-                    render: (fee) => {
-                      return (
-                        <div className="flex justify-end gap-2 items-center">
+                      )
+                    },
+                    {
+                      header: 'Amount',
+                      render: (fee) => (
+                        <span className={`font-mono font-bold ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
+                          {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
+                        </span>
+                      )
+                    },
+                    {
+                      header: 'Details',
+                      render: (fee) => (
+                        <div className="flex flex-col space-y-1">
+                          <span className="text-xs font-bold text-gray-700 font-mono">{fee.invoiceNumber}</span>
+                          {fee.type === 'Invoice' ? (
+                            <span className="text-xs text-gray-500">Bill: {monthNames[fee.month - 1]} {fee.year}</span>
+                          ) : (
+                            <>
+                              {fee.paymentMode && <span className="text-xs text-gray-500 font-medium">via {fee.paymentMode}</span>}
+                              {fee.referenceNo && <span className="text-xs text-gray-400 font-mono">Ref: {fee.referenceNo}</span>}
+                            </>
+                          )}
+                        </div>
+                      )
+                    },
+                    { header: 'Remarks', render: (fee) => <span className="text-sm text-gray-500">{fee.remarks || '-'}</span> },
+                    { header: 'Date', render: (fee) => <span className="text-sm text-gray-500">{new Date(fee.date).toLocaleDateString()}</span> },
+                    ...((user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? [{
+                      header: 'Actions',
+                      align: 'right',
+                      render: (fee) => (
+                        <div className="flex justify-end gap-2">
                           <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Document">
                             <FileText className="w-4 h-4" />
                           </button>
-                          {(() => {
-                            if (fee.type !== 'Invoice') return null;
+                          <button onClick={() => handleEdit(fee)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteClick(fee)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )
+                    }] : [{
+                      header: 'Actions',
+                      align: 'right',
+                      render: (fee) => {
+                        return (
+                          <div className="flex justify-end gap-2 items-center">
+                            <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Document">
+                              <FileText className="w-4 h-4" />
+                            </button>
+                            {(() => {
+                              if (fee.type !== 'Invoice') return null;
+                              const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
+                              const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                              if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold">Paid</span>;
+                              
+                              const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
+                              if (pendingPayment) {
+                                return <span className="text-amber-600 text-xs font-bold px-3 py-1.5 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200 w-fit ml-auto"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>;
+                              }
+
+                              return (
+                                <button 
+                                  onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                                  className="flex items-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors ml-auto"
+                                >
+                                  <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                                </button>
+                              );
+                            })()}
+                          </div>
+                        );
+                      }
+                    }])
+                  ]}
+                  renderMobileCard={(fee) => (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
+                      <div className="flex justify-between items-start border-b border-gray-50 pb-3">
+                        <div className="flex items-center gap-3">
+                          {fee.type === 'Invoice' ? (
+                            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                              {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                            </div>
+                          ) : fee.status === 'REJECTED' ? (
+                            <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                              <X className="w-5 h-5" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                              {user?.role === 'STUDENT' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-bold text-gray-900">{fee.student?.name}</h3>
+                            <p className="text-xs text-gray-500 font-mono">ID: {fee.student?.erpId}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className={`font-mono font-bold text-lg ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
+                            {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
+                          </span>
+                          <span className="text-xs text-gray-400 font-medium">{new Date(fee.date).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100/50">
+                        <div className="col-span-2">
+                          <span className="text-gray-500 text-xs block">Invoice/Ref</span>
+                          <span className="font-mono text-gray-700">{fee.invoiceNumber}</span>
+                        </div>
+                        {fee.type === 'Invoice' ? (
+                          <>
+                            <div><span className="text-gray-500 text-xs block">Billing Period</span><span>{monthNames[fee.month - 1]} {fee.year}</span></div>
+                            <div><span className="text-gray-500 text-xs block">Remarks</span><span>{fee.remarks || '-'}</span></div>
+                          </>
+                        ) : (
+                          <>
+                            <div><span className="text-gray-500 text-xs block">Mode</span><span className="font-medium">{fee.paymentMode || '-'}</span></div>
+                            <div><span className="text-gray-500 text-xs block">Reference</span><span className="font-mono">{fee.referenceNo || '-'}</span></div>
+                          </>
+                        )}
+                      </div>
+                      {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
+                        <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                          <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View Document
+                          </button>
+                          <button onClick={() => handleEdit(fee)} className="flex items-center text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                            <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteClick(fee)} className="flex items-center text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
+                          <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View Document
+                          </button>
+                          {fee.type === 'Invoice' && (() => {
                             const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
                             const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-                            if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold">Paid</span>;
+                            if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold px-3 py-1.5">Paid</span>;
                             
                             const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
                             if (pendingPayment) {
-                              return <span className="text-amber-600 text-xs font-bold px-3 py-1.5 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-200 w-fit ml-auto"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>;
+                              return (
+                                  <span className="flex items-center text-amber-600 text-xs font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>
+                              );
                             }
 
                             return (
-                              <button 
-                                onClick={() => setSelectedInvoiceForUpi(fee.id)}
-                                className="flex items-center text-emerald-600 hover:text-emerald-700 text-xs font-medium bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors ml-auto"
-                              >
-                                <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
-                              </button>
+                                <button 
+                                  onClick={() => setSelectedInvoiceForUpi(fee.id)}
+                                  className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
+                                </button>
                             );
                           })()}
                         </div>
-                      );
-                    }
-                  }])
-                ]}
-                renderMobileCard={(fee) => (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
-                    <div className="flex justify-between items-start border-b border-gray-50 pb-3">
-                      <div className="flex items-center gap-3">
-                        {fee.type === 'Invoice' ? (
-                          <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                            {user?.role === 'STUDENT' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
-                          </div>
-                        ) : fee.status === 'REJECTED' ? (
-                          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-                            <X className="w-5 h-5" />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                            {user?.role === 'STUDENT' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
-                          </div>
-                        )}
-                        <div>
-                          <h3 className="font-bold text-gray-900">{fee.student?.name}</h3>
-                          <p className="text-xs text-gray-500 font-mono">ID: {fee.student?.erpId}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className={`font-mono font-bold text-lg ${fee.type === 'Payment' ? (fee.status === 'REJECTED' ? 'text-red-600' : 'text-emerald-600') : 'text-gray-900'}`}>
-                          {fee.type === 'Payment' && fee.status !== 'REJECTED' ? '+' : ''}₹{(fee.amount / 100).toFixed(2)}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">{new Date(fee.date).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100/50">
-                      <div className="col-span-2">
-                        <span className="text-gray-500 text-xs block">Invoice/Ref</span>
-                        <span className="font-mono text-gray-700">{fee.invoiceNumber}</span>
-                      </div>
-                      {fee.type === 'Invoice' ? (
-                        <>
-                          <div><span className="text-gray-500 text-xs block">Billing Period</span><span>{monthNames[fee.month - 1]} {fee.year}</span></div>
-                          <div><span className="text-gray-500 text-xs block">Remarks</span><span>{fee.remarks || '-'}</span></div>
-                        </>
-                      ) : (
-                        <>
-                          <div><span className="text-gray-500 text-xs block">Mode</span><span className="font-medium">{fee.paymentMode || '-'}</span></div>
-                          <div><span className="text-gray-500 text-xs block">Reference</span><span className="font-mono">{fee.referenceNo || '-'}</span></div>
-                        </>
                       )}
                     </div>
-                    {(user?.role === 'ADMIN' || user?.role === 'ACCOUNTS') ? (
-                      <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
-                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                          <FileText className="w-3.5 h-3.5 mr-1" /> View Document
-                        </button>
-                        <button onClick={() => handleEdit(fee)} className="flex items-center text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                          <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
-                        </button>
-                        <button onClick={() => handleDeleteClick(fee)} className="flex items-center text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="pt-2 flex justify-end gap-2 border-t border-gray-50 mt-2">
-                        <button onClick={() => navigate(fee.type === 'Invoice' ? `/invoices/${fee.id}` : `/payments/${fee.id}`)} className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                          <FileText className="w-3.5 h-3.5 mr-1" /> View Document
-                        </button>
-                        {fee.type === 'Invoice' && (() => {
-                          const payments = feeHistory.filter(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && (h.status === 'SUCCESS' || !h.status));
-                          const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-                          if (totalPaid >= fee.amount) return <span className="text-emerald-600 text-xs font-bold px-3 py-1.5">Paid</span>;
-                          
-                          const pendingPayment = feeHistory.find(h => h.type === 'Payment' && h.invoiceNumber === fee.invoiceNumber && h.status === 'PENDING_VERIFICATION');
-                          if (pendingPayment) {
-                            return (
-                                <span className="flex items-center text-amber-600 text-xs font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200"><Clock className="w-3.5 h-3.5 mr-1" /> Verification Pending</span>
-                            );
-                          }
-
-                          return (
-                              <button 
-                                onClick={() => setSelectedInvoiceForUpi(fee.id)}
-                                className="flex items-center text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                              >
-                                <QrCode className="w-3.5 h-3.5 mr-1" /> Pay via UPI
-                              </button>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-              />
+                  )}
+                />
+              )}
             </div>
           )}
 
@@ -695,7 +772,6 @@ export default function Fees() {
             <PaymentVerification />
           )}
         </>
-      )}
 
       {selectedInvoiceForUpi && (
         <UpiPaymentModal 

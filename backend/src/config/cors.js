@@ -72,7 +72,8 @@ const corsOptions = {
 
   // Headers the CLIENT is allowed to READ from the response.
   // Extend this list only as needed (e.g. "X-RateLimit-Remaining").
-  exposedHeaders: ["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
+  // Pagination compat — kept until FE fully migrated to JSON {data,pagination}.
+  exposedHeaders: ["X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-Total-Count", "X-Total-Pages", "X-Current-Page", "X-Limit"],
 
   // Required for cookies / Authorization headers to be sent cross-origin.
   // When true, the origin MUST NOT be "*" — handled above in originValidator.

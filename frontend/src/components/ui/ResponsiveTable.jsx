@@ -1,4 +1,5 @@
 import React from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
 
 /**
  * ResponsiveTable
@@ -14,6 +15,8 @@ import React from 'react';
  * @param {Function} keyExtractor - Function that takes an item and returns a unique key string/number.
  * @param {String} emptyMessage - Text to show when data is empty.
  * @param {React.Component} emptyIcon - Icon component to render when data is empty (e.g. from lucide-react).
+ * @param {Boolean} hasMore - Whether there are more items to load via pagination.
+ * @param {Function} onLoadMore - Function to call when scrolling to the bottom.
  */
 export default function ResponsiveTable({
   data = [],
@@ -22,10 +25,22 @@ export default function ResponsiveTable({
   keyExtractor,
   emptyMessage = 'No records found.',
   emptyIcon: EmptyIcon,
-  onRowClick
+  onRowClick,
+  hasMore = false,
+  onLoadMore = () => {}
 }) {
   return (
-    <>
+    <InfiniteScroll
+      dataLength={data.length}
+      next={onLoadMore}
+      hasMore={hasMore}
+      loader={
+        <div className="p-4 mt-2 text-center text-sm font-medium text-gray-500 bg-white rounded-xl border border-gray-100 shadow-sm">
+          Loading more records...
+        </div>
+      }
+      style={{ overflow: 'visible' }}
+    >
       {/* Desktop / Tablet View (Hidden on Mobile) */}
       <div className="hidden md:block bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -91,7 +106,16 @@ export default function ResponsiveTable({
               onClick={() => onRowClick && onRowClick(item)}
               className={onRowClick ? 'cursor-pointer' : ''}
             >
-              {renderMobileCard(item)}
+              {renderMobileCard ? renderMobileCard(item) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-2">
+                  {columns.map((col, idx) => (
+                    <div key={col.key || idx} className="flex flex-col sm:flex-row sm:justify-between sm:items-start border-b border-gray-50 last:border-0 pb-2 last:pb-0">
+                      <span className="text-xs text-gray-500 font-medium mb-1 sm:mb-0">{col.header}</span>
+                      <div className="text-sm text-gray-900">{col.render(item)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))
         ) : (
@@ -101,6 +125,6 @@ export default function ResponsiveTable({
           </div>
         )}
       </div>
-    </>
+    </InfiniteScroll>
   );
 }
