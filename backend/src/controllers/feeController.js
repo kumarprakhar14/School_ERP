@@ -97,6 +97,31 @@ const recordPayment = async (req, res, next) => {
 const getFeeSummary = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
+
+    // If pagination params present, use DB-level paginated repository (new contract)
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || req.query.q !== undefined || req.query.search !== undefined || req.query.status !== undefined || req.query.classId !== undefined || req.query.sectionId !== undefined;
+    if (hasPagination) {
+      const { FeeSummaryRepository } = await import('../repositories/FeeSummaryRepository.js');
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+      const q = req.query.q || req.query.search || '';
+      const status = req.query.status || null;
+      const classId = req.query.classId || null;
+      const sectionId = req.query.sectionId || null;
+      const sortBy = req.query.sortBy || 'name';
+      const order = req.query.order || 'asc';
+      const studentId = req.user.role === 'STUDENT' ? req.user.userId : null;
+
+      const { data, total } = await FeeSummaryRepository.getPaginated(schoolId, { page, limit, q, status, classId, sectionId, sortBy, order, studentId });
+
+      // Compat headers
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+
+      return res.json({ data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
     
     let studentsWhere = { schoolId, role: 'STUDENT', isActive: true };
     if (req.user.role === 'STUDENT') {
@@ -115,7 +140,8 @@ const getFeeSummary = async (req, res, next) => {
         feeInvoices: {
           include: { payments: true }
         }
-      }
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }]
     });
 
     const summary = students.map(student => {
@@ -184,6 +210,29 @@ const getTransactionHistory = async (req, res, next) => {
     if (req.user.role === 'STUDENT') {
       studentId = req.user.userId;
     }
+
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || req.query.q !== undefined || req.query.search !== undefined || req.query.status !== undefined || req.query.paymentMode !== undefined || req.query.fromDate !== undefined || req.query.toDate !== undefined;
+    if (hasPagination) {
+      const { TransactionHistoryRepository } = await import('../repositories/TransactionHistoryRepository.js');
+      const page = Math.max(1, parseInt(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+      const q = req.query.q || req.query.search || '';
+      const status = req.query.status || null;
+      const paymentMode = req.query.paymentMode || null;
+      const fromDate = req.query.fromDate || null;
+      const toDate = req.query.toDate || null;
+      const sortBy = req.query.sortBy || 'date';
+      const order = req.query.order || 'desc';
+
+      const { data, total } = await TransactionHistoryRepository.getPaginated(schoolId, { page, limit, q, studentId, status, paymentMode, fromDate, toDate, sortBy, order });
+
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+
+      return res.json({ data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
     
     let whereClause = { schoolId };
     if (studentId) whereClause.studentId = studentId;
@@ -195,7 +244,7 @@ const getTransactionHistory = async (req, res, next) => {
         creator: { select: { name: true } },
         payments: true
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }]
     });
 
     let history = [];
@@ -231,7 +280,7 @@ const getTransactionHistory = async (req, res, next) => {
       });
     });
 
-    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    history.sort((a, b) => new Date(b.date) - new Date(a.date) || a.id.localeCompare(b.id));
 
     res.json(history);
   } catch (error) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Loader2, Shield, X, Filter } from 'lucide-react';
 import { featureService } from '../../services/api/subscription';
 import { toast } from 'sonner';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function FeaturesRegistry() {
   const [features, setFeatures] = useState([]);
@@ -120,63 +121,70 @@ export default function FeaturesRegistry() {
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50/80 text-gray-600 font-medium border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4">Key / Name</th>
-                  <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredFeatures.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500 italic">No features found in this category.</td>
-                  </tr>
-                ) : filteredFeatures.map((f) => (
-                  <tr key={f.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1">
-                          {f.isCore ? (
-                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md" title="Core Infrastructure"><Shield className="w-4 h-4" /></div>
-                          ) : (
-                            <div className="p-1.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-md"><span className="w-4 h-4 flex items-center justify-center font-mono text-xs">{f.icon || f.name.charAt(0)}</span></div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 flex items-center gap-2">
-                            {f.name}
-                            {f.isCore && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Core</span>}
-                          </div>
-                          <div className="text-gray-500 font-mono text-xs mt-0.5">{f.key}</div>
-                          {f.description && <div className="text-gray-400 text-xs mt-1 truncate max-w-xs">{f.description}</div>}
-                        </div>
+          <ResponsiveTable
+            data={filteredFeatures}
+            keyExtractor={(f) => f.id}
+            emptyMessage="No features found in this category."
+            emptyIcon={Shield}
+            columns={[
+              {
+                header: 'Key / Name',
+                render: (f) => (
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1">
+                      {f.isCore ? (
+                        <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md" title="Core Infrastructure"><Shield className="w-4 h-4" /></div>
+                      ) : (
+                        <div className="p-1.5 bg-gray-50 border border-gray-200 text-gray-400 rounded-md"><span className="w-4 h-4 flex items-center justify-center font-mono text-xs">{f.icon || f.name.charAt(0)}</span></div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-900 flex items-center gap-2">
+                        {f.name}
+                        {f.isCore && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Core</span>}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
-                        {f.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${f.isActive ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                        {f.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => openModal(f)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(f.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="text-gray-500 font-mono text-xs mt-0.5">{f.key}</div>
+                      {f.description && <div className="text-gray-400 text-xs mt-1 truncate max-w-xs">{f.description}</div>}
+                    </div>
+                  </div>
+                )
+              },
+              {
+                header: 'Category',
+                render: (f) => (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                    {f.category}
+                  </span>
+                )
+              },
+              {
+                header: 'Status',
+                render: (f) => (
+                  f.isActive ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">Inactive</span>
+                  )
+                )
+              },
+              {
+                header: 'Actions',
+                align: 'right',
+                render: (f) => (
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => openModal(f)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit Feature">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    {!f.isCore && (
+                      <button onClick={() => handleDelete(f.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete Feature">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )
+              }
+            ]}
+          />
         </div>
       )}
 

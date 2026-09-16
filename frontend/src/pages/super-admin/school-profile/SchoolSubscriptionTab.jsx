@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Shield, AlertTriangle, Play, Pause, XCircle, Settings, Check, X, Calendar, Edit2, Activity, ArrowRight, Loader2, Search } from 'lucide-react';
 import api from '../../../lib/api';
 import { toast } from 'sonner';
+import ResponsiveTable from '../../../components/ui/ResponsiveTable';
 
 export default function SchoolSubscriptionTab({ schoolId }) {
   const [loading, setLoading] = useState(true);
@@ -189,33 +190,40 @@ export default function SchoolSubscriptionTab({ schoolId }) {
             <button onClick={() => setShowOverrideModal(true)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center bg-indigo-50 px-2 py-1 rounded">Add Override</button>
           </div>
           <div className="p-0">
-            {overrides.length === 0 ? (
-              <div className="p-6 text-center text-gray-500 text-sm">No specific overrides configured.</div>
-            ) : (
-              <table className="w-full text-left text-sm">
-                <tbody className="divide-y divide-gray-50">
-                  {overrides.map(o => (
-                    <tr key={o.id} className={o.isActive ? '' : 'opacity-50'}>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900">{o.feature.name}</div>
-                        <div className="text-xs text-gray-500">{o.reason || 'No reason provided'}</div>
-                        {!o.isActive && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">Archived</div>}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${o.isEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {o.isEnabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {o.isActive && (
-                          <button onClick={() => handleArchiveOverride(o.id)} className="text-xs text-red-600 hover:text-red-800 font-medium">Archive</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <ResponsiveTable
+              data={overrides}
+              keyExtractor={(o) => o.id}
+              emptyMessage="No specific overrides configured."
+              columns={[
+                {
+                  header: 'Feature',
+                  render: (o) => (
+                    <div className={o.isActive ? '' : 'opacity-50'}>
+                      <div className="font-semibold text-gray-900">{o.feature.name}</div>
+                      <div className="text-xs text-gray-500">{o.reason || 'No reason provided'}</div>
+                      {!o.isActive && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">Archived</div>}
+                    </div>
+                  )
+                },
+                {
+                  header: 'State',
+                  render: (o) => (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${o.isEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} ${o.isActive ? '' : 'opacity-50'}`}>
+                      {o.isEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  )
+                },
+                {
+                  header: 'Actions',
+                  align: 'right',
+                  render: (o) => (
+                    o.isActive && (
+                      <button onClick={() => handleArchiveOverride(o.id)} className="text-xs text-red-600 hover:text-red-800 font-medium ml-auto">Archive</button>
+                    )
+                  )
+                }
+              ]}
+            />
           </div>
         </div>
       </div>

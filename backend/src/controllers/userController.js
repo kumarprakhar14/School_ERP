@@ -82,24 +82,58 @@ const createUser = async (req, res, next) => {
 const getUsers = async (req, res, next) => {
   try {
     const { role, schoolId: querySchoolId } = req.query;
+    const q = (req.query.q || req.query.search || '').trim();
     let schoolId = req.user.schoolId;
     
     if (req.user.role === 'SUPER_ADMIN' && querySchoolId) {
       schoolId = querySchoolId;
     }
 
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const includeArchived = req.query.includeArchived === 'true';
 
     const whereClause = {
       ...(schoolId !== undefined && { schoolId }),
       ...(role && { role }),
-      ...(!includeArchived && { isArchived: false })
+      ...(!includeArchived && { isArchived: false }),
+      ...(q && { OR: [{ name: { contains: q, mode: 'insensitive' } }, { erpId: { contains: q, mode: 'insensitive' } }] })
     };
 
-    let queryOptions = {
+    const orderBy = [{ createdAt: 'desc' }, { id: 'asc' }];
+
+    if (hasPagination) {
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            erpId: true,
+            name: true,
+            role: true,
+            isActive: true,
+            isArchived: true,
+            isPrimary: true,
+            profilePicUrl: true,
+            contactDetails: true,
+            studentProfile: { include: { section: { include: { class: true } } } },
+            teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
+          },
+          orderBy,
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: users, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
+    const users = await prisma.user.findMany({
       where: whereClause,
       select: {
         id: true,
@@ -114,21 +148,8 @@ const getUsers = async (req, res, next) => {
         studentProfile: { include: { section: { include: { class: true } } } },
         teacherProfile: { include: { teacherAssignments: { include: { section: { include: { class: true } } } } } }
       },
-      orderBy: { createdAt: 'desc' }
-    };
-
-    if (page && limit) {
-      const totalCount = await prisma.user.count({ where: whereClause });
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
-    }
-
-    const users = await prisma.user.findMany(queryOptions);
+      orderBy,
+    });
     res.json(users);
   } catch (error) {
     next(error);

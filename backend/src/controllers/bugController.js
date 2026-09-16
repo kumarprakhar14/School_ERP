@@ -28,35 +28,31 @@ const submitBug = async (req, res, next) => {
 
 const getAllBugs = async (req, res, next) => {
   try {
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-    let queryOptions = {
-      orderBy: { createdAt: 'desc' },
-      include: {
-        reportedBy: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            school: { select: { name: true } }
-          }
-        }
-      }
+    const q = (req.query.q || req.query.search || '').trim();
+    const status = req.query.status || null;
+    const where = {
+      ...(status && { status }),
+      ...(q && { OR: [{ title: { contains: q, mode: 'insensitive' } }, { description: { contains: q, mode: 'insensitive' } }] }),
     };
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q || status;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const orderBy = [{ createdAt: 'desc' }, { id: 'asc' }];
 
-    if (page && limit) {
-      const totalCount = await prisma.bugReport.count();
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
+    if (hasPagination) {
+      const [bugs, total] = await Promise.all([
+        prisma.bugReport.findMany({ where, orderBy, skip: (page - 1) * limit, take: limit, include: { reportedBy: { select: { id: true, name: true, role: true, school: { select: { name: true } } } } } }),
+        prisma.bugReport.count({ where }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      // Preserve legacy {bugs} key + add pagination for compat
+      return res.status(200).json({ bugs, data: bugs, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
     }
 
-    const bugs = await prisma.bugReport.findMany(queryOptions);
+    const bugs = await prisma.bugReport.findMany({ where: Object.keys(where).length ? where : undefined, orderBy, include: { reportedBy: { select: { id: true, name: true, role: true, school: { select: { name: true } } } } } });
     res.status(200).json({ bugs });
   } catch (error) {
     next(error);

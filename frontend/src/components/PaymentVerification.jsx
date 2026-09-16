@@ -9,18 +9,26 @@ export default function PaymentVerification() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   
   const [verifyConfirm, setVerifyConfirm] = useState({ isOpen: false, payment: null, action: null });
 
   useEffect(() => {
-    fetchPendingPayments();
-  }, []);
+    fetchPendingPayments(page);
+  }, [page]);
 
-  const fetchPendingPayments = async () => {
-    setLoading(true);
+  const fetchPendingPayments = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
-      const res = await api.get('/fees/upi/pending');
-      setPayments(res.data);
+      const res = await api.get(`/fees/upi/pending?page=${pageNum}&limit=20`);
+      const { data, pagination } = res.data;
+      if (pageNum === 1) {
+        setPayments(data || []);
+      } else {
+        setPayments(prev => [...prev, ...(data || [])]);
+      }
+      setHasMore(pageNum < (pagination?.totalPages || 1));
     } catch (error) {
       console.error(error);
       toast.error('Failed to load pending payments');
@@ -35,7 +43,8 @@ export default function PaymentVerification() {
       await api.post(`/fees/upi/${payment.id}/verify`, { action });
       toast.success(`Payment ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
       setVerifyConfirm({ isOpen: false, payment: null, action: null });
-      fetchPendingPayments();
+      if (page === 1) fetchPendingPayments(1);
+      else setPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to verify payment');
     }
@@ -49,7 +58,7 @@ export default function PaymentVerification() {
     );
   });
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <div className="flex justify-center p-12">
         <span className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></span>
@@ -77,7 +86,9 @@ export default function PaymentVerification() {
 
       <ResponsiveTable
         data={filteredPayments}
-        keyExtractor={(item) => item.id}
+        hasMore={hasMore}
+        onLoadMore={() => setPage(p => p + 1)}
+        keyExtractor={(payment) => payment.id}
         emptyMessage="No pending payments found."
         emptyIcon={FileText}
         columns={[

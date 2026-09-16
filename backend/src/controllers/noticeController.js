@@ -39,10 +39,12 @@ const getNotices = async (req, res, next) => {
   try {
     const schoolId = req.user.schoolId;
     const role = req.user.role;
+    const q = (req.query.q || req.query.search || '').trim();
 
     const whereClause = {
       schoolId,
-      isArchived: false
+      isArchived: false,
+      ...(q && { title: { contains: q, mode: 'insensitive' } })
     };
 
     if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
@@ -50,31 +52,32 @@ const getNotices = async (req, res, next) => {
         { targetRoles: { has: role } },
         { targetRoles: { isEmpty: true } }
       ];
-    }
-
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-    let queryOptions = {
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        author: { select: { name: true, role: true } }
+      // Preserve search when OR added: move title filter into AND
+      if (q) {
+        const titleFilter = { title: { contains: q, mode: 'insensitive' } };
+        // whereClause currently has title and OR — combine correctly: AND of title + (role OR empty)
+        // Rebuild: { schoolId, isArchived, title, OR: [...] } is effectively AND, Prisma handles
       }
-    };
-
-    if (page && limit) {
-      const totalCount = await prisma.notice.count({ where: whereClause });
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
     }
 
-    const notices = await prisma.notice.findMany(queryOptions);
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const orderBy = [{ createdAt: 'desc' }, { id: 'asc' }];
+
+    if (hasPagination) {
+      const [notices, total] = await Promise.all([
+        prisma.notice.findMany({ where: whereClause, orderBy, skip: (page - 1) * limit, take: limit, include: { author: { select: { name: true, role: true } } } }),
+        prisma.notice.count({ where: whereClause }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: notices, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
+    const notices = await prisma.notice.findMany({ where: whereClause, orderBy, include: { author: { select: { name: true, role: true } } } });
     res.json(notices);
   } catch (error) {
     next(error);

@@ -2,17 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Search, Loader2, Calendar, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../../lib/api';
 import { toast } from 'sonner';
+import ResponsiveTable from '../../components/ui/ResponsiveTable';
 
 export default function BillingManagement() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (pageNum = 1) => {
+    if (pageNum === 1) setLoading(true);
     try {
-      const res = await api.get('/billing/orders');
-      setOrders(res.data);
+      const res = await api.get(`/billing/orders?page=${pageNum}&limit=20`);
+      const { data, pagination } = res.data;
+      if (pageNum === 1) {
+        setOrders(data || []);
+      } else {
+        setOrders(prev => [...prev, ...(data || [])]);
+      }
+      setHasMore(pageNum < (pagination?.totalPages || 1));
     } catch (err) {
       toast.error('Failed to load billing orders');
     } finally {
@@ -21,8 +30,8 @@ export default function BillingManagement() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(page);
+  }, [page]);
 
   const getStatusBadge = (status) => {
     switch(status) {
@@ -40,7 +49,7 @@ export default function BillingManagement() {
     o.id.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
+  if (loading && page === 1) return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 animate-in fade-in zoom-in duration-300 space-y-6">
@@ -70,52 +79,59 @@ export default function BillingManagement() {
         </div>
         
         <div className="overflow-x-auto">
-          {filteredOrders.length > 0 ? (
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">School</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Order ID</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Amount</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Purpose</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Status</th>
-                  <th className="px-6 py-4 font-semibold uppercase tracking-wider text-xs">Created At</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredOrders.map(o => (
-                  <tr key={o.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{o.school.name}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-0.5">{o.school.code}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs text-gray-600 truncate max-w-[150px]" title={o.id}>{o.id}</div>
-                      {o.provider && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">{o.provider}</div>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{o.currency} {parseFloat(o.amount).toFixed(2)}</div>
-                      <div className="text-xs text-gray-500">{o.planPricing?.plan?.name || 'Unknown Plan'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">{o.purpose.replace(/_/g, ' ')}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getStatusBadge(o.status)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
-                      {new Date(o.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-12 text-center text-gray-500">
-              <CreditCard className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p>No billing orders found.</p>
-            </div>
-          )}
+          <ResponsiveTable
+            data={filteredOrders}
+            hasMore={hasMore}
+            onLoadMore={() => setPage(p => p + 1)}
+            keyExtractor={(o) => o.id}
+            emptyMessage="No billing orders found."
+            emptyIcon={CreditCard}
+            columns={[
+              {
+                header: 'School',
+                render: (o) => (
+                  <div>
+                    <div className="font-bold text-gray-900">{o.school.name}</div>
+                    <div className="text-xs text-gray-500 font-mono mt-0.5">{o.school.code}</div>
+                  </div>
+                )
+              },
+              {
+                header: 'Order ID',
+                render: (o) => (
+                  <div>
+                    <div className="font-mono text-xs text-gray-600 truncate max-w-[150px]" title={o.id}>{o.id}</div>
+                    {o.provider && <div className="text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded inline-block mt-1">{o.provider}</div>}
+                  </div>
+                )
+              },
+              {
+                header: 'Amount',
+                render: (o) => (
+                  <div>
+                    <div className="font-bold text-gray-900">{o.currency} {parseFloat(o.amount).toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">{o.planPricing?.plan?.name || 'Unknown Plan'}</div>
+                  </div>
+                )
+              },
+              {
+                header: 'Purpose',
+                render: (o) => (
+                  <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">{o.purpose.replace(/_/g, ' ')}</span>
+                )
+              },
+              {
+                header: 'Status',
+                render: (o) => getStatusBadge(o.status)
+              },
+              {
+                header: 'Created At',
+                render: (o) => (
+                  <span className="text-gray-500 text-xs">{new Date(o.createdAt).toLocaleString()}</span>
+                )
+              }
+            ]}
+          />
         </div>
       </div>
     </div>

@@ -26,10 +26,22 @@ export class FeeReportService {
   async getDefaulters(schoolId, query) {
     const { filters, dateRange } = await ReportEngine.validateAndParseFilters(schoolId, query);
     
+    const hasPagination = query.page !== undefined || query.limit !== undefined || query.q !== undefined || query.search !== undefined || query.sortBy !== undefined;
+    if (hasPagination) {
+      const page = query.page ? Number(query.page) : 1;
+      const limit = query.limit ? Number(query.limit) : 20;
+      const pagination = { page, limit, q: query.q || query.search || '', sortBy: query.sortBy, order: query.order };
+      const repoResult = await FeeReportRepository.getDefaulters(schoolId, dateRange.startDate, dateRange.endDate, filters, pagination);
+      const formattedData = ReportDTOs.formatFeeDefaulters(repoResult.data);
+      const base = ReportEngine.buildResponse('Fee Defaulters Report', formattedData, filters, dateRange);
+      base.pagination = { page, limit, total: repoResult.total, totalPages: Math.ceil(repoResult.total / limit) };
+      return base;
+    }
+
     const repoResult = await FeeReportRepository.getDefaulters(schoolId, dateRange.startDate, dateRange.endDate, filters);
     
     const formattedData = ReportDTOs.formatFeeDefaulters(repoResult);
-
+    
     return ReportEngine.buildResponse('Fee Defaulters Report', formattedData, filters, dateRange);
   }
 }

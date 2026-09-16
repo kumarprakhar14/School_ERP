@@ -46,22 +46,50 @@ const createAssignment = async (req, res, next) => {
 const getAssignments = async (req, res, next) => {
   try {
     const { sectionId } = req.query;
+    const q = (req.query.q || req.query.search || '').trim();
     const schoolId = req.user.schoolId;
     
-    const whereClause = { schoolId }; // Fix 5: Already has schoolId
+    const whereClause = { schoolId };
     if (sectionId) whereClause.sectionId = sectionId;
+    if (q) whereClause.title = { contains: q, mode: 'insensitive' };
 
     if (req.user.role === 'STUDENT') {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId } });
       if (profile && profile.sectionId) {
         whereClause.sectionId = profile.sectionId;
+      } else if (profile && !profile.sectionId) {
+        // Student without section => no assignments
+        return res.json({ data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } });
       }
     }
 
-    const page = req.query.page ? parseInt(req.query.page) : null;
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const orderBy = [{ createdAt: 'desc' }, { id: 'asc' }];
 
-    let queryOptions = {
+    if (hasPagination) {
+      const [assignments, total] = await Promise.all([
+        prisma.assignment.findMany({
+          where: whereClause,
+          include: {
+            section: { select: { name: true, class: { select: { name: true } } } },
+            ...(req.user.role === 'STUDENT'
+              ? { submissions: { where: { studentId: req.user.userId } } }
+              : { _count: { select: { submissions: true } } })
+          },
+          orderBy, skip: (page - 1) * limit, take: limit,
+        }),
+        prisma.assignment.count({ where: whereClause }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: assignments, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
+    const assignments = await prisma.assignment.findMany({
       where: whereClause,
       include: {
         section: { select: { name: true, class: { select: { name: true } } } },
@@ -69,21 +97,8 @@ const getAssignments = async (req, res, next) => {
           ? { submissions: { where: { studentId: req.user.userId } } }
           : { _count: { select: { submissions: true } } })
       },
-      orderBy: { createdAt: 'desc' }
-    };
-
-    if (page && limit) {
-      const totalCount = await prisma.assignment.count({ where: whereClause });
-      res.setHeader('X-Total-Count', totalCount);
-      res.setHeader('X-Total-Pages', Math.ceil(totalCount / limit));
-      res.setHeader('X-Current-Page', page);
-      res.setHeader('X-Limit', limit);
-
-      queryOptions.skip = (page - 1) * limit;
-      queryOptions.take = limit;
-    }
-
-    const assignments = await prisma.assignment.findMany(queryOptions);
+      orderBy,
+    });
     res.json(assignments);
   } catch (error) {
     next(error);
@@ -145,6 +160,25 @@ const getAssignmentSubmissions = async (req, res, next) => {
       throw new ForbiddenError('Students are not authorized to view all submissions');
     }
 
+    const q = (req.query.q || req.query.search || '').trim();
+    const hasPagination = req.query.page !== undefined || req.query.limit !== undefined || q;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const where = { assignmentId, ...(q && { student: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { erpId: { contains: q, mode: 'insensitive' } }] } }) };
+    const orderBy = [{ submittedAt: 'desc' }, { id: 'asc' }];
+
+    if (hasPagination) {
+      const [submissions, total] = await Promise.all([
+        prisma.assignmentSubmission.findMany({ where, include: { student: { select: { name: true, erpId: true } } }, orderBy, skip: (page - 1) * limit, take: limit }),
+        prisma.assignmentSubmission.count({ where }),
+      ]);
+      res.setHeader('X-Total-Count', String(total));
+      res.setHeader('X-Total-Pages', String(Math.ceil(total / limit)));
+      res.setHeader('X-Current-Page', String(page));
+      res.setHeader('X-Limit', String(limit));
+      return res.json({ data: submissions, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    }
+
     const submissions = await prisma.assignmentSubmission.findMany({
       where: { assignmentId },
       include: {
@@ -152,7 +186,7 @@ const getAssignmentSubmissions = async (req, res, next) => {
           select: { name: true, erpId: true }
         }
       },
-      orderBy: { submittedAt: 'desc' }
+      orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }]
     });
 
     res.json(submissions);

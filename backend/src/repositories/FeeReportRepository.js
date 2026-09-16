@@ -4,55 +4,39 @@ import { queryLogger } from '../utils/queryLogger.js';
 export class FeeReportRepository {
   static async getCollectionSummary(schoolId, startDate, endDate, filters = {}) {
     return await queryLogger.measure('FeeReportRepository.getCollectionSummary', async () => {
-      // Build the invoice filter: invoices whose dueDate falls in the selected period
+      // DB-level aggregation — avoids loading all invoices into Node
       const where = {
         schoolId,
-        dueDate: {
-          gte: startDate,
-          lte: endDate
-        }
+        dueDate: { gte: startDate, lte: endDate }
       };
-
-      // Apply class/section filters via student → studentProfile → section → class
       if (filters.sectionId) {
-        where.student = {
-          studentProfile: { sectionId: filters.sectionId }
-        };
+        where.student = { studentProfile: { sectionId: filters.sectionId } };
       } else if (filters.classId) {
-        where.student = {
-          studentProfile: { section: { classId: filters.classId } }
-        };
+        where.student = { studentProfile: { section: { classId: filters.classId } } };
       }
 
-      // Fetch the selected invoices with their ALL-TIME successful payments
-      const invoices = await prisma.feeInvoice.findMany({
+      const agg = await prisma.feeInvoice.aggregate({
         where,
-        select: {
-          totalAmount: true,
-          payments: {
-            where: { status: 'SUCCESS' },
-            select: { amount: true }
+        _sum: { totalAmount: true }
+      });
+      const expectedAmount = agg._sum.totalAmount || 0;
+
+      // Collected = sum of SUCCESS payments for same invoice set at DB level
+      const payAgg = await prisma.payment.aggregate({
+        where: {
+          schoolId,
+          status: 'SUCCESS',
+          invoice: {
+            dueDate: { gte: startDate, lte: endDate },
+            ...(filters.sectionId ? { student: { studentProfile: { sectionId: filters.sectionId } } } : {}),
+            ...(filters.classId && !filters.sectionId ? { student: { studentProfile: { section: { classId: filters.classId } } } } : {}),
           }
-        }
+        },
+        _sum: { amount: true }
       });
-
-      // Compute all three metrics from the SAME invoice population
-      let expectedAmount = 0;
-      let collectedAmount = 0;
-
-      invoices.forEach(inv => {
-        expectedAmount += inv.totalAmount;
-        collectedAmount += inv.payments.reduce((sum, p) => sum + p.amount, 0);
-      });
-
-      // Outstanding is derived, not queried separately — guarantees Expected - Collected = Outstanding
+      const collectedAmount = payAgg._sum.amount || 0;
       const outstandingAmount = Math.max(0, expectedAmount - collectedAmount);
-
-      return {
-        expectedAmount,
-        collectedAmount,
-        outstandingAmount
-      };
+      return { expectedAmount, collectedAmount, outstandingAmount };
     });
   }
 
@@ -91,20 +75,15 @@ export class FeeReportRepository {
     });
   }
 
-  static async getDefaulters(schoolId, startDate, endDate, filters = {}) {
+  static async getDefaulters(schoolId, startDate, endDate, filters = {}, pagination = null) {
     return await queryLogger.measure('FeeReportRepository.getDefaulters', async () => {
-      // Build class/section filter conditions for the raw SQL
-      const classFilterJoin = (filters.classId || filters.sectionId)
-        ? `JOIN "StudentProfile" sp ON sp."userId" = u.id
-           LEFT JOIN "Section" sec ON sp."sectionId" = sec.id
-           LEFT JOIN "Class" cls ON sec."classId" = cls.id`
-        : `LEFT JOIN "StudentProfile" sp ON sp."userId" = u.id
+      // Standardize to LEFT JOIN always — students without profile are not dropped
+      const classFilterJoin = `LEFT JOIN "StudentProfile" sp ON sp."userId" = u.id
            LEFT JOIN "Section" sec ON sp."sectionId" = sec.id
            LEFT JOIN "Class" cls ON sec."classId" = cls.id`;
 
-      let classFilterWhere = '';
       const params = [schoolId, startDate, endDate];
-
+      let classFilterWhere = '';
       if (filters.sectionId) {
         classFilterWhere = `AND sp."sectionId" = $4`;
         params.push(filters.sectionId);
@@ -113,12 +92,31 @@ export class FeeReportRepository {
         params.push(filters.classId);
       }
 
-      // Use $queryRawUnsafe since we need dynamic WHERE clauses
-      const query = `
+      const q = (pagination?.q || pagination?.search || filters.q || '').trim();
+      let searchWhere = '';
+      if (q) {
+        const idx = params.length + 1;
+        params.push(`%${q}%`);
+        searchWhere = `AND (u.name ILIKE $${idx} OR u."erpId" ILIKE $${idx} OR cls.name ILIKE $${idx} OR sec.name ILIKE $${idx})`;
+      }
+
+      const sortMap = {
+        daysOverdue: '"daysOverdue"',
+        dueDate: 'f."dueDate"',
+        pendingAmount: '"pendingAmount"',
+        studentName: 'u.name',
+      };
+      const sortBy = sortMap[pagination?.sortBy] || '"daysOverdue"';
+      const order = (pagination?.order || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+      // Deterministic secondary sorts
+      const orderBy = `ORDER BY ${sortBy} ${order}, f."dueDate" ASC, f.id ASC`;
+
+      const base = `
         SELECT 
           f.id,
           f."studentId",
           u.name as "studentName",
+          u."erpId" as "studentErpId",
           cls.name as "className",
           sec.name as "sectionName",
           f."dueDate",
@@ -127,7 +125,7 @@ export class FeeReportRepository {
             FROM "Payment" p 
             WHERE p."invoiceId" = f.id AND p.status = 'SUCCESS'
           ), 0)) as "pendingAmount",
-          EXTRACT(DAY FROM (CURRENT_DATE - f."dueDate")) as "daysOverdue"
+          (CURRENT_DATE - f."dueDate")::int as "daysOverdue"
         FROM "FeeInvoice" f
         JOIN "User" u ON f."studentId" = u.id
         ${classFilterJoin}
@@ -137,15 +135,31 @@ export class FeeReportRepository {
           AND f."dueDate" <= $3
           AND f."dueDate" < CURRENT_DATE
           ${classFilterWhere}
+          ${searchWhere}
           AND (f."totalAmount" - COALESCE((
             SELECT SUM(p.amount) 
             FROM "Payment" p 
             WHERE p."invoiceId" = f.id AND p.status = 'SUCCESS'
           ), 0)) > 0
-        ORDER BY "daysOverdue" DESC
       `;
 
-      return await prisma.$queryRawUnsafe(query, ...params);
+      if (!pagination) {
+        const query = `${base} ${orderBy}`;
+        return await prisma.$queryRawUnsafe(query, ...params);
+      }
+
+      const page = Math.max(1, Number(pagination.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(pagination.limit) || 20));
+      const offset = (page - 1) * limit;
+
+      const countQuery = `SELECT COUNT(*)::int as total FROM (${base}) t`;
+      const countParams = [...params];
+      const [countRows, rows] = await Promise.all([
+        prisma.$queryRawUnsafe(countQuery, ...countParams),
+        prisma.$queryRawUnsafe(`${base} ${orderBy} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset),
+      ]);
+      const total = countRows[0]?.total ?? 0;
+      return { data: rows, total };
     });
   }
 }

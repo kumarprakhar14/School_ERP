@@ -16,6 +16,8 @@ export default function SchoolDetail() {
   const [school, setSchool] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [adminsPage, setAdminsPage] = useState(1);
+  const [adminsHasMore, setAdminsHasMore] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Editing School Details
@@ -35,24 +37,18 @@ export default function SchoolDetail() {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    fetchSchoolData();
+    fetchSchoolDetails();
   }, [id]);
 
   useEffect(() => {
-    if (editingField && editInputRef.current) {
-      editInputRef.current.focus();
-    }
-  }, [editingField]);
+    fetchAdmins(adminsPage);
+  }, [id, adminsPage]);
 
-  const fetchSchoolData = async () => {
+  const fetchSchoolDetails = async () => {
     setLoading(true);
     try {
-      const [schoolRes, adminsRes] = await Promise.all([
-        api.get(`/schools/${id}`),
-        api.get(`/users?schoolId=${id}&role=ADMIN`)
-      ]);
+      const schoolRes = await api.get(`/schools/${id}`);
       setSchool(schoolRes.data);
-      setAdmins(adminsRes.data);
       
       setSchoolFormData({
         name: schoolRes.data.name,
@@ -68,12 +64,27 @@ export default function SchoolDetail() {
     }
   };
 
+  const fetchAdmins = async (pageNum = 1) => {
+    try {
+      const res = await api.get(`/users?schoolId=${id}&role=ADMIN&page=${pageNum}&limit=20`);
+      const { data, pagination } = res.data;
+      if (pageNum === 1) {
+        setAdmins(data || []);
+      } else {
+        setAdmins(prev => [...prev, ...(data || [])]);
+      }
+      setAdminsHasMore(pageNum < (pagination?.totalPages || 1));
+    } catch (error) {
+      console.error('Failed to load admins', error);
+    }
+  };
+
   const handleUpdateSchool = async () => {
     setIsSubmitting(true);
     try {
       await api.put(`/schools/${id}`, schoolFormData);
       toast.success('School updated successfully');
-      fetchSchoolData();
+      fetchSchoolDetails();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update school');
     } finally {
@@ -97,7 +108,7 @@ export default function SchoolDetail() {
     try {
       await api.patch(`/schools/${id}/${action}`);
       toast.success(`School ${action}d successfully`);
-      fetchSchoolData();
+      fetchSchoolDetails();
     } catch (error) {
       toast.error(error.response?.data?.message || `Failed to ${action} school`);
     }
@@ -116,7 +127,8 @@ export default function SchoolDetail() {
       toast.success('Admin user added successfully');
       setShowAddAdminModal(false);
       setAdminFormData({ name: '', password: '', contactDetails: '' });
-      fetchSchoolData();
+      if (adminsPage === 1) fetchAdmins(1);
+      else setAdminsPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to add admin');
     } finally {
@@ -138,7 +150,8 @@ export default function SchoolDetail() {
       setShowEditAdminModal(false);
       setSelectedAdmin(null);
       setAdminFormData({ name: '', password: '', contactDetails: '' });
-      fetchSchoolData();
+      if (adminsPage === 1) fetchAdmins(1);
+      else setAdminsPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update admin');
     } finally {
@@ -152,7 +165,8 @@ export default function SchoolDetail() {
       toast.success('Admin deleted successfully');
       setShowDeleteConfirm(false);
       setSelectedAdmin(null);
-      fetchSchoolData();
+      if (adminsPage === 1) fetchAdmins(1);
+      else setAdminsPage(1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete admin');
       setShowDeleteConfirm(false);
@@ -357,6 +371,8 @@ export default function SchoolDetail() {
         <div className="border-t border-gray-100">
           <ResponsiveTable
             data={admins}
+            hasMore={adminsHasMore}
+            onLoadMore={() => setAdminsPage(p => p + 1)}
             keyExtractor={(admin) => admin.id}
             emptyMessage="No administrators found for this school."
             emptyIcon={Shield}
